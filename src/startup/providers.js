@@ -1,4 +1,8 @@
-export const PROVIDERS_TO_LOGIN = [
+const _enabled = process.env.BROWSER_AI_PROVIDERS
+  ? new Set(process.env.BROWSER_AI_PROVIDERS.split(",").map((s) => s.trim().toLowerCase()))
+  : null;
+
+const ALL_PROVIDERS = [
   {
     id: "chatgpt",
     name: "ChatGPT",
@@ -39,3 +43,7 @@ export const PROVIDERS_TO_LOGIN = [
       '#m365-chat-editor-target-element, [data-lexical-editor="true"]',
   },
 ];
+
+export const PROVIDERS_TO_LOGIN = _enabled
+  ? ALL_PROVIDERS.filter((p) => _enabled.has(p.id))
+  : ALL_PROVIDERS;

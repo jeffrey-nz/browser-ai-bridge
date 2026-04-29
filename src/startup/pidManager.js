@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { logger } from "#utils/logger.js";
 
-const PID_FILE = join(process.cwd(), ".api.pid");
+const PID_FILE = join(tmpdir(), "browser-ai-bridge.pid");
 
 // Config file lives in the OS temp directory so copilot-helper can read it
 // without knowing the automation-api project root path.
