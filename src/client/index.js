@@ -72,7 +72,7 @@ export class BrowserAIClient {
       provider,
       mode,
     });
-    return new BrowserAISession(this, data.data.sessionId, provider);
+    return new BrowserAISession(this, data.sessionId, provider);
   }
 
   /**
