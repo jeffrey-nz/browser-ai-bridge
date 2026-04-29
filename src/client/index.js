@@ -72,7 +72,9 @@ export class BrowserAIClient {
       provider,
       mode,
     });
-    return new BrowserAISession(this, data.sessionId, provider);
+    const session = new BrowserAISession(this, data.sessionId, provider);
+    session.maxPromptChars = data.maxPromptChars ?? null;
+    return session;
   }
 
   /**
