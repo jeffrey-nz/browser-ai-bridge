@@ -1,5 +1,9 @@
 const _enabled = process.env.BROWSER_AI_PROVIDERS
-  ? new Set(process.env.BROWSER_AI_PROVIDERS.split(",").map((s) => s.trim().toLowerCase()))
+  ? new Set(
+      process.env.BROWSER_AI_PROVIDERS.split(",").map((s) =>
+        s.trim().toLowerCase(),
+      ),
+    )
   : null;
 
 const ALL_PROVIDERS = [

@@ -24,7 +24,9 @@ function printHotkeyHint() {
 function applyProviderFilter() {
   const envList = process.env.BROWSER_AI_PROVIDERS;
   if (!envList) return;
-  const enabled = new Set(envList.split(",").map((s) => s.trim().toLowerCase()));
+  const enabled = new Set(
+    envList.split(",").map((s) => s.trim().toLowerCase()),
+  );
   for (const [id, cfg] of Object.entries(PROVIDER_CONFIG)) {
     cfg.disabled = !enabled.has(id);
   }

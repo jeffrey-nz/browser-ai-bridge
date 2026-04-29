@@ -35,6 +35,12 @@ export async function cleanupBrowser() {
 // signal handlers and controls whether Chrome is killed on exit. A SIGTERM from
 // a new API instance must NOT kill Chrome (the new instance already respawned
 // it), so only the main entry point can make that call.
+//
+// Guard against re-entry: killBrowserProcess() awaits a 1s setTimeout which
+// reschedules work and would cause beforeExit to fire again indefinitely.
+let _beforeExitRunning = false;
 process.on("beforeExit", async () => {
+  if (_beforeExitRunning) return;
+  _beforeExitRunning = true;
   await cleanupBrowser();
 });
