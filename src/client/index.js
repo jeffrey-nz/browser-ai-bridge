@@ -38,7 +38,7 @@ export class BrowserAIClient {
 
   /** Check whether the server is ready. */
   health() {
-    return this._request("GET", "/api/health");
+    return this._request("GET", "/api/ping");
   }
 
   /** List all open sessions. */
