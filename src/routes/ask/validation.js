@@ -1,0 +1,60 @@
+import { PROVIDER_CONFIG } from "../../config/providers.js";
+import { cooldownManager } from "../../session/CooldownManager.js";
+
+export function validateRequest(req, sessionId, provider) {
+  // Required: prompt. Optional: mode, label, skipConstraint.
+  if (!req.body.prompt) {
+    return { valid: false, status: 400, error: "Missing prompt" };
+  }
+
+  if (!sessionId && !provider) {
+    return {
+      valid: false,
+      status: 400,
+      error: "Missing provider or sessionId",
+    };
+  }
+
+  const checkId = provider || (sessionId ? null : undefined);
+
+  if (checkId && !PROVIDER_CONFIG[checkId]) {
+    return {
+      valid: false,
+      status: 400,
+      error: `Unknown provider specified: ${checkId}`,
+    };
+  }
+
+  if (checkId && PROVIDER_CONFIG[checkId]?.disabled) {
+    return {
+      valid: false,
+      status: 403,
+      error: `Provider '${checkId}' was skipped during startup and is currently disabled.`,
+    };
+  }
+
+  const cd = cooldownManager.check(checkId || provider);
+  if (cd.active) {
+    return {
+      valid: false,
+      status: 429,
+      error: `Provider is on cooldown to prevent UI bans. Please try again later.`,
+      retryAfter: cd.remainingSeconds,
+    };
+  }
+
+  return { valid: true };
+}
+
+export function validatePromptLimit(session, prompt) {
+  const config = PROVIDER_CONFIG[session.providerId];
+  if (config && prompt.length > config.maxPromptChars) {
+    return {
+      valid: false,
+      status: 413,
+      error: `Prompt exceeds provider character limit of ${config.maxPromptChars}`,
+      max: config.maxPromptChars,
+    };
+  }
+  return { valid: true };
+}

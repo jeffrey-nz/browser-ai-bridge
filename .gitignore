@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Runtime output
+logs/
+reports/
+snapshots/
+
+# Environment & secrets
+.env
+
+# Editor & OS
+.DS_Store
+.vscode/
+.claude/
+
+# Runtime state
+.api.pid
+.api-config.json
+.last-ai-response.md

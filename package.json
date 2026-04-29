@@ -1,0 +1,55 @@
+{
+  "name": "browser-ai-bridge",
+  "version": "1.0.0",
+  "description": "Local REST API server that drives real browser sessions to interact with AI web interfaces — ChatGPT, Copilot, Gemini, DeepSeek, and Grok",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "ai",
+    "browser-automation",
+    "playwright",
+    "chatgpt",
+    "copilot",
+    "gemini",
+    "deepseek",
+    "grok",
+    "rest-api",
+    "llm",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeffrey-nz/browser-ai-bridge.git"
+  },
+  "imports": {
+    "#ai/*": "./src/ai/*",
+    "#copilot/*": "./src/ai/copilot/*",
+    "#app/*": "./src/shims/app/*",
+    "#utils/*": "./src/shims/utils/*",
+    "#web/*": "./src/shims/web/*",
+    "#tools/*": "./src/shims/tools/*"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "test": "NODE_ENV=test node --test",
+    "audit": "node src/audit/index.js",
+    "audit:fix": "node src/audit/fix.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "express-rate-limit": "^7.1.5",
+    "fast-glob": "^3.3.2",
+    "helmet": "^7.1.0",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1",
+    "playwright-core": "^1.42.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "supertest": "^6.3.4"
+  }
+}
