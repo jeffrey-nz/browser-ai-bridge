@@ -33,7 +33,9 @@ export async function stepGenerationPolling(page, locs) {
         .isVisible({ timeout: 1000 })
         .catch(() => false);
       if (alreadyDone) {
-        spinner.succeed("Generation complete (instant — done signal pre-visible).");
+        spinner.succeed(
+          "Generation complete (instant — done signal pre-visible).",
+        );
         return true;
       }
     }
@@ -44,7 +46,9 @@ export async function stepGenerationPolling(page, locs) {
         .isVisible({ timeout: 1000 })
         .catch(() => false);
       if (hasResponse) {
-        spinner.succeed("Generation complete (instant — response block pre-visible).");
+        spinner.succeed(
+          "Generation complete (instant — response block pre-visible).",
+        );
         return true;
       }
     }

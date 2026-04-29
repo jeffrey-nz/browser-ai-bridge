@@ -4,7 +4,10 @@ import {
   sendPromptAndWait,
   setMode,
 } from "./interaction/index.js";
-import { injectGeminiText, clickGeminiSend } from "./interaction/prompt/input.js";
+import {
+  injectGeminiText,
+  clickGeminiSend,
+} from "./interaction/prompt/input.js";
 
 export class GeminiProvider extends BaseProvider {
   constructor() {

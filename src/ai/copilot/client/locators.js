@@ -10,8 +10,7 @@ export const COPILOT_LOCATORS = {
 
   // During generation the composer send icon swaps to a stop icon.
   // The button keeps its testid; fallback on any "Stop" aria-label.
-  stopBtn:
-    '[data-testid="stop-button"], button[aria-label*="Stop" i]',
+  stopBtn: '[data-testid="stop-button"], button[aria-label*="Stop" i]',
 
   // The new Copilot UI renders AI turns without fai-* or ac-* classes.
   // Match the first visible text container that holds a response.

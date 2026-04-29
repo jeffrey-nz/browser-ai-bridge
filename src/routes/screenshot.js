@@ -51,7 +51,11 @@ router.get("/", async (req, res) => {
     // Brief settle — let CSS/fonts render
     await page.waitForTimeout(800);
 
-    const buf = await page.screenshot({ type: "png", fullPage: false, scale: "css" });
+    const buf = await page.screenshot({
+      type: "png",
+      fullPage: false,
+      scale: "css",
+    });
     const screenshotBase64 = buf.toString("base64");
 
     logger.info(`[Screenshot] Captured ${url} (${buf.length} bytes)`);

@@ -16,10 +16,14 @@ async function fallback(modeKey, reason) {
   const nextKey = getNextFallback(modeKey);
   if (nextKey) {
     const nextLabel = PROVIDER_MODES.gemini[nextKey]?.label ?? nextKey;
-    log(`  ${colors.yellow("→")} ${reason} — falling back to "${nextLabel}"...`);
+    log(
+      `  ${colors.yellow("→")} ${reason} — falling back to "${nextLabel}"...`,
+    );
     return nextKey;
   }
-  log(`  ${colors.dim(`${reason} — no further fallback, continuing in current mode.`)}`);
+  log(
+    `  ${colors.dim(`${reason} — no further fallback, continuing in current mode.`)}`,
+  );
   return null;
 }
 
@@ -49,7 +53,9 @@ async function trySetGeminiMode(page, modeKey) {
       return;
     }
 
-    log(`  ${colors.dim(`Current: "${currentText}". Switching to "${config.label}"...`)}`);
+    log(
+      `  ${colors.dim(`Current: "${currentText}". Switching to "${config.label}"...`)}`,
+    );
 
     let verified = false;
     let lastError = null;
@@ -59,15 +65,20 @@ async function trySetGeminiMode(page, modeKey) {
         await switcher.click({ force: true });
         await page.waitForTimeout(600);
 
-        const option = page.locator(`[data-test-id="${config.testId}"]`).first();
+        const option = page
+          .locator(`[data-test-id="${config.testId}"]`)
+          .first();
         await option.waitFor({ state: "visible", timeout: 6000 });
 
         // Already active?
         const isCurrent =
-          (await option.getAttribute("aria-current").catch(() => null)) === "true";
+          (await option.getAttribute("aria-current").catch(() => null)) ===
+          "true";
         if (isCurrent) {
           await page.keyboard.press("Escape");
-          log(`  ${colors.blue("ℹ")} Mode "${config.label}" is already active (aria-current).`);
+          log(
+            `  ${colors.blue("ℹ")} Mode "${config.label}" is already active (aria-current).`,
+          );
           verified = true;
           break;
         }
@@ -76,12 +87,16 @@ async function trySetGeminiMode(page, modeKey) {
         // Gemini marks unavailable modes with aria-disabled="true" and the
         // HTML disabled attribute directly on the button (no separate upsell element).
         const isDisabled =
-          (await option.getAttribute("aria-disabled").catch(() => null)) === "true" ||
+          (await option.getAttribute("aria-disabled").catch(() => null)) ===
+            "true" ||
           (await option.getAttribute("disabled").catch(() => null)) !== null;
 
         if (isDisabled) {
           await page.keyboard.press("Escape");
-          const nextKey = await fallback(modeKey, `"${config.label}" is not available on this plan`);
+          const nextKey = await fallback(
+            modeKey,
+            `"${config.label}" is not available on this plan`,
+          );
           if (nextKey) await trySetGeminiMode(page, nextKey);
           return;
         }
@@ -91,7 +106,8 @@ async function trySetGeminiMode(page, modeKey) {
 
         // Confirm via aria-current on the option (more reliable than label text).
         const nowActive =
-          (await option.getAttribute("aria-current").catch(() => null)) === "true";
+          (await option.getAttribute("aria-current").catch(() => null)) ===
+          "true";
         if (nowActive) {
           log(`  ${colors.green("✔")} Mode confirmed: ${config.label}`);
           verified = true;
@@ -101,7 +117,9 @@ async function trySetGeminiMode(page, modeKey) {
         // Fallback: poll the pill label for up to 7s.
         for (let i = 0; i < 14; i++) {
           await page.waitForTimeout(500);
-          const updatedText = (await labelSpan.innerText().catch(() => "")).trim();
+          const updatedText = (
+            await labelSpan.innerText().catch(() => "")
+          ).trim();
           if (updatedText.toLowerCase() === config.label.toLowerCase()) {
             verified = true;
             break;
@@ -113,12 +131,16 @@ async function trySetGeminiMode(page, modeKey) {
           break;
         } else {
           const still = (await labelSpan.innerText().catch(() => "?")).trim();
-          throw new Error(`Label did not update after click. Still shows: "${still}"`);
+          throw new Error(
+            `Label did not update after click. Still shows: "${still}"`,
+          );
         }
       } catch (err) {
         lastError = err;
         if (attempt < 3) {
-          log(`  ${colors.dim(`Attempt ${attempt} failed (${err.message}). Retrying in 2s...`)}`);
+          log(
+            `  ${colors.dim(`Attempt ${attempt} failed (${err.message}). Retrying in 2s...`)}`,
+          );
           await page.keyboard.press("Escape").catch(() => {});
           await page.waitForTimeout(2000);
         }
@@ -126,7 +148,9 @@ async function trySetGeminiMode(page, modeKey) {
     }
 
     if (!verified) {
-      log(`  ${colors.yellow("⚠️")} Mode selection failed after 3 attempts: ${lastError?.message}`);
+      log(
+        `  ${colors.yellow("⚠️")} Mode selection failed after 3 attempts: ${lastError?.message}`,
+      );
       await page.keyboard.press("Escape").catch(() => {});
       await capturePageSnapshot(page, `Mode Switch Failure: ${config.label}`);
     }

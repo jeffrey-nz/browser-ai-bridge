@@ -27,7 +27,9 @@ export async function executeAskTurn(
     prompt.startsWith("[PARSE ERROR]") &&
     session.lastAiResponse
   ) {
-    const { data, normalizedText } = extractAndNormalize(session.lastAiResponse);
+    const { data, normalizedText } = extractAndNormalize(
+      session.lastAiResponse,
+    );
     if (data !== null && normalizedText !== session.lastAiResponse) {
       logger.info(
         `[Ask] [PARSE ERROR] short-circuit - returning server-repaired response for session ${session.id}`,
@@ -52,11 +54,17 @@ export async function executeAskTurn(
     try {
       await session.engine.setMode(mode);
     } catch (err) {
-      logger.warn(`[Ask] Failed to set mode ${mode} for session ${session.id}: ${err.message}`);
+      logger.warn(
+        `[Ask] Failed to set mode ${mode} for session ${session.id}: ${err.message}`,
+      );
     }
   }
 
-  let activePrompt = buildInitialPrompt(session.providerId, prompt, skipConstraint);
+  let activePrompt = buildInitialPrompt(
+    session.providerId,
+    prompt,
+    skipConstraint,
+  );
 
   const isReviewerTurn = /reviewer/i.test(label);
 
@@ -78,7 +86,12 @@ export async function executeAskTurn(
   // The constraint itself was likely what triggered the block - retrying with the
   // same prefix into a fresh chat would just cause another immediate block.
   const refusalRetryPrompt = response.isRefusal ? prompt : null;
-  response = await handleRotationIfNeeded(session, response, activePrompt, refusalRetryPrompt);
+  response = await handleRotationIfNeeded(
+    session,
+    response,
+    activePrompt,
+    refusalRetryPrompt,
+  );
 
   if (isReviewerTurn && !response.ok) {
     logger.warn(

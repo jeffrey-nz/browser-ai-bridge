@@ -24,6 +24,20 @@
     "type": "git",
     "url": "https://github.com/jeffrey-nz/browser-ai-bridge.git"
   },
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client/index.js",
+    "./server": "./src/server.js"
+  },
+  "bin": {
+    "browser-ai-bridge": "./bin/browser-ai-bridge.js"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "API.md",
+    ".env.example"
+  ],
   "imports": {
     "#ai/*": "./src/ai/*",
     "#copilot/*": "./src/ai/copilot/*",

@@ -8,7 +8,9 @@ export async function runPromptWorkflow(page, text, label, options) {
     return await _runPromptWorkflowInner(page, text, label, options);
   } catch (err) {
     if (err.rateLimited) {
-      logger.warn(`[Prompt Workflow] Rate limit detected for ${options.providerName}: ${err.message}`);
+      logger.warn(
+        `[Prompt Workflow] Rate limit detected for ${options.providerName}: ${err.message}`,
+      );
       return { ok: false, rateLimited: true, reason: err.message };
     }
     throw err;

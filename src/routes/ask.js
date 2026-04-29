@@ -19,7 +19,13 @@ router.post("/", async (req, res, next) => {
   const v = validateRequest(req, sessionId, provider);
   if (!v.valid) {
     if (v.retryAfter) res.set("Retry-After", String(v.retryAfter));
-    return sendError(res, v.status, v.error, { retryAfter: v.retryAfter }, requestId);
+    return sendError(
+      res,
+      v.status,
+      v.error,
+      { retryAfter: v.retryAfter },
+      requestId,
+    );
   }
 
   const { session, autoCreated, error, status } = await resolveSession(
@@ -35,7 +41,13 @@ router.post("/", async (req, res, next) => {
   const pLimit = validatePromptLimit(session, prompt);
   if (!pLimit.valid) {
     await cleanupAutoSession(autoCreated, session);
-    return sendError(res, pLimit.status, pLimit.error, { max: pLimit.max }, requestId);
+    return sendError(
+      res,
+      pLimit.status,
+      pLimit.error,
+      { max: pLimit.max },
+      requestId,
+    );
   }
 
   // If the HTTP client disconnects before we finish writing the response
@@ -56,16 +68,23 @@ router.post("/", async (req, res, next) => {
   return withSessionLock(session, autoCreated, async () => {
     try {
       const { response, data, messageCount, selfHealEscape, htmlSnapshot } =
-        await executeAskTurn(session, prompt, requestId, label, pollTimeoutMs, { skipConstraint: !!skipConstraint, mode });
+        await executeAskTurn(session, prompt, requestId, label, pollTimeoutMs, {
+          skipConstraint: !!skipConstraint,
+          mode,
+        });
 
       if (selfHealEscape) {
-        return sendSuccess(res, {
-          selfHealEscape: true,
-          htmlSnapshot: htmlSnapshot || "",
-          response: "",
-          data: null,
-          messageCount: 0,
-        }, requestId);
+        return sendSuccess(
+          res,
+          {
+            selfHealEscape: true,
+            htmlSnapshot: htmlSnapshot || "",
+            response: "",
+            data: null,
+            messageCount: 0,
+          },
+          requestId,
+        );
       }
 
       return sendSuccess(res, { response, data, messageCount }, requestId);
@@ -75,7 +94,13 @@ router.post("/", async (req, res, next) => {
       });
 
       if (err.stalled) {
-        return sendError(res, 503, "STALLED", { stalled: true, rateLimited: !!err.rateLimited }, requestId);
+        return sendError(
+          res,
+          503,
+          "STALLED",
+          { stalled: true, rateLimited: !!err.rateLimited },
+          requestId,
+        );
       }
       return sendError(res, 500, err.message, {}, requestId);
     }

@@ -29,8 +29,8 @@ const DEEPSEEK_BASE_CONSTRAINT =
   "```json\n" +
   '[{"tool": "write_file", "path": "/abs/path", "content": "file content here"}]\n' +
   "```\n" +
-  "IMPORTANT: When the file content contains double-quote characters (\"), you MUST escape them as \\\" inside the JSON string. " +
-  "For example, C# code like: var x = \"hello\"; must be written as: var x = \\\"hello\\\"; in the JSON content field.\n\n";
+  'IMPORTANT: When the file content contains double-quote characters ("), you MUST escape them as \\" inside the JSON string. ' +
+  'For example, C# code like: var x = "hello"; must be written as: var x = \\"hello\\"; in the JSON content field.\n\n';
 
 export async function executeAskTurn(session, prompt, requestId) {
   sessionManager.log(

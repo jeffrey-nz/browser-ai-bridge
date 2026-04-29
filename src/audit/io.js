@@ -37,7 +37,13 @@ export function clearAuditArtifacts(providerName) {
 
 // Saves a viewport screenshot after each step — gives a visual timeline that
 // can be fed directly to Claude for analysis.
-export async function saveStepScreenshot(page, providerName, stepIndex, stepName, result) {
+export async function saveStepScreenshot(
+  page,
+  providerName,
+  stepIndex,
+  stepName,
+  result,
+) {
   ensureDir();
   const provider = sanitizeName(providerName);
   // Step slug: strip leading "N. " numbering, lowercase, collapse spaces
@@ -70,9 +76,15 @@ export async function saveSnapshot(page, providerName) {
     const html = await page.content();
     if (html && html.trim().length > 0) {
       fs.writeFileSync(htmlPath, html, "utf8");
-      log(colors.dim(`  [IO] DOM snapshot → ./reports/${sanitizedName}-failure.html`));
+      log(
+        colors.dim(
+          `  [IO] DOM snapshot → ./reports/${sanitizedName}-failure.html`,
+        ),
+      );
     } else {
-      log(colors.yellow(`  [IO] DOM snapshot was empty — skipping HTML write.`));
+      log(
+        colors.yellow(`  [IO] DOM snapshot was empty — skipping HTML write.`),
+      );
     }
   } catch (err) {
     log(colors.red(`  [IO] Failed to save HTML snapshot: ${err.message}`));
@@ -80,7 +92,11 @@ export async function saveSnapshot(page, providerName) {
 
   try {
     await page.screenshot({ path: pngPath, fullPage: false });
-    log(colors.dim(`  [IO] Failure screenshot → ./reports/${sanitizedName}-failure.png`));
+    log(
+      colors.dim(
+        `  [IO] Failure screenshot → ./reports/${sanitizedName}-failure.png`,
+      ),
+    );
   } catch (err) {
     log(colors.red(`  [IO] Failed to save screenshot: ${err.message}`));
   }

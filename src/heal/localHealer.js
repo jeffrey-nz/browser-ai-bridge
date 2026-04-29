@@ -10,14 +10,26 @@ import { logger } from "#utils/logger.js";
  * @param {string} params.screenshotBase64 - Ignored (not used)
  * @returns {Promise<string>} - Markdown code block with the updated locator export
  */
-export async function suggestSelectorsLocally({ providerContext, currentLocators, htmlSnippet, screenshotBase64 }) {
-  logger.info(`[LocalHealer] Suggesting selectors for ${providerContext.name} using local heuristics`);
+export async function suggestSelectorsLocally({
+  providerContext,
+  currentLocators,
+  htmlSnippet,
+  screenshotBase64,
+}) {
+  logger.info(
+    `[LocalHealer] Suggesting selectors for ${providerContext.name} using local heuristics`,
+  );
 
   try {
     // Parse current locators to preserve unchanged keys
-    const currentExport = parseCurrentExport(currentLocators, providerContext.exportName);
+    const currentExport = parseCurrentExport(
+      currentLocators,
+      providerContext.exportName,
+    );
     if (!currentExport) {
-      logger.warn(`[LocalHealer] Could not parse current locators for ${providerContext.name}, returning original`);
+      logger.warn(
+        `[LocalHealer] Could not parse current locators for ${providerContext.name}, returning original`,
+      );
       return currentLocators;
     }
 
@@ -27,12 +39,15 @@ export async function suggestSelectorsLocally({ providerContext, currentLocators
     // Merge: only update stopBtn and responseBlock if improved versions found
     const merged = { ...currentExport };
     if (improvedSelectors.stopBtn) merged.stopBtn = improvedSelectors.stopBtn;
-    if (improvedSelectors.responseBlock) merged.responseBlock = improvedSelectors.responseBlock;
+    if (improvedSelectors.responseBlock)
+      merged.responseBlock = improvedSelectors.responseBlock;
 
     // Build the output code block
     const codeBlock = buildCodeBlock(merged, providerContext);
 
-    logger.info(`[LocalHealer] Generated updated locators for ${providerContext.name}`);
+    logger.info(
+      `[LocalHealer] Generated updated locators for ${providerContext.name}`,
+    );
     return codeBlock;
   } catch (err) {
     logger.error(`[LocalHealer] Error: ${err.message}`);
@@ -49,7 +64,10 @@ export async function suggestSelectorsLocally({ providerContext, currentLocators
 function parseCurrentExport(currentLocators, exportName) {
   try {
     // Extract the object literal between export const EXPORT_NAME = { ... };
-    const regex = new RegExp(`export\\s+const\\s+${exportName}\\s*=\\s*({[\\s\\S]*?});`, 'i');
+    const regex = new RegExp(
+      `export\\s+const\\s+${exportName}\\s*=\\s*({[\\s\\S]*?});`,
+      "i",
+    );
     const match = currentLocators.match(regex);
     if (!match) return null;
     // Use Function to safely evaluate the object (trusted source)
@@ -137,6 +155,6 @@ function buildCodeBlock(locatorObject, providerContext) {
     lines.push(`  ${key}: "${value}",`);
   }
   lines.push(`};`);
-  const code = lines.join('\n');
+  const code = lines.join("\n");
   return `\`\`\`javascript\n${code}\n\`\`\``;
 }

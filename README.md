@@ -31,6 +31,20 @@ The server maintains a pool of persistent browser tabs — one per AI provider �
 
 ## Installation
 
+### npm (recommended)
+
+```bash
+npm install browser-ai-bridge
+```
+
+Run directly without installing:
+
+```bash
+npx browser-ai-bridge
+```
+
+### From source
+
 ```bash
 git clone https://github.com/jeffrey-nz/browser-ai-bridge.git
 cd browser-ai-bridge
@@ -119,6 +133,24 @@ curl -X DELETE http://localhost:3333/api/sessions/uuid
 List all active sessions:
 ```bash
 curl http://localhost:3333/api/sessions
+```
+
+### Programmatic usage (Node.js)
+
+```js
+import { BrowserAIClient } from "browser-ai-bridge/client";
+
+const client = new BrowserAIClient({ baseUrl: "http://localhost:3333" });
+
+// One-shot — server picks or creates a session automatically
+const { data } = await client.ask({ provider: "chatgpt", prompt: "Hello!" });
+console.log(data.response);
+
+// Explicit session — keeps conversation context across turns
+const session = await client.createSession("gemini");
+const r1 = await session.ask("What is the capital of France?");
+const r2 = await session.ask("And its population?");
+await session.close();
 ```
 
 ## API reference

@@ -83,7 +83,11 @@ export async function waitForDeepSeekCompletion(
           "text=/failed to generate/i",
         ];
         for (const sel of errorTexts) {
-          const visible = await page.locator(sel).first().isVisible().catch(() => false);
+          const visible = await page
+            .locator(sel)
+            .first()
+            .isVisible()
+            .catch(() => false);
           if (visible) {
             logger.warn(`[DeepSeek Poll] Error state detected: ${sel}`);
             return false;
@@ -92,12 +96,16 @@ export async function waitForDeepSeekCompletion(
 
         // "Regenerate" button appears when DeepSeek fails to generate a response
         const regenerateVisible = await page
-          .locator('[aria-label*="Regenerate" i], button:has-text("Regenerate"), .ds-icon-button:has-text("Regenerate")')
+          .locator(
+            '[aria-label*="Regenerate" i], button:has-text("Regenerate"), .ds-icon-button:has-text("Regenerate")',
+          )
           .first()
           .isVisible()
           .catch(() => false);
         if (regenerateVisible) {
-          logger.warn("[DeepSeek Poll] Regenerate button detected — generation failed.");
+          logger.warn(
+            "[DeepSeek Poll] Regenerate button detected — generation failed.",
+          );
           return false;
         }
 
@@ -159,9 +167,13 @@ export async function waitForDeepSeekCompletion(
     try {
       const bodyText = await page.locator("body").innerText({ timeout: 2000 });
       const snippet = bodyText.slice(0, 300).replace(/\s+/g, " ").trim();
-      logger.warn(`[DeepSeek Poll] Timed out after 300s. Page text snippet: "${snippet}"`);
+      logger.warn(
+        `[DeepSeek Poll] Timed out after 300s. Page text snippet: "${snippet}"`,
+      );
     } catch {
-      logger.warn("[DeepSeek Poll] Timed out after 300s. (could not capture page text)");
+      logger.warn(
+        "[DeepSeek Poll] Timed out after 300s. (could not capture page text)",
+      );
     }
     return false;
   } catch (e) {

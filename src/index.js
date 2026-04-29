@@ -1,9 +1,15 @@
 import process from "node:process";
 import readline from "node:readline";
+import { pathToFileURL } from "node:url";
 import { connectToBrowser, killBrowserProcess } from "./browser.js";
 import { startServer } from "./server.js";
 import { runLoginSequence } from "./startup/authSequence.js";
-import { killZombieProcess, writePidFile, removePidFile, writeApiConfig } from "./startup/pidManager.js";
+import {
+  killZombieProcess,
+  writePidFile,
+  removePidFile,
+  writeApiConfig,
+} from "./startup/pidManager.js";
 import { sessionManager } from "./session/index.js";
 import { sessionPool } from "./session/Pool.js";
 import { PROVIDER_CONFIG } from "./config/providers.js";
@@ -40,8 +46,8 @@ async function init() {
   await sessionPool.initializePool();
 
   let port = Number(process.env.PORT);
-if (isNaN(port)) port = 3333;
-else if (port <= 0) throw new Error('PORT must be a positive integer');
+  if (isNaN(port)) port = 3333;
+  else if (port <= 0) throw new Error("PORT must be a positive integer");
   const server = await startServer(port);
   const boundPort = server.address().port;
   writePidFile();
@@ -123,7 +129,17 @@ else if (port <= 0) throw new Error('PORT must be a positive integer');
   // killBrowserProcess() before spawning its own Chrome, so Chrome is either
   // already dead or belongs to the new process - killing it here would crash
   // the new instance's sessions. Exit cleanly without touching Chrome.
-  process.on("SIGTERM", () => { logger.info("[Shutdown] SIGTERM received, exiting without killing Chrome"); process.exit(0); });
+  process.on("SIGTERM", () => {
+    logger.info("[Shutdown] SIGTERM received, exiting without killing Chrome");
+    process.exit(0);
+  });
 }
 
-init();
+export { init };
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  init();
+}

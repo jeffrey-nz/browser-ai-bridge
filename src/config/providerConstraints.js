@@ -43,8 +43,8 @@ const DEEPSEEK_CONSTRAINT =
   "```json\n" +
   '[{"tool": "write_file", "path": "/abs/path", "content": "file content here"}]\n' +
   "```\n" +
-  "IMPORTANT: When the file content contains double-quote characters (\"), you MUST escape them as \\\" inside the JSON string. " +
-  "For example, XML like: <tag attr=\"value\"> must be written as: <tag attr=\\\"value\\\"> in the JSON content field.\n\n";
+  'IMPORTANT: When the file content contains double-quote characters ("), you MUST escape them as \\" inside the JSON string. ' +
+  'For example, XML like: <tag attr="value"> must be written as: <tag attr=\\"value\\"> in the JSON content field.\n\n';
 
 // ---------------------------------------------------------------------------
 // Gemini

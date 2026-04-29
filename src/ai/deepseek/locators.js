@@ -7,7 +7,8 @@ export const DEEPSEEK_LOCATORS = {
     'div.ds-icon-button[role="button"]:has(svg path[d^="M8."]), div.ds-icon-button[role="button"]:has(svg path[d^="M9."]), div[role="button"][aria-label*="Send" i], .ds-send-button',
   stopBtn:
     'div.ds-icon-button[role="button"]:has(svg rect), div.ds-icon-button[role="button"]:has(svg path[d^="M17."]), div.ds-icon-button[role="button"]:has(svg path[d^="M2 4.88"]), div[role="button"][aria-label*="Stop" i], .ds-stop-button',
-  responseBlock: ".ds-markdown, .markdown-body, .ds-message, .ds-chat-message, [class*='markdown'], [class*='message-content']",
+  responseBlock:
+    ".ds-markdown, .markdown-body, .ds-message, .ds-chat-message, [class*='markdown'], [class*='message-content']",
   doneSignal: null,
   modeToggle:
     '[aria-label*="DeepThink" i], .ds-switch-label:has-text("DeepThink"), .ds-toggle-button:has-text("DeepThink")',

@@ -64,7 +64,9 @@ export class BaseProvider {
           timeout: 30000,
         });
       } catch (err) {
-        logger.warn(`[${this.providerName}] Navigation warning: ${err.message}`);
+        logger.warn(
+          `[${this.providerName}] Navigation warning: ${err.message}`,
+        );
         // After a timeout the page may still be loading. Check the final URL —
         // if we landed on about:blank the provider won't work, so retry once.
         const currentUrl = this.page.url();
@@ -120,8 +122,6 @@ export class BaseProvider {
   }
 
   async sendPromptOnly(text) {
-    throw new Error(
-      `[${this.providerName}] sendPromptOnly() not implemented`,
-    );
+    throw new Error(`[${this.providerName}] sendPromptOnly() not implemented`);
   }
 }

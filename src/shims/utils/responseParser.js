@@ -46,7 +46,13 @@ function repairUnescapedQuotes(text) {
       while (j < text.length && /[ \t\r\n]/.test(text[j])) j++;
       const next = j < text.length ? text[j] : "";
 
-      if (next === "" || next === "," || next === "}" || next === "]" || next === ":") {
+      if (
+        next === "" ||
+        next === "," ||
+        next === "}" ||
+        next === "]" ||
+        next === ":"
+      ) {
         // This quote closes the current string value.
         inString = false;
         result += ch;
@@ -59,9 +65,18 @@ function repairUnescapedQuotes(text) {
 
     // Inside a string, escape raw control characters that JSON forbids.
     if (inString) {
-      if (code === 0x0a) { result += "\\n"; continue; }  // LF
-      if (code === 0x0d) { result += "\\r"; continue; }  // CR
-      if (code === 0x09) { result += "\\t"; continue; }  // TAB
+      if (code === 0x0a) {
+        result += "\\n";
+        continue;
+      } // LF
+      if (code === 0x0d) {
+        result += "\\r";
+        continue;
+      } // CR
+      if (code === 0x09) {
+        result += "\\t";
+        continue;
+      } // TAB
     }
 
     result += ch;
@@ -74,7 +89,9 @@ function tryParseJson(raw, label) {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    logger.debug(`[responseParser] ${label}: initial parse failed — ${e.message}`);
+    logger.debug(
+      `[responseParser] ${label}: initial parse failed — ${e.message}`,
+    );
   }
 
   // Second attempt: repair unescaped quotes / raw control chars then retry.
@@ -84,7 +101,9 @@ function tryParseJson(raw, label) {
     logger.debug(`[responseParser] ${label}: parsed after repair.`);
     return parsed;
   } catch (e2) {
-    logger.debug(`[responseParser] ${label}: repair+parse also failed — ${e2.message}`);
+    logger.debug(
+      `[responseParser] ${label}: repair+parse also failed — ${e2.message}`,
+    );
   }
 
   return null;
@@ -119,7 +138,10 @@ export function extractStructuredData(text) {
       let pos = trimmed.indexOf(marker);
       while (pos !== -1) {
         const candidate = trimmed.slice(pos);
-        const parsed = tryParseJson(candidate, `raw JSON at '${marker}' pos ${pos}`);
+        const parsed = tryParseJson(
+          candidate,
+          `raw JSON at '${marker}' pos ${pos}`,
+        );
         if (parsed !== null) {
           jsonBlocks.push(parsed);
           break outer;

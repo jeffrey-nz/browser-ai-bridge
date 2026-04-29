@@ -19,9 +19,12 @@ export async function cleanupBrowser() {
   if (internalState.browser) {
     try {
       await internalState.browser.close();
-      console.log('[Browser] Playwright connection closed.');
+      console.log("[Browser] Playwright connection closed.");
     } catch (err) {
-      console.error('[Browser] Error closing Playwright connection:', err.message);
+      console.error(
+        "[Browser] Error closing Playwright connection:",
+        err.message,
+      );
     }
   }
   await killBrowserProcess();
@@ -32,6 +35,6 @@ export async function cleanupBrowser() {
 // signal handlers and controls whether Chrome is killed on exit. A SIGTERM from
 // a new API instance must NOT kill Chrome (the new instance already respawned
 // it), so only the main entry point can make that call.
-process.on('beforeExit', async () => {
+process.on("beforeExit", async () => {
   await cleanupBrowser();
 });

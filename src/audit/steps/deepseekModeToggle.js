@@ -17,7 +17,11 @@ async function isToggleOn(toggle) {
 }
 
 export async function stepDeepSeekModeToggle(page) {
-  log(colors.cyan(`\n  → Mode Toggles: testing DeepSeek fast / expert selection...`));
+  log(
+    colors.cyan(
+      `\n  → Mode Toggles: testing DeepSeek fast / expert selection...`,
+    ),
+  );
 
   const toggle = page.locator(TOGGLE_SEL).first();
   const found = await toggle.isVisible({ timeout: 4000 }).catch(() => false);
@@ -41,7 +45,11 @@ export async function stepDeepSeekModeToggle(page) {
       log(colors.green(`    [expert / DeepThink R1] ✓ Activated`));
       passed++;
     } else {
-      log(colors.yellow(`    [expert / DeepThink R1] Toggle click did not activate`));
+      log(
+        colors.yellow(
+          `    [expert / DeepThink R1] Toggle click did not activate`,
+        ),
+      );
     }
   } catch (err) {
     log(colors.red(`    [expert / DeepThink R1] Error: ${err.message}`));
@@ -57,7 +65,11 @@ export async function stepDeepSeekModeToggle(page) {
       log(colors.green(`    [fast / V3 standard] ✓ Activated`));
       passed++;
     } else {
-      log(colors.yellow(`    [fast / V3 standard] Toggle click did not deactivate`));
+      log(
+        colors.yellow(
+          `    [fast / V3 standard] Toggle click did not deactivate`,
+        ),
+      );
     }
   } catch (err) {
     log(colors.red(`    [fast / V3 standard] Error: ${err.message}`));

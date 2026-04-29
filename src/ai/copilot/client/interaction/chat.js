@@ -39,7 +39,11 @@ export async function startNewChat(page) {
     return;
   } catch (_firstErr) {
     // Composer not ready yet — try a full page reload as a second chance
-    log(colors.yellow(`  [Chat] Composer not ready after new-chat click. Reloading page and retrying...`));
+    log(
+      colors.yellow(
+        `  [Chat] Composer not ready after new-chat click. Reloading page and retrying...`,
+      ),
+    );
   }
 
   await reloadChatContext(page);

@@ -4,7 +4,10 @@ import {
   sendPromptAndWait,
   setMode,
 } from "./interaction/index.js";
-import { injectChatGptText, clickChatGptSend } from "./interaction/prompt/input.js";
+import {
+  injectChatGptText,
+  clickChatGptSend,
+} from "./interaction/prompt/input.js";
 
 export class ChatGPTProvider extends BaseProvider {
   constructor() {

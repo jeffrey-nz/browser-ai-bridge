@@ -17,9 +17,10 @@ export async function handleRotationIfNeeded(
   // If this was a content-filter refusal AND the caller provided a constraint-free
   // fallback prompt, use that instead of the full activePrompt so we don't send
   // the same blocked text into the fresh chat.
-  const retryPrompt = (currentResponse.isRefusal && refusalRetryPrompt)
-    ? refusalRetryPrompt
-    : activePrompt;
+  const retryPrompt =
+    currentResponse.isRefusal && refusalRetryPrompt
+      ? refusalRetryPrompt
+      : activePrompt;
 
   if (currentResponse.isRefusal) {
     logger.info(
@@ -39,7 +40,9 @@ export async function handleRotationIfNeeded(
   try {
     await session.engine.startNewChat();
   } catch (chatErr) {
-    logger.warn(`[Ask] startNewChat failed during rotation: ${chatErr.message}`);
+    logger.warn(
+      `[Ask] startNewChat failed during rotation: ${chatErr.message}`,
+    );
     // Return a stall-eligible failure rather than throwing so handleStalls
     // can offer the operator retry/skip options.
     return {
@@ -55,7 +58,9 @@ export async function handleRotationIfNeeded(
   try {
     newResponse = await session.engine.sendPromptAndWait(
       retryPrompt,
-      currentResponse.isRefusal ? "API Turn (refusal retry)" : "API Turn (retry)",
+      currentResponse.isRefusal
+        ? "API Turn (refusal retry)"
+        : "API Turn (retry)",
       session.id,
     );
   } catch (pollErr) {

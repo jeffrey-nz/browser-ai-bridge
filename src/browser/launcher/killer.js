@@ -24,12 +24,12 @@ export async function killBrowserProcess() {
     );
     try {
       if (process.platform === "win32") {
-        const out = execSync(
-          `netstat -ano | findstr :${port}`,
-          { stdio: "pipe" },
-        ).toString();
+        const out = execSync(`netstat -ano | findstr :${port}`, {
+          stdio: "pipe",
+        }).toString();
         const match = out.match(/\s(\d+)\s*$/m);
-        if (match) execSync(`taskkill /F /PID ${match[1]} /T`, { stdio: "ignore" });
+        if (match)
+          execSync(`taskkill /F /PID ${match[1]} /T`, { stdio: "ignore" });
       } else {
         execSync(`lsof -ti:${port} | xargs -r kill -9`, { stdio: "ignore" });
       }

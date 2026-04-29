@@ -47,7 +47,7 @@ app.get("/api/sync", (req, res) => {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
+    Connection: "keep-alive",
   });
   res.write("\n");
 
@@ -97,22 +97,39 @@ export function startServer(initialPort) {
     });
 
     server.on("error", async (err) => {
-      if (err.code !== "EADDRINUSE") { reject(err); return; }
+      if (err.code !== "EADDRINUSE") {
+        reject(err);
+        return;
+      }
 
-      logger.warn(`Port ${initialPort} already in use - attempting to kill stale process...`);
+      logger.warn(
+        `Port ${initialPort} already in use - attempting to kill stale process...`,
+      );
       try {
-        const lsofOut = execSync(`lsof -ti :${initialPort} 2>/dev/null || true`).toString().trim();
+        const lsofOut = execSync(`lsof -ti :${initialPort} 2>/dev/null || true`)
+          .toString()
+          .trim();
         const pids = lsofOut.split("\n").filter(Boolean);
         if (pids.length === 0) {
-          reject(new Error(`Port ${initialPort} already in use and no stale process found to kill.`));
+          reject(
+            new Error(
+              `Port ${initialPort} already in use and no stale process found to kill.`,
+            ),
+          );
           return;
         }
         for (const pid of pids) {
-          logger.warn(`  Killing stale process PID ${pid} on port ${initialPort}`);
+          logger.warn(
+            `  Killing stale process PID ${pid} on port ${initialPort}`,
+          );
           execSync(`kill -9 ${pid} 2>/dev/null || true`);
         }
       } catch (killErr) {
-        reject(new Error(`Port ${initialPort} already in use; failed to kill stale process: ${killErr.message}`));
+        reject(
+          new Error(
+            `Port ${initialPort} already in use; failed to kill stale process: ${killErr.message}`,
+          ),
+        );
         return;
       }
 
@@ -120,7 +137,11 @@ export function startServer(initialPort) {
       logger.info(`[Server] Waiting for port ${initialPort} to be released...`);
       const released = await waitForPortFree(initialPort);
       if (!released) {
-        reject(new Error(`Port ${initialPort} still in use after 6 s — unable to start server.`));
+        reject(
+          new Error(
+            `Port ${initialPort} still in use after 6 s — unable to start server.`,
+          ),
+        );
         return;
       }
 
@@ -128,7 +149,9 @@ export function startServer(initialPort) {
       retryServer.requestTimeout = 0;
       retryServer.headersTimeout = 0;
       retryServer.listen(initialPort, "127.0.0.1", () => {
-        logger.info(`Server listening on http://localhost:${initialPort} (restarted after killing stale process)`);
+        logger.info(
+          `Server listening on http://localhost:${initialPort} (restarted after killing stale process)`,
+        );
         resolve(retryServer);
       });
       retryServer.on("error", (retryErr) => reject(retryErr));

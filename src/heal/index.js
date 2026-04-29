@@ -144,7 +144,12 @@ export async function selfHeal(session) {
 
   let gptResponse;
   try {
-    gptResponse = await suggestSelectorsLocally({ providerContext: ctx, currentLocators, htmlSnippet, screenshotBase64 });
+    gptResponse = await suggestSelectorsLocally({
+      providerContext: ctx,
+      currentLocators,
+      htmlSnippet,
+      screenshotBase64,
+    });
   } catch (err) {
     logger.error(`[SelfHeal] Local heal failed: ${err.message}`);
     return { success: false, message: `OpenAI error: ${err.message}` };

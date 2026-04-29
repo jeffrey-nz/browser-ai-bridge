@@ -165,7 +165,8 @@ export async function waitForCompletion(
         // When the AI is generating but there's no visible text output (e.g. it's
         // building a widget), cap the stall wait at 90s so widget correction kicks
         // in faster. For normal text responses the poller exits via evaluateCompletion.
-        const stallThreshold = domState.currentText.trim().length === 0 ? 90000 : 180000;
+        const stallThreshold =
+          domState.currentText.trim().length === 0 ? 90000 : 180000;
         if (
           domState.isGenerating &&
           Date.now() - state.lastChangeTime > stallThreshold

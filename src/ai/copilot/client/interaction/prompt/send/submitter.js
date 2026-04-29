@@ -22,7 +22,11 @@ export async function injectAndSubmit(page, text) {
 
     // If clicking stop didn't work, wait for it to finish naturally (but cap at 30s)
     if (await stopBtn.isVisible().catch(() => false)) {
-      log(colors.dim(`  [Submit] Stop click had no effect — waiting for generation to end...`));
+      log(
+        colors.dim(
+          `  [Submit] Stop click had no effect — waiting for generation to end...`,
+        ),
+      );
       const deadline = Date.now() + 30000;
       while (Date.now() < deadline) {
         if (!(await stopBtn.isVisible().catch(() => false))) break;

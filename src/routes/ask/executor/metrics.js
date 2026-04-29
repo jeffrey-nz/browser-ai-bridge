@@ -14,7 +14,8 @@ export async function gatherMetrics(session, responseText) {
       .catch(() => 0);
   }
 
-  const { data: parsedData, normalizedText } = extractAndNormalize(responseText);
+  const { data: parsedData, normalizedText } =
+    extractAndNormalize(responseText);
 
   return {
     messageCount,

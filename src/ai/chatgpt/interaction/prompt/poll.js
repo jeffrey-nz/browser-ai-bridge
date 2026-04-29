@@ -38,7 +38,9 @@ export async function waitForChatGptCompletion(page, prevText = "") {
           .isVisible({ timeout: 200 })
           .catch(() => false);
         if (rateLimitVisible) {
-          const err = new Error("ChatGPT rate limit reached — message limit hit");
+          const err = new Error(
+            "ChatGPT rate limit reached — message limit hit",
+          );
           err.rateLimited = true;
           throw err;
         }

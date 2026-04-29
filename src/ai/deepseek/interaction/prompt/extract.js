@@ -14,7 +14,10 @@ export async function extractDeepSeekResponse(page, initialAiBlockCount = 0) {
   if (totalCount > initialAiBlockCount) {
     const newTexts = [];
     for (let i = initialAiBlockCount; i < totalCount; i++) {
-      const t = await aiBlocks.nth(i).innerText().catch(() => "");
+      const t = await aiBlocks
+        .nth(i)
+        .innerText()
+        .catch(() => "");
       if (t.trim()) newTexts.push(t.trim());
     }
     if (newTexts.length > 0) {
@@ -35,7 +38,9 @@ export async function extractDeepSeekResponse(page, initialAiBlockCount = 0) {
   try {
     const lastResponse = page.locator(responseSel).last();
     await lastResponse.waitFor({ state: "attached", timeout: 5000 });
-    const cleaned = cleanAiResponse(await lastResponse.innerText().catch(() => ""));
+    const cleaned = cleanAiResponse(
+      await lastResponse.innerText().catch(() => ""),
+    );
     if (looksLikeWrongPage(cleaned)) return "";
     return cleaned;
   } catch {

@@ -29,17 +29,29 @@ async function runAudit() {
   let providersToAudit = AUDIT_PROVIDERS;
 
   if (providerArg) {
-    const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const normalize = (s) =>
+      s
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
     const needle = normalize(providerArg);
     const match = AUDIT_PROVIDERS.filter((p) =>
       normalize(p.name).includes(needle),
     );
     if (match.length === 0) {
-      log(colors.red(`  No provider matching "${providerArg}". Available: ${AUDIT_PROVIDERS.map((p) => p.name).join(", ")}`));
+      log(
+        colors.red(
+          `  No provider matching "${providerArg}". Available: ${AUDIT_PROVIDERS.map((p) => p.name).join(", ")}`,
+        ),
+      );
       process.exit(1);
     }
     providersToAudit = match;
-    log(colors.yellow(`  Running single-provider audit: ${match.map((p) => p.name).join(", ")}`));
+    log(
+      colors.yellow(
+        `  Running single-provider audit: ${match.map((p) => p.name).join(", ")}`,
+      ),
+    );
   } else if (!isCi) {
     const scopeOptions = [
       { label: colors.green("Audit ALL providers"), value: "ALL" },
@@ -108,7 +120,10 @@ async function runAudit() {
         }
       }
 
-      const { passed, total, failedAt, steps } = await runMotionTest(page, provider);
+      const { passed, total, failedAt, steps } = await runMotionTest(
+        page,
+        provider,
+      );
 
       if (passed !== total) {
         auditFailed = true;
@@ -129,13 +144,15 @@ async function runAudit() {
     } catch (err) {
       auditFailed = true;
       log(
-        colors.red(
-          `  [ERROR] Failed to load ${provider.name}: ${err.message}`,
-        ),
+        colors.red(`  [ERROR] Failed to load ${provider.name}: ${err.message}`),
       );
       await saveSnapshot(page, provider.name).catch(() => {});
       tableReport[provider.name] = { Status: `❌ Navigation Error` };
-      fullReport[provider.name] = { Status: `❌ Navigation Error`, failedAt: "Navigation", steps: [] };
+      fullReport[provider.name] = {
+        Status: `❌ Navigation Error`,
+        failedAt: "Navigation",
+        steps: [],
+      };
     } finally {
       await page.close().catch(() => {});
     }

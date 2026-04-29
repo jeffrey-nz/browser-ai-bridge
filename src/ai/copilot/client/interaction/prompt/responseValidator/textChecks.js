@@ -57,7 +57,10 @@ export function checkTextForErrors(responseText) {
     "i've made an image",
   ];
 
-  if (imageMarkers.some((m) => lowText.includes(m)) && !responseText.includes("```")) {
+  if (
+    imageMarkers.some((m) => lowText.includes(m)) &&
+    !responseText.includes("```")
+  ) {
     log(
       `\n${colors.yellow("⚠️")} Copilot generated an image instead of a text response. Requesting correction...`,
     );

@@ -54,7 +54,9 @@ export async function sendPromptAndWait(
       // INTERCEPT WIDGET GENERATION AND ISSUE IN-CHAT CORRECTION
       if (res && res.needsCorrection && correctionAttempts < 2) {
         correctionAttempts++;
-        log(`\n${colors.yellow("⚠️")} Triggering in-chat correction (${correctionAttempts}/2) to bypass widget creation...`);
+        log(
+          `\n${colors.yellow("⚠️")} Triggering in-chat correction (${correctionAttempts}/2) to bypass widget creation...`,
+        );
 
         // Send a short, neutral correction that does NOT repeat the M365 product
         // names (Pages/Canvas/Loop/Designer). Repeating those phrases in a "do not"

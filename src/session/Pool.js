@@ -19,7 +19,9 @@ export class SessionPool {
         this.warmSessions.set(providerId, []);
 
         this.replenish(providerId).catch((err) =>
-          logger.warn(`[Pool] Initial warm-up failed for ${providerId}: ${err.message}`),
+          logger.warn(
+            `[Pool] Initial warm-up failed for ${providerId}: ${err.message}`,
+          ),
         );
       }
     }
@@ -70,7 +72,9 @@ export class SessionPool {
       );
 
       this.replenish(providerId).catch((err) =>
-        logger.warn(`[Pool] Replenish failed for ${providerId}: ${err.message}`),
+        logger.warn(
+          `[Pool] Replenish failed for ${providerId}: ${err.message}`,
+        ),
       );
       return session;
     }

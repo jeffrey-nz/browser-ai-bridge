@@ -5,7 +5,7 @@ import { pollUntil } from "#utils/poller.js";
 const RATE_LIMIT_SEL =
   'div.text-primary:has-text("Message limit reached"), ' +
   'button:has-text("SuperGrok"), ' +
-  'div.bg-card:has(svg.lucide-triangle-alert)';
+  "div.bg-card:has(svg.lucide-triangle-alert)";
 
 export async function waitForGrokCompletion(page) {
   let aborted = false;

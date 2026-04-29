@@ -110,7 +110,7 @@ export async function dismissSidePane(page) {
       const stubbornWidgets = document.querySelectorAll(
         [
           '[data-testid="pages-sidepane"]',
-          '.fai-RecallCard',
+          ".fai-RecallCard",
           '[data-testid="recall-card-test-id"]',
           '[id^="designer-host-"]',
           'iframe[src*="designer.svc.cloud.microsoft"]',

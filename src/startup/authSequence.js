@@ -3,7 +3,10 @@ import { PROVIDERS_TO_LOGIN } from "./providers.js";
 import { promptChoice, makeRl, closeRl } from "#app/ui/readline/index.js";
 import { colors } from "#app/ui/colors.js";
 import { PROVIDER_CONFIG } from "../config/providers.js";
-import { claimExternalPage, releaseExternalPage } from "#ai/shared/BaseProvider.js";
+import {
+  claimExternalPage,
+  releaseExternalPage,
+} from "#ai/shared/BaseProvider.js";
 
 export async function runLoginSequence(context) {
   console.log("\n=============================================");

@@ -23,7 +23,10 @@ router.post("/", async (req, res) => {
     return sendError(res, v.status, v.error);
   }
 
-  const { session, autoCreated, error, status } = await resolveSession(sessionId, provider);
+  const { session, autoCreated, error, status } = await resolveSession(
+    sessionId,
+    provider,
+  );
   if (error) {
     if (autoCreated && session) await cleanupAutoSession(true, session);
     return sendError(res, status, error);
@@ -32,10 +35,14 @@ router.post("/", async (req, res) => {
   try {
     await session.page.bringToFront();
     await session.engine.sendPromptOnly(prompt);
-    logger.info(`[Prompt] Sent to session ${session.id.slice(0, 8)} (${session.providerId})`);
+    logger.info(
+      `[Prompt] Sent to session ${session.id.slice(0, 8)} (${session.providerId})`,
+    );
     return sendSuccess(res, { sent: true, sessionId: session.id });
   } catch (err) {
-    logger.warn(`[Prompt] Failed for session ${session.id.slice(0, 8)}: ${err.message}`);
+    logger.warn(
+      `[Prompt] Failed for session ${session.id.slice(0, 8)}: ${err.message}`,
+    );
     await cleanupAutoSession(autoCreated, session);
     return sendError(res, 500, err.message);
   }

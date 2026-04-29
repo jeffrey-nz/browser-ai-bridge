@@ -5,7 +5,10 @@ import {
   sendPromptAndWait,
   setMode,
 } from "./interaction/index.js";
-import { injectDeepSeekText, clickDeepSeekSend } from "./interaction/prompt/input.js";
+import {
+  injectDeepSeekText,
+  clickDeepSeekSend,
+} from "./interaction/prompt/input.js";
 
 export class DeepSeekProvider extends BaseProvider {
   constructor() {

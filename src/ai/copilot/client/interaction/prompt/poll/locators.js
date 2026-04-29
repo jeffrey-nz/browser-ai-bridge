@@ -27,7 +27,7 @@ export function getPollLocators(page) {
           // designer image appearing in the last message as a done signal too.
           '[data-testid="recall-card-test-id"]',
           '[data-testid="recall-card-response-message-test-id"]',
-          '.fai-RecallCard',
+          ".fai-RecallCard",
           '[id^="designer-host-"]',
         ].join(", "),
       )

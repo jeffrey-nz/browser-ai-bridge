@@ -16,7 +16,13 @@ router.post("/", async (req, res) => {
   const v = validateRequest(req, sessionId, provider);
   if (!v.valid) {
     if (v.retryAfter) res.set("Retry-After", String(v.retryAfter));
-    return sendError(res, v.status, v.error, { retryAfter: v.retryAfter }, requestId);
+    return sendError(
+      res,
+      v.status,
+      v.error,
+      { retryAfter: v.retryAfter },
+      requestId,
+    );
   }
 
   const { session, autoCreated, error, status } = await resolveSession(

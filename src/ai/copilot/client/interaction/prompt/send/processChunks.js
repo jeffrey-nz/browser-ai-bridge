@@ -3,7 +3,13 @@ import { sendSingleChunk } from "./sendSingleChunk.js";
 import { handleAck } from "./chunkProcessors/ackHandler.js";
 import { handleChunkFailure } from "./chunkProcessors/recoveryHandler.js";
 
-export async function processChunks(page, chunks, label, sessionId = null, pollTimeoutMs = 420000) {
+export async function processChunks(
+  page,
+  chunks,
+  label,
+  sessionId = null,
+  pollTimeoutMs = 420000,
+) {
   let finalValidation = null;
 
   for (let i = 0; i < chunks.length; i++) {

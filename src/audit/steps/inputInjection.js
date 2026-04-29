@@ -24,7 +24,10 @@ export async function stepInputInjection(page, locs) {
     .catch(() => false);
 
   if (isContentEditable) {
-    await page.evaluate((text) => navigator.clipboard.writeText(text), AUDIT_PROMPT);
+    await page.evaluate(
+      (text) => navigator.clipboard.writeText(text),
+      AUDIT_PROMPT,
+    );
     await input.press("Control+v");
   } else {
     await input.evaluate((el, text) => {

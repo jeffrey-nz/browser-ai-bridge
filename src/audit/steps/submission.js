@@ -28,8 +28,14 @@ export async function stepSubmission(page, locs) {
     if (submitted) return true;
 
     // Fallback: explicit button click if Enter didn't submit
-    log(colors.yellow("  [WARN] Enter key did not clear input — trying send button click."));
-    const btnVisible = await send.isVisible({ timeout: 1000 }).catch(() => false);
+    log(
+      colors.yellow(
+        "  [WARN] Enter key did not clear input — trying send button click.",
+      ),
+    );
+    const btnVisible = await send
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
     if (btnVisible) {
       await send.click();
     }

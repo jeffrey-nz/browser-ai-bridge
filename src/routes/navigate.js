@@ -41,7 +41,9 @@ router.post("/", async (req, res) => {
     await page.bringToFront();
 
     // Fire-and-forget — caller doesn't need to wait for full navigation
-    page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => {});
+    page
+      .goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 })
+      .catch(() => {});
 
     logger.info(`[Navigate] Browser directed to ${url}`);
     return sendSuccess(res, { url });

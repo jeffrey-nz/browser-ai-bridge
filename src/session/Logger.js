@@ -10,7 +10,10 @@ function trimOldLogs() {
     const files = fs
       .readdirSync(LOGS_DIR)
       .filter((f) => f.endsWith(".log"))
-      .map((f) => ({ name: f, mtime: fs.statSync(path.join(LOGS_DIR, f)).mtimeMs }))
+      .map((f) => ({
+        name: f,
+        mtime: fs.statSync(path.join(LOGS_DIR, f)).mtimeMs,
+      }))
       .sort((a, b) => a.mtime - b.mtime);
 
     const excess = files.length - MAX_LOGS;
@@ -28,7 +31,7 @@ export class SessionLogger {
 
     // Date-prefixed name so files sort chronologically: YYYY-MM-DD_HH-MM-SS_<short-id>.log
     const now = new Date();
-    const datePart = now.toISOString().slice(0, 10);                 // 2026-04-13
+    const datePart = now.toISOString().slice(0, 10); // 2026-04-13
     const timePart = now.toISOString().slice(11, 19).replace(/:/g, "-"); // 08-15-24
     const shortId = sessionId.slice(0, 8);
     const fileName = `${datePart}_${timePart}_${shortId}.log`;

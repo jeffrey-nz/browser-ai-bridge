@@ -8,7 +8,7 @@ export async function hardDismissWidgets(page) {
       const stubbornWidgets = document.querySelectorAll(
         [
           '[data-testid="pages-sidepane"]',
-          '.fai-RecallCard',
+          ".fai-RecallCard",
           '[data-testid="recall-card-test-id"]',
           // Microsoft Designer image embeds
           '[id^="designer-host-"]',

@@ -36,7 +36,9 @@ async function checkContentPolicyRefusal(page, pollIndex) {
       );
       return true;
     }
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
   return false;
 }
 

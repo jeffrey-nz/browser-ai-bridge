@@ -67,9 +67,11 @@ router.post("/", async (req, res, next) => {
       throw raceErr;
     }
 
-     const maxPromptChars = PROVIDER_CONFIG[provider].maxPromptChars;
- logger.info(`[Sessions] Created session ${sessionId} for provider ${provider} with mode ${mode || "default"}`);
- return sendSuccess(res, { sessionId, maxPromptChars });
+    const maxPromptChars = PROVIDER_CONFIG[provider].maxPromptChars;
+    logger.info(
+      `[Sessions] Created session ${sessionId} for provider ${provider} with mode ${mode || "default"}`,
+    );
+    return sendSuccess(res, { sessionId, maxPromptChars });
   } catch (err) {
     return sendError(res, 500, err.message);
   }
@@ -112,7 +114,12 @@ router.post("/:id/control", async (req, res) => {
   }
 
   const session = sessionManager.getSession?.(id);
-  return sendError(res, 404, `Session ${id.slice(0, 8)} is idle (not polling or stalled). No control pending.`, { state, sessionExists: !!session });
+  return sendError(
+    res,
+    404,
+    `Session ${id.slice(0, 8)} is idle (not polling or stalled). No control pending.`,
+    { state, sessionExists: !!session },
+  );
 });
 
 router.get("/:id/snapshot", async (req, res) => {

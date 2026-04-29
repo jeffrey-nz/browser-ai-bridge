@@ -62,7 +62,11 @@ export async function handleStalls(session, initialResponse, activePrompt) {
           logger.warn(
             `[Ask] startNewChat failed in stall retry: ${chatErr.message}. Re-entering stall.`,
           );
-          response = { ok: false, needsRotation: true, reason: chatErr.message };
+          response = {
+            ok: false,
+            needsRotation: true,
+            reason: chatErr.message,
+          };
           continue;
         }
       }

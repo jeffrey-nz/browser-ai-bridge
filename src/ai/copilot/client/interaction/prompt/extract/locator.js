@@ -5,10 +5,10 @@ import { ensureLocator } from "../../ensureLocator.js";
 // were already updated to include the modern selectors — this keeps extraction
 // in sync with those.
 export const OUTER_CONTAINER_SEL = [
-  'div[data-test="DeepLeo"]',              // legacy copilot.microsoft.com
-  ".fai-CopilotMessage",                   // legacy / Fluent AI
-  '[data-testid="ai-message"]',            // modern copilot.microsoft.com
-  '[data-testid="chat-message-content"]',  // modern copilot.microsoft.com
+  'div[data-test="DeepLeo"]', // legacy copilot.microsoft.com
+  ".fai-CopilotMessage", // legacy / Fluent AI
+  '[data-testid="ai-message"]', // modern copilot.microsoft.com
+  '[data-testid="chat-message-content"]', // modern copilot.microsoft.com
 ].join(", ");
 
 const INNER_CONTENT_SEL = [
