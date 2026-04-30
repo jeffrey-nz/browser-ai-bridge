@@ -41,6 +41,24 @@ export async function executeAskTurn(
       });
       return { response: normalizedText, data, messageCount: 0 };
     }
+
+    // If repair failed and the label suggests a read-only phase (researcher/scoper),
+    // return [] directly — prose is the model signalling "done" with no tool calls.
+    // Sending [PARSE ERROR] back to DeepSeek for a prose response in these phases
+    // just triggers more prose, burning turns with no progress.
+    const isReadOnlyLabel = /researcher|scoper|intent|orchestrat/i.test(label);
+    if (isReadOnlyLabel) {
+      logger.info(
+        `[Ask] [PARSE ERROR] read-only phase prose detected — returning [] for session ${session.id} (label: ${label})`,
+      );
+      sessionManager.logTranscript(session.id, "AI", "[]", {
+        requestId,
+        messageCount: 0,
+        proseTerminalShortCircuit: true,
+      });
+      return { response: "[]", data: [], messageCount: 0 };
+    }
+
     logger.warn(
       `[Ask] [PARSE ERROR] short-circuit attempted but repair failed for session ${session.id} - proceeding normally`,
     );
