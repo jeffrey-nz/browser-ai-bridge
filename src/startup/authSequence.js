@@ -18,7 +18,11 @@ export async function runLoginSequence(context) {
 
   let providersToRun = PROVIDERS_TO_LOGIN;
 
-  if (!isNonInteractive) {
+  // Skip scope selection when BROWSER_AI_PROVIDERS is already set — the caller
+  // has already made the selection, asking again is redundant.
+  const scopeAlreadyChosen = !!process.env.BROWSER_AI_PROVIDERS;
+
+  if (!isNonInteractive && !scopeAlreadyChosen) {
     const scopeOptions = [
       { label: colors.green("Configure ALL providers"), value: "ALL" },
       ...PROVIDERS_TO_LOGIN.map((p) => ({
