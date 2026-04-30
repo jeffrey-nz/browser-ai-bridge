@@ -65,7 +65,9 @@ export async function runLoginSequence(context) {
       });
 
       if (!page || page.isClosed()) {
-        console.log(`   [New Tab] Opening dedicated tab for ${provider.name}...`);
+        console.log(
+          `   [New Tab] Opening dedicated tab for ${provider.name}...`,
+        );
         page = await context.newPage();
         await page
           .goto(provider.url, { waitUntil: "domcontentloaded", timeout: 30000 })
@@ -73,9 +75,14 @@ export async function runLoginSequence(context) {
 
         const landedUrl = page.url();
         if (landedUrl === "about:blank" || landedUrl === "") {
-          console.log(`   [Retry] Page is still about:blank — retrying navigation...`);
+          console.log(
+            `   [Retry] Page is still about:blank — retrying navigation...`,
+          );
           await page
-            .goto(provider.url, { waitUntil: "domcontentloaded", timeout: 60000 })
+            .goto(provider.url, {
+              waitUntil: "domcontentloaded",
+              timeout: 60000,
+            })
             .catch(() => {});
         }
       }
@@ -92,11 +99,17 @@ export async function runLoginSequence(context) {
       if (isDetected) {
         console.log(colors.green(`   [Detected] Interface found.`));
       } else {
-        console.log(colors.yellow(`   [Pending] Manual login or navigation may be required in Chrome.`));
+        console.log(
+          colors.yellow(
+            `   [Pending] Manual login or navigation may be required in Chrome.`,
+          ),
+        );
       }
 
       if (isNonInteractive) {
-        console.log(`   ${colors.yellow("⚡")} [Auto] Non-interactive mode — assuming ${provider.name} is ready.`);
+        console.log(
+          `   ${colors.yellow("⚡")} [Auto] Non-interactive mode — assuming ${provider.name} is ready.`,
+        );
         releaseExternalPage(page);
         continue;
       }
@@ -105,8 +118,14 @@ export async function runLoginSequence(context) {
 
       if (scopeAlreadyChosen) {
         // Launched by VS Code extension — confirm via the HTTP setup API.
-        console.log(`   ${colors.yellow("⏳")} [Extension] Waiting for confirmation from VS Code sidebar…`);
-        setupState.setWaiting({ id: provider.id, name: provider.name, detected: isDetected });
+        console.log(
+          `   ${colors.yellow("⏳")} [Extension] Waiting for confirmation from VS Code sidebar…`,
+        );
+        setupState.setWaiting({
+          id: provider.id,
+          name: provider.name,
+          detected: isDetected,
+        });
         const action = await setupState.waitForAction();
         releaseExternalPage(page);
         skip = action === "skip";
@@ -117,7 +136,10 @@ export async function runLoginSequence(context) {
           `Action for ${colors.bold(provider.name)}:`,
           [
             { label: colors.green("Confirm Ready"), value: "READY" },
-            { label: colors.red("Skip (Disable for this session)"), value: "SKIP" },
+            {
+              label: colors.red("Skip (Disable for this session)"),
+              value: "SKIP",
+            },
           ],
           { defaultOption: 1 },
         );
@@ -126,15 +148,23 @@ export async function runLoginSequence(context) {
       }
 
       if (skip) {
-        console.log(`   ${colors.red("✖")} Skipping ${provider.name}. Disabling route.`);
-        if (PROVIDER_CONFIG[provider.id]) PROVIDER_CONFIG[provider.id].disabled = true;
+        console.log(
+          `   ${colors.red("✖")} Skipping ${provider.name}. Disabling route.`,
+        );
+        if (PROVIDER_CONFIG[provider.id])
+          PROVIDER_CONFIG[provider.id].disabled = true;
         await page.close().catch(() => {});
       } else {
-        console.log(`   ${colors.green("✔")} ${provider.name} verified and ready.`);
+        console.log(
+          `   ${colors.green("✔")} ${provider.name} verified and ready.`,
+        );
       }
     } catch (err) {
-      console.log(`   ${colors.red("✖")} Error configuring ${provider.name}: ${err.message}`);
-      if (PROVIDER_CONFIG[provider.id]) PROVIDER_CONFIG[provider.id].disabled = true;
+      console.log(
+        `   ${colors.red("✖")} Error configuring ${provider.name}: ${err.message}`,
+      );
+      if (PROVIDER_CONFIG[provider.id])
+        PROVIDER_CONFIG[provider.id].disabled = true;
     } finally {
       if (typeof page !== "undefined" && page) releaseExternalPage(page);
     }

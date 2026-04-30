@@ -5,17 +5,21 @@ import { logger } from "#utils/logger.js";
 
 const PID_FILE = join(tmpdir(), "browser-ai-bridge.pid");
 
-// Config file lives in the OS temp directory so copilot-helper can read it
-// without knowing the automation-api project root path.
 export const API_CONFIG_PATH = join(tmpdir(), "browser-ai-bridge-config.json");
 
+// Legacy alias read by copilot-helper/launcher.js and agent-core/bridgeClient.js
+const API_CONFIG_PATH_LEGACY = join(tmpdir(), "automation-api-config.json");
+
 export function writeApiConfig(port) {
-  try {
-    writeFileSync(API_CONFIG_PATH, JSON.stringify({ port }), "utf8");
-    logger.info(`[Config] Bound port ${port} written to ${API_CONFIG_PATH}`);
-  } catch (e) {
-    logger.error(e, `[Config] Could not write config file`);
+  const payload = JSON.stringify({ port });
+  for (const file of [API_CONFIG_PATH, API_CONFIG_PATH_LEGACY]) {
+    try {
+      writeFileSync(file, payload, "utf8");
+    } catch (e) {
+      logger.error(e, `[Config] Could not write config file ${file}`);
+    }
   }
+  logger.info(`[Config] Bound port ${port} written to config files`);
 }
 
 export function writePidFile() {
@@ -27,7 +31,7 @@ export function writePidFile() {
 }
 
 export function removePidFile() {
-  [PID_FILE, API_CONFIG_PATH].forEach((file) => {
+  [PID_FILE, API_CONFIG_PATH, API_CONFIG_PATH_LEGACY].forEach((file) => {
     try {
       if (existsSync(file)) {
         unlinkSync(file);

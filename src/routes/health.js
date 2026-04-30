@@ -2,6 +2,7 @@ import express from "express";
 import process from "node:process";
 import { assertBrowserReady, getBrowserState } from "../browser.js";
 import { sessionManager } from "../session/index.js";
+import { setupState } from "../setup/state.js";
 import { logger } from "#utils/logger.js";
 
 const router = express.Router();
@@ -19,6 +20,17 @@ router.get("/warmup", async (_req, res) => {
 router.get("/", (_req, res) => {
   try {
     assertBrowserReady();
+    // Don't report ready until the login sequence is complete — callers like
+    // copilot-helper and reader-app poll this endpoint and proceed only when
+    // status === "ready". Returning early would let them start before providers
+    // are confirmed.
+    if (setupState.phase !== "ready") {
+      return res.status(503).json({
+        status: "initialising",
+        setupPhase: setupState.phase,
+        browser: getBrowserState(),
+      });
+    }
     const sessions = sessionManager.listSessions();
     const byProvider = {};
     for (const s of sessions) {

@@ -10,7 +10,7 @@
 class SetupState {
   constructor() {
     this.phase = "starting"; // "starting" | "waiting_confirm" | "ready"
-    this.provider = null;    // { id, name, detected: bool } when waiting
+    this.provider = null; // { id, name, detected: bool } when waiting
     this._waiters = [];
   }
 
@@ -29,8 +29,12 @@ class SetupState {
     return new Promise((resolve) => this._waiters.push(resolve));
   }
 
-  confirm() { this._settle("confirm"); }
-  skip()    { this._settle("skip");    }
+  confirm() {
+    this._settle("confirm");
+  }
+  skip() {
+    this._settle("skip");
+  }
 
   _settle(action) {
     this.phase = "starting";
