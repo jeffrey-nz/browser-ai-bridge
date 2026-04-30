@@ -46,6 +46,12 @@ export async function executeAskTurn(
     );
   }
 
+  if (session.page.isClosed()) {
+    session.needsReset = true;
+    const closedErr = new Error("Page closed — session needs reset");
+    closedErr.stalled = true;
+    throw closedErr;
+  }
   await session.page.bringToFront();
 
   // Mid-session mode switch: ensure the browser is using the requested model/mode

@@ -51,7 +51,7 @@ export async function handleGeminiError(err, page) {
   );
 
   if (recovery?.action === "return") {
-    return recovery.result;
+    return { action: "return", result: recovery.result };
   }
 
   if (
