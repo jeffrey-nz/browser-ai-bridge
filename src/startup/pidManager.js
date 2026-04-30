@@ -7,7 +7,7 @@ const PID_FILE = join(tmpdir(), "browser-ai-bridge.pid");
 
 // Config file lives in the OS temp directory so copilot-helper can read it
 // without knowing the automation-api project root path.
-export const API_CONFIG_PATH = join(tmpdir(), "automation-api-config.json");
+export const API_CONFIG_PATH = join(tmpdir(), "browser-ai-bridge-config.json");
 
 export function writeApiConfig(port) {
   try {
