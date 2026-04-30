@@ -1,16 +1,18 @@
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
+import { GEMINI_LOCATORS } from "../locators.js";
 
 export async function startNewChat(page) {
   log(`\n🧹 Starting a new chat context...`);
 
-  const targetUrl = "https://gemini.google.com/app";
+  await page.goto("https://gemini.google.com/app", { waitUntil: "domcontentloaded" });
 
-  await page.goto(targetUrl, {
-    waitUntil: "domcontentloaded",
-  });
-
-  await page.waitForTimeout(3000);
+  // Wait for the input to be ready instead of a fixed timeout
+  await page
+    .locator(GEMINI_LOCATORS.inputBox)
+    .first()
+    .waitFor({ state: "visible", timeout: 8000 })
+    .catch(() => page.waitForTimeout(2000));
 
   log(`  ${colors.green("✔")} Clean context established.`);
 }
