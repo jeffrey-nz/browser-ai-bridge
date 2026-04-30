@@ -85,6 +85,11 @@ function repairUnescapedQuotes(text) {
   return result;
 }
 
+function removeTrailingCommas(text) {
+  // Remove trailing commas before ] or } — a common DeepSeek output pattern
+  return text.replace(/,(\s*[}\]])/g, "$1");
+}
+
 function tryParseJson(raw, label) {
   try {
     return JSON.parse(raw);
@@ -94,15 +99,33 @@ function tryParseJson(raw, label) {
     );
   }
 
-  // Second attempt: repair unescaped quotes / raw control chars then retry.
+  // Second attempt: remove trailing commas then retry.
+  try {
+    const noTrailing = removeTrailingCommas(raw);
+    const parsed = JSON.parse(noTrailing);
+    logger.debug(
+      `[responseParser] ${label}: parsed after trailing-comma removal.`,
+    );
+    return parsed;
+  } catch {}
+
+  // Third attempt: repair unescaped quotes / raw control chars then retry.
   try {
     const repaired = repairUnescapedQuotes(raw);
     const parsed = JSON.parse(repaired);
-    logger.debug(`[responseParser] ${label}: parsed after repair.`);
+    logger.debug(`[responseParser] ${label}: parsed after quote repair.`);
     return parsed;
-  } catch (e2) {
+  } catch {}
+
+  // Fourth attempt: combine both repairs.
+  try {
+    const fullyRepaired = removeTrailingCommas(repairUnescapedQuotes(raw));
+    const parsed = JSON.parse(fullyRepaired);
+    logger.debug(`[responseParser] ${label}: parsed after combined repair.`);
+    return parsed;
+  } catch (e4) {
     logger.debug(
-      `[responseParser] ${label}: repair+parse also failed — ${e2.message}`,
+      `[responseParser] ${label}: all repair attempts failed — ${e4.message}`,
     );
   }
 

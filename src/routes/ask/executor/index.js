@@ -70,6 +70,7 @@ export async function executeAskTurn(
     session.providerId,
     prompt,
     skipConstraint,
+    label,
   );
 
   const isReviewerTurn = /reviewer/i.test(label);
