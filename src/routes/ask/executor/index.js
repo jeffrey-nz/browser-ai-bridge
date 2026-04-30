@@ -100,6 +100,27 @@ export async function executeAskTurn(
     pollTimeoutMs,
   );
 
+  // Rate-limit recovery: the provider returned a rate-limit message in its
+  // response body. Start a new chat (clears the conversation context) and
+  // wait before resending. The new chat also acts as a context reset which
+  // can help with accumulated-history issues on long sessions.
+  if (response.rateLimited) {
+    const waitMs = 45000;
+    logger.warn(
+      `[Ask] Rate-limit detected for session ${session.id} — waiting ${waitMs / 1000}s then retrying in a fresh chat.`,
+    );
+    await new Promise((r) => setTimeout(r, waitMs));
+    try {
+      if (typeof session.engine?.startNewChat === "function") {
+        await session.engine.startNewChat();
+        logger.info(`[Ask] Started fresh chat after rate-limit wait.`);
+      }
+    } catch (e) {
+      logger.warn(`[Ask] Failed to start new chat after rate limit: ${e.message}`);
+    }
+    response = await executeCoreTurn(session, activePrompt, label, pollTimeoutMs);
+  }
+
   if (isReviewerTurn && !response.ok) {
     logger.warn(
       `[Ask] Reviewer turn '${label}' failed - returning empty (no stall).`,

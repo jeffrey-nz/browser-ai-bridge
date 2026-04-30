@@ -95,6 +95,22 @@ async function _runPromptWorkflowInner(page, text, label, options) {
     };
   }
 
+  // Rate-limit detection: the provider returned a "too frequent" error in the
+  // response body rather than as a network/HTTP error. Signal the caller to
+  // wait and retry — the caller can restart with a fresh extraction context.
+  const RATE_LIMIT_PATTERNS = [
+    /messages? are too frequent/i,
+    /rate limit/i,
+    /too many requests/i,
+  ];
+  const isRateLimited = RATE_LIMIT_PATTERNS.some((re) => re.test(responseText));
+  if (isRateLimited) {
+    logger.warn(
+      `[Prompt Workflow] ${providerName} rate-limit response detected in response body — signalling caller.`,
+    );
+    return { ok: false, rateLimited: true, reason: "Rate limit detected in response body" };
+  }
+
   onSuccess(responseText);
   return { ok: true, text: responseText };
 }
