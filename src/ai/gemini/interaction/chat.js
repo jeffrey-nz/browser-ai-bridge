@@ -5,7 +5,9 @@ import { GEMINI_LOCATORS } from "../locators.js";
 export async function startNewChat(page) {
   log(`\n🧹 Starting a new chat context...`);
 
-  await page.goto("https://gemini.google.com/app", { waitUntil: "domcontentloaded" });
+  await page.goto("https://gemini.google.com/app", {
+    waitUntil: "domcontentloaded",
+  });
 
   // Wait for the input to be ready instead of a fixed timeout
   await page

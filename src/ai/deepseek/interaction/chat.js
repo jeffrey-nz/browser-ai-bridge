@@ -10,13 +10,17 @@ export async function startNewChat(page) {
 
   try {
     // Give the sidebar more time to settle — 5s instead of 2s
-    await newChatBtn.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    await newChatBtn
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => {});
 
     if (await newChatBtn.isVisible()) {
       await newChatBtn.click({ force: true, timeout: 3000 });
     } else {
       // Sidebar not loaded — navigate to fresh page
-      await page.goto("https://chat.deepseek.com/", { waitUntil: "domcontentloaded" });
+      await page.goto("https://chat.deepseek.com/", {
+        waitUntil: "domcontentloaded",
+      });
     }
 
     // Wait for input to be ready
@@ -26,8 +30,12 @@ export async function startNewChat(page) {
 
     log(`  ${colors.green("✔")} Clean context established.`);
   } catch {
-    log(colors.yellow("  ⚠️  Failed to start new chat via UI. Reloading page..."));
-    await page.goto("https://chat.deepseek.com/", { waitUntil: "domcontentloaded" });
+    log(
+      colors.yellow("  ⚠️  Failed to start new chat via UI. Reloading page..."),
+    );
+    await page.goto("https://chat.deepseek.com/", {
+      waitUntil: "domcontentloaded",
+    });
     await page.waitForTimeout(2500);
     // Final attempt to wait for input
     await input.waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
