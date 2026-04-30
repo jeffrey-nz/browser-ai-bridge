@@ -11,6 +11,7 @@ import healthRouter from "./routes/health.js";
 import screenshotRouter from "./routes/screenshot.js";
 import navigateRouter from "./routes/navigate.js";
 import promptRouter from "./routes/prompt.js";
+import setupRouter from "./routes/setup.js";
 import { eventBus } from "#web/eventBus.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
 import "express-async-errors";
@@ -36,6 +37,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use("/api/ping", healthRouter);
+app.use("/api/setup", setupRouter);
 app.use("/api/ask", askRouter);
 app.use("/api/sessions", sessionsRouter);
 app.use("/api/agent", agentRouter);

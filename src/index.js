@@ -12,6 +12,7 @@ import {
 } from "./startup/pidManager.js";
 import { sessionManager } from "./session/index.js";
 import { sessionPool } from "./session/Pool.js";
+import { setupState } from "./setup/state.js";
 import { PROVIDER_CONFIG } from "./config/providers.js";
 import { logger } from "#utils/logger.js";
 
@@ -46,19 +47,13 @@ async function init() {
 
   applyProviderFilter();
 
-  // Kill any stale Chrome and stale API process BEFORE launching a new browser.
-  // Previously killZombieProcess() ran after initializePool(), creating a race:
-  // pool warmup would start sessions on the new Chrome, then the zombie kill
-  // would SIGTERM the old API process whose shutdown handler ran
-  // `pkill -9 chrome`, killing the new Chrome mid-warmup.
+  // Kill stale processes first so the port is free before we start the server.
   await killBrowserProcess();
   await killZombieProcess();
-  const { context } = await connectToBrowser();
 
-  await runLoginSequence(context);
-
-  await sessionPool.initializePool();
-
+  // Start the HTTP server early — before browser connect and login sequence —
+  // so that /api/setup is reachable while setup is in progress. The VS Code
+  // extension polls this endpoint to drive provider confirmations from the UI.
   let port = Number(process.env.PORT);
   if (isNaN(port)) port = 3333;
   else if (port <= 0) throw new Error("PORT must be a positive integer");
@@ -66,6 +61,16 @@ async function init() {
   const boundPort = server.address().port;
   writePidFile();
   writeApiConfig(boundPort);
+
+  const { context } = await connectToBrowser();
+
+  await runLoginSequence(context);
+
+  // Signal to the extension that all providers are confirmed and the bridge
+  // is ready to accept task sessions.
+  setupState.setReady();
+
+  await sessionPool.initializePool();
 
   printHotkeyHint();
 
@@ -107,7 +112,9 @@ async function init() {
 
       stopKeys();
       resetProviders();
+      setupState.phase = "starting";
       await runLoginSequence(context);
+      setupState.setReady();
       sessionPool.initializePool();
       printHotkeyHint();
 
@@ -139,10 +146,8 @@ async function init() {
   process.on("SIGINT", shutdown);
 
   // SIGTERM is sent by a new API instance's killZombieProcess() when it starts
-  // up and finds a stale PID file. The new instance has already called
-  // killBrowserProcess() before spawning its own Chrome, so Chrome is either
-  // already dead or belongs to the new process - killing it here would crash
-  // the new instance's sessions. Exit cleanly without touching Chrome.
+  // up and finds a stale PID file. Exit cleanly without touching Chrome so the
+  // new instance's Chrome isn't killed.
   process.on("SIGTERM", () => {
     logger.info("[Shutdown] SIGTERM received, exiting without killing Chrome");
     process.exit(0);

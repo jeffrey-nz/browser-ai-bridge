@@ -7,6 +7,7 @@ import {
   claimExternalPage,
   releaseExternalPage,
 } from "#ai/shared/BaseProvider.js";
+import { setupState } from "../setup/state.js";
 
 export async function runLoginSequence(context) {
   console.log("\n=============================================");
@@ -35,15 +36,12 @@ export async function runLoginSequence(context) {
       rl,
       "Which providers do you want to set up?",
       scopeOptions,
-      {
-        defaultOption: 1,
-      },
+      { defaultOption: 1 },
     );
 
     if (scope !== "ALL") {
       const chosen = PROVIDERS_TO_LOGIN.find((p) => p.id === scope);
       providersToRun = chosen ? [chosen] : PROVIDERS_TO_LOGIN;
-
       for (const p of PROVIDERS_TO_LOGIN) {
         if (p.id !== scope && PROVIDER_CONFIG[p.id]) {
           PROVIDER_CONFIG[p.id].disabled = true;
@@ -67,34 +65,22 @@ export async function runLoginSequence(context) {
       });
 
       if (!page || page.isClosed()) {
-        console.log(
-          `   [New Tab] Opening dedicated tab for ${provider.name}...`,
-        );
+        console.log(`   [New Tab] Opening dedicated tab for ${provider.name}...`);
         page = await context.newPage();
         await page
           .goto(provider.url, { waitUntil: "domcontentloaded", timeout: 30000 })
           .catch(() => {});
 
-        // If Chrome was busy and the page is still about:blank, retry once
         const landedUrl = page.url();
         if (landedUrl === "about:blank" || landedUrl === "") {
-          console.log(
-            `   [Retry] Page is still about:blank — retrying navigation...`,
-          );
+          console.log(`   [Retry] Page is still about:blank — retrying navigation...`);
           await page
-            .goto(provider.url, {
-              waitUntil: "domcontentloaded",
-              timeout: 60000,
-            })
+            .goto(provider.url, { waitUntil: "domcontentloaded", timeout: 60000 })
             .catch(() => {});
         }
       }
 
-      // Protect this tab from being stolen by a concurrent createSession()
-      // call (e.g. the icon generator running in another terminal while the
-      // auth wizard is waiting for user input).
       claimExternalPage(page);
-
       await page.bringToFront().catch(() => {});
 
       const isDetected = await page
@@ -106,59 +92,50 @@ export async function runLoginSequence(context) {
       if (isDetected) {
         console.log(colors.green(`   [Detected] Interface found.`));
       } else {
-        console.log(
-          colors.yellow(
-            `   [Pending] Manual login or navigation may be required in Chrome.`,
-          ),
-        );
+        console.log(colors.yellow(`   [Pending] Manual login or navigation may be required in Chrome.`));
       }
 
       if (isNonInteractive) {
-        console.log(
-          `   ${colors.yellow("⚡")} [Auto] Non-interactive mode detected. Assuming ${provider.name} is ready.`,
-        );
+        console.log(`   ${colors.yellow("⚡")} [Auto] Non-interactive mode — assuming ${provider.name} is ready.`);
         releaseExternalPage(page);
         continue;
       }
 
-      const choice = await promptChoice(
-        rl,
-        `Action for ${colors.bold(provider.name)}:`,
-        [
-          { label: colors.green("Confirm Ready"), value: "READY" },
-          {
-            label: colors.red("Skip (Disable for this session)"),
-            value: "SKIP",
-          },
-        ],
-        { defaultOption: 1 },
-      );
+      let skip = false;
 
-      releaseExternalPage(page);
-
-      if (choice === "SKIP") {
-        console.log(
-          `   ${colors.red("✖")} Skipping ${provider.name}. Disabling route.`,
+      if (scopeAlreadyChosen) {
+        // Launched by VS Code extension — confirm via the HTTP setup API.
+        console.log(`   ${colors.yellow("⏳")} [Extension] Waiting for confirmation from VS Code sidebar…`);
+        setupState.setWaiting({ id: provider.id, name: provider.name, detected: isDetected });
+        const action = await setupState.waitForAction();
+        releaseExternalPage(page);
+        skip = action === "skip";
+      } else {
+        // Interactive terminal mode.
+        const choice = await promptChoice(
+          rl,
+          `Action for ${colors.bold(provider.name)}:`,
+          [
+            { label: colors.green("Confirm Ready"), value: "READY" },
+            { label: colors.red("Skip (Disable for this session)"), value: "SKIP" },
+          ],
+          { defaultOption: 1 },
         );
-        if (PROVIDER_CONFIG[provider.id]) {
-          PROVIDER_CONFIG[provider.id].disabled = true;
-        }
+        releaseExternalPage(page);
+        skip = choice === "SKIP";
+      }
 
+      if (skip) {
+        console.log(`   ${colors.red("✖")} Skipping ${provider.name}. Disabling route.`);
+        if (PROVIDER_CONFIG[provider.id]) PROVIDER_CONFIG[provider.id].disabled = true;
         await page.close().catch(() => {});
       } else {
-        console.log(
-          `   ${colors.green("✔")} ${provider.name} verified and ready.`,
-        );
+        console.log(`   ${colors.green("✔")} ${provider.name} verified and ready.`);
       }
     } catch (err) {
-      console.log(
-        `   ${colors.red("✖")} Error configuring ${provider.name}: ${err.message}`,
-      );
-
-      if (PROVIDER_CONFIG[provider.id])
-        PROVIDER_CONFIG[provider.id].disabled = true;
+      console.log(`   ${colors.red("✖")} Error configuring ${provider.name}: ${err.message}`);
+      if (PROVIDER_CONFIG[provider.id]) PROVIDER_CONFIG[provider.id].disabled = true;
     } finally {
-      // Always release the claim so BaseProvider can reuse the tab if needed.
       if (typeof page !== "undefined" && page) releaseExternalPage(page);
     }
   }
