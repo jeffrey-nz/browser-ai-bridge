@@ -12,6 +12,7 @@ import screenshotRouter from "./routes/screenshot.js";
 import navigateRouter from "./routes/navigate.js";
 import promptRouter from "./routes/prompt.js";
 import setupRouter from "./routes/setup.js";
+import devserverRouter, { killAllDevServers } from "./routes/devserver.js";
 import { eventBus } from "#web/eventBus.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
 import "express-async-errors";
@@ -44,6 +45,7 @@ app.use("/api/agent", agentRouter);
 app.use("/api/screenshot", screenshotRouter);
 app.use("/api/navigate", navigateRouter);
 app.use("/api/prompt", promptRouter);
+app.use("/api/devserver", devserverRouter);
 
 app.get("/api/sync", (req, res) => {
   res.writeHead(200, {
@@ -65,6 +67,13 @@ app.get("/api/sync", (req, res) => {
 });
 
 app.use(globalErrorHandler);
+
+// Kill any dev servers spawned during this process lifetime on exit
+process.on("exit", killAllDevServers);
+process.on("SIGTERM", () => {
+  killAllDevServers();
+  process.exit(0);
+});
 
 // Polls until the port can be bound or the timeout expires.
 // Needed on WSL2 where the kernel can hold a port for 1-3 s after kill -9.
