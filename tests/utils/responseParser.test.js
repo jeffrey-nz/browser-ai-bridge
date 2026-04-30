@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractStructuredData } from "#utils/responseParser.js";
+import {
+  extractStructuredData,
+  extractAndNormalize,
+} from "#utils/responseParser.js";
 
 test.describe("Response Parser: extractStructuredData", () => {
   test("extracts a single JSON block", () => {
@@ -48,5 +51,52 @@ test.describe("Response Parser: extractStructuredData", () => {
       '[{"tool": "list_dir", "path": "/",},]',
     );
     assert.deepEqual(result, [{ tool: "list_dir", path: "/" }]);
+  });
+
+  test("repairs unescaped double quotes in JSON strings", () => {
+    // DeepSeek sometimes emits: {"content": "new GameObject("enemy")"}
+    const raw =
+      '\x60\x60\x60json\n[{"tool": "write_file", "content": "new GameObject(\\"enemy\\")"}]\n\x60\x60\x60';
+    const result = extractStructuredData(raw);
+    assert.ok(Array.isArray(result), "should return an array");
+    assert.equal(result[0].tool, "write_file");
+  });
+
+  test("extracts JSON after a reasoning prefix", () => {
+    const aiResponse =
+      'Let me think about this...\n[{"tool": "read_file", "path": "/foo.js"}]';
+    const result = extractStructuredData(aiResponse);
+    assert.deepEqual(result, [{ tool: "read_file", path: "/foo.js" }]);
+  });
+});
+
+test.describe("Response Parser: extractAndNormalize", () => {
+  test("returns data and original text when JSON is already clean", () => {
+    const text = '[{"tool": "read_file", "path": "/foo.js"}]';
+    const { data, normalizedText } = extractAndNormalize(text);
+    assert.deepEqual(data, [{ tool: "read_file", path: "/foo.js" }]);
+    assert.equal(normalizedText, text);
+  });
+
+  test("returns repaired normalizedText when original has trailing commas", () => {
+    const text = '[{"tool": "read_file", "path": "/foo.js",},]';
+    const { data, normalizedText } = extractAndNormalize(text);
+    assert.deepEqual(data, [{ tool: "read_file", path: "/foo.js" }]);
+    // normalizedText should be parseable by naive JSON.parse
+    assert.doesNotThrow(() => JSON.parse(normalizedText));
+  });
+
+  test("extracts data correctly from JSON inside a code block", () => {
+    const text =
+      'Here is my response:\n\x60\x60\x60json\n[{"tool": "write_file"}]\n\x60\x60\x60';
+    const { data } = extractAndNormalize(text);
+    assert.deepEqual(data, [{ tool: "write_file" }]);
+  });
+
+  test("returns null data and original text when no JSON found", () => {
+    const text = "I have no tool calls to make.";
+    const { data, normalizedText } = extractAndNormalize(text);
+    assert.equal(data, null);
+    assert.equal(normalizedText, text);
   });
 });
