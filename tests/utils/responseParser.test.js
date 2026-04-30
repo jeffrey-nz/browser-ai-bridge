@@ -44,7 +44,9 @@ test.describe("Response Parser: extractStructuredData", () => {
   });
 
   test("repairs trailing commas in raw JSON", () => {
-    const result = extractStructuredData('[{"tool": "list_dir", "path": "/",},]');
+    const result = extractStructuredData(
+      '[{"tool": "list_dir", "path": "/",},]',
+    );
     assert.deepEqual(result, [{ tool: "list_dir", path: "/" }]);
   });
 });
