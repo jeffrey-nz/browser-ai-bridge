@@ -43,8 +43,32 @@ async function _runPromptWorkflowInner(page, text, label, options) {
   let spinner = createSpinner(`${providerName} is thinking...`).start();
   let ok = await waitForCompletion(page, spinner);
 
+  const RATE_LIMIT_RE =
+    /messages?\s+are\s+too\s+frequent|rate\s+limit|too\s+many\s+requests/i;
+
   while (!ok) {
     spinner.fail(`${providerName} stalled, timed out, or was blocked.`);
+
+    // Before opening the interactive recovery dashboard, attempt an early
+    // extraction. If the provider returned a rate-limit message (even though
+    // the poll loop didn't detect completion), surface it as rateLimited so
+    // the executor's automatic backoff handles it instead of blocking on a
+    // human operator prompt.
+    try {
+      const earlyText = await extractResponse(page);
+      if (earlyText && RATE_LIMIT_RE.test(earlyText)) {
+        logger.warn(
+          `[Prompt Workflow] Rate-limit text found on early extraction — bypassing manual recovery.`,
+        );
+        return {
+          ok: false,
+          rateLimited: true,
+          reason: "Rate limit detected on early extraction",
+        };
+      }
+    } catch (_e) {
+      // ignore — fall through to normal recovery
+    }
 
     try {
       const htmlDump = await dumpPageHtml(page);

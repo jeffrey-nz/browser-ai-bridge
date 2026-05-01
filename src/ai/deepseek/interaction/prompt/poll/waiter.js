@@ -51,6 +51,29 @@ export async function waitForDeepSeekCompletion(
           return false;
         }
 
+        // Rate-limit response text detected — throw a typed error so the
+        // promptWorkflow outer catch returns { ok: false, rateLimited: true }
+        // and the executor's backoff-and-retry logic kicks in automatically.
+        if (domState.isRateLimited) {
+          logger.warn(
+            `[DeepSeek Poll] Rate-limit text detected in response — signalling caller for backoff retry.`,
+          );
+          const err = new Error(
+            `DeepSeek rate limit: ${domState.currentText.slice(0, 120)}`,
+          );
+          err.rateLimited = true;
+          throw err;
+        }
+
+        // Regenerate button means generation failed (server error, not rate
+        // limit) — fail fast rather than burning the 300s timeout.
+        if (domState.regenerateVisible) {
+          logger.warn(
+            "[DeepSeek Poll] Regenerate button visible — generation failed, failing fast.",
+          );
+          return false;
+        }
+
         const isNetworkActive = networkMonitor.isStreamActive();
         domState.isGenerating = domState.isGenerating || isNetworkActive;
 
@@ -65,6 +88,7 @@ export async function waitForDeepSeekCompletion(
         }
       } catch (playwrightErr) {
         if (playwrightErr.controlAbort) throw playwrightErr;
+        if (playwrightErr.rateLimited) throw playwrightErr;
         logger.trace(
           `[DeepSeek Poll] Transient error: ${playwrightErr.message}`,
         );
@@ -81,6 +105,7 @@ export async function waitForDeepSeekCompletion(
     return false;
   } catch (e) {
     if (e.controlAbort || e.message.includes("Aborted")) throw e;
+    if (e.rateLimited) throw e;
     logger.warn(`[DeepSeek Poll] Error: ${e.message}`);
     return false;
   } finally {

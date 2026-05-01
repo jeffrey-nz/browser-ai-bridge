@@ -71,9 +71,12 @@ router.post("/", async (req, res) => {
   }
 
   const logLines = [];
+  // detached: true creates a new process group so we can kill the whole tree
+  // (shell → npm → vite) with a single process.kill(-pid) call.
   const proc = spawn(command, {
     cwd: projectDir,
     shell: true,
+    detached: true,
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, PORT: String(port), VITE_PORT: String(port) },
   });
@@ -87,7 +90,7 @@ router.post("/", async (req, res) => {
 
   const ready = await waitForReady(port);
   if (!ready) {
-    proc.kill("SIGKILL");
+    try { process.kill(-proc.pid, "SIGKILL"); } catch { proc.kill("SIGKILL"); }
     return sendError(res, 503, "Dev server did not become ready in 45s", {
       logs: logLines.join("").slice(-3000),
     });
@@ -104,10 +107,13 @@ router.delete("/:pid", (req, res) => {
   const entry = registry.get(pid);
   if (!entry) return res.sendStatus(404);
 
-  entry.proc.kill("SIGTERM");
-  setTimeout(() => {
-    if (!entry.proc.killed) entry.proc.kill("SIGKILL");
-  }, 3000);
+  // Kill the entire process group (shell → npm → vite) to prevent orphan Vite
+  // processes from holding ports open across subsequent verifier passes.
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    entry.proc.kill("SIGKILL");
+  }
   registry.delete(pid);
 
   logger.info(`[DevServer] killed pid=${pid}`);
@@ -117,9 +123,9 @@ router.delete("/:pid", (req, res) => {
 export function killAllDevServers() {
   for (const [pid, { proc }] of registry) {
     try {
-      proc.kill("SIGKILL");
+      process.kill(-pid, "SIGKILL");
     } catch {
-      /* already dead */
+      try { proc.kill("SIGKILL"); } catch { /* already dead */ }
     }
     registry.delete(pid);
   }
