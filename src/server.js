@@ -68,12 +68,9 @@ app.get("/api/sync", (req, res) => {
 
 app.use(globalErrorHandler);
 
-// Kill any dev servers spawned during this process lifetime on exit
+// Kill any dev servers spawned during this process lifetime on exit.
+// Only wire the "exit" event here — index.js owns SIGTERM/SIGINT handlers.
 process.on("exit", killAllDevServers);
-process.on("SIGTERM", () => {
-  killAllDevServers();
-  process.exit(0);
-});
 
 // Polls until the port can be bound or the timeout expires.
 // Needed on WSL2 where the kernel can hold a port for 1-3 s after kill -9.
