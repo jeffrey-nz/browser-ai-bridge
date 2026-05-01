@@ -69,8 +69,11 @@ const GEMINI_CONSTRAINT =
   "```\n" +
   "If you have no tool calls to make, respond with:\n" +
   "```json\n[]\n```\n" +
-  "WRONG — never output raw code or a bare JSON array outside a code block:\n" +
-  "using System;\nnamespace Foo { ... }\n\n";
+  "CRITICAL RESTRICTIONS:\n" +
+  "- NEVER create a Canvas document, immersive view, or artifact panel. Do NOT use the 'Create a document' or 'Canvas' feature.\n" +
+  "- Output ALL content — code, JSON, file contents — directly in the chat response as ```json or ``` code blocks.\n" +
+  "- NEVER put file contents into a separate document or side panel; always use the write_file tool with the content embedded in JSON.\n" +
+  "- WRONG — never output raw code or a bare JSON array outside a code block.\n\n";
 
 // ---------------------------------------------------------------------------
 // Registry

@@ -36,12 +36,63 @@ export async function waitForGeminiCompletion(
         .catch(() => {});
     }
 
+    // Selectors for Gemini's Canvas/artifact side panel and its close button.
+    // Gemini sometimes creates a canvas when generating large code blocks, which
+    // causes 200+ second delays and routes content outside the chat response.
+    // We close it as soon as it appears to keep output in the main chat.
+    const CANVAS_PANEL_SELECTORS = [
+      "ms-artifact",
+      "artifact-viewer",
+      ".canvas-container",
+      "[data-panel-type='code']",
+      "bard-canvas",
+      ".immersive-drawer",
+    ].join(", ");
+    const CANVAS_CLOSE_SELECTORS = [
+      'button[aria-label*="Close canvas"]',
+      'button[aria-label*="close canvas"]',
+      'button[aria-label*="Close artifact"]',
+      'button[aria-label*="Dismiss"]',
+      ".canvas-container button[aria-label*='close'], .canvas-container button[aria-label*='Close']",
+      "ms-artifact button[aria-label*='close'], ms-artifact button[aria-label*='Close']",
+      "artifact-viewer button[aria-label*='close'], artifact-viewer button[aria-label*='Close']",
+    ];
+
+    let canvasDismissed = false;
+
     await pollUntil(
       async () => {
         if (aborted) throw new Error("Aborted (Web UI)");
 
         const errorState = await checkSnackbarError(locators.snackbar);
         if (errorState) throw new Error("ERROR_13");
+
+        // Dismiss Gemini canvas/artifact panel if it opens — prevents 200+ second
+        // generation delays from canvas content that the pipeline can't read anyway.
+        if (!canvasDismissed) {
+          const canvasVisible = await page
+            .locator(CANVAS_PANEL_SELECTORS)
+            .first()
+            .isVisible({ timeout: 200 })
+            .catch(() => false);
+
+          if (canvasVisible) {
+            for (const sel of CANVAS_CLOSE_SELECTORS) {
+              const btn = page.locator(sel).first();
+              if (await btn.isVisible({ timeout: 200 }).catch(() => false)) {
+                await btn.click({ force: true }).catch(() => {});
+                logger.info("[Gemini Poll] Canvas panel detected and dismissed");
+                canvasDismissed = true;
+                break;
+              }
+            }
+            if (!canvasDismissed) {
+              // Log once so we can discover the actual selector via screenshot
+              logger.warn("[Gemini Poll] Canvas panel visible but no close button matched — generation may be slow");
+              canvasDismissed = true; // avoid spamming
+            }
+          }
+        }
 
         const isGenerating = await locators.stopBtn
           .isVisible()
