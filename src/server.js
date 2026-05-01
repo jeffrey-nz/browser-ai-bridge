@@ -13,6 +13,8 @@ import navigateRouter from "./routes/navigate.js";
 import promptRouter from "./routes/prompt.js";
 import setupRouter from "./routes/setup.js";
 import devserverRouter, { killAllDevServers } from "./routes/devserver.js";
+import visualAskRouter from "./routes/visual-ask.js";
+import pageInspectRouter from "./routes/page-inspect.js";
 import { eventBus } from "#web/eventBus.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
 import "express-async-errors";
@@ -46,6 +48,8 @@ app.use("/api/screenshot", screenshotRouter);
 app.use("/api/navigate", navigateRouter);
 app.use("/api/prompt", promptRouter);
 app.use("/api/devserver", devserverRouter);
+app.use("/api/visual-ask", visualAskRouter);
+app.use("/api/page-inspect", pageInspectRouter);
 
 app.get("/api/sync", (req, res) => {
   res.writeHead(200, {

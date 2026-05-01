@@ -1,11 +1,22 @@
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
-import { injectDeepSeekText, clickDeepSeekSend } from "./input.js";
+import { injectDeepSeekText, clickDeepSeekSend, uploadFileToDeepSeek } from "./input.js";
 import { waitForDeepSeekCompletion } from "./poll/index.js";
 import { extractDeepSeekResponse } from "./extract.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { resolveSelector } from "#ai/shared/locatorEngine.js";
 import { DEEPSEEK_LOCATORS } from "../../locators.js";
+import { logger } from "#utils/logger.js";
+
+export async function sendPromptWithFile(page, filePath, text, label = "Visual QA", sessionId = null) {
+  logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
+  try {
+    await uploadFileToDeepSeek(page, filePath);
+  } catch (err) {
+    logger.warn(`[DeepSeek] File upload failed: ${err.message} — sending text-only`);
+  }
+  return sendPromptAndWait(page, text, label, sessionId);
+}
 
 export async function sendPromptAndWait(
   page,

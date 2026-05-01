@@ -2,6 +2,7 @@ import { BaseProvider } from "#ai/shared/BaseProvider.js";
 import {
   startNewChat,
   sendPromptAndWait,
+  sendPromptWithFile,
   setMode,
 } from "./interaction/index.js";
 import {
@@ -28,6 +29,10 @@ export class ChatGPTProvider extends BaseProvider {
 
   async sendPromptAndWait(text, label) {
     return await sendPromptAndWait(this.page, text, label);
+  }
+
+  async sendPromptWithFile(text, label, _sessionId, filePath) {
+    return await sendPromptWithFile(this.page, filePath, text, label);
   }
 
   async sendPromptOnly(text) {

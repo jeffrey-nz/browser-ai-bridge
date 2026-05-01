@@ -3,6 +3,7 @@ import { BaseProvider } from "#ai/shared/BaseProvider.js";
 import {
   startNewChat,
   sendPromptAndWait,
+  sendPromptWithFile,
   setMode,
 } from "./interaction/index.js";
 import {
@@ -39,6 +40,10 @@ export class DeepSeekProvider extends BaseProvider {
 
   async sendPromptAndWait(text, label, sessionId) {
     return await sendPromptAndWait(this.page, text, label, sessionId);
+  }
+
+  async sendPromptWithFile(text, label, sessionId, filePath) {
+    return await sendPromptWithFile(this.page, filePath, text, label, sessionId);
   }
 
   async sendPromptOnly(text) {
