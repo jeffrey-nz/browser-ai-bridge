@@ -23,12 +23,14 @@ router.get("/", (_req, res) => {
 // deadline, the HTTP connection hangs and every subsequent session request queues
 // behind the still-loading browser tab, causing a cascade of client timeouts.
 //
-// Strategy: race createSession against a 30s deadline.
-// Cold-boot sessions (pool empty) can take 15-20s on slow connections or when
-// the provider page needs a fresh navigation - 12s was too tight for that case.
+// Strategy: race createSession against a 90s deadline.
+// Cold-boot sessions (pool empty) can take 15-20s on slow connections; Gemini
+// navigation can take 60-80s when the page is slow or shows interstitial prompts.
+// 30s was too tight for Gemini cold starts. 90s covers the full Playwright retry
+// window (30s + 60s) without exceeding the client's own 120s HTTP timeout.
 // If the deadline wins, return 503 immediately and close the session if it eventually
 // resolves so we don't leak a browser tab.
-const ROUTE_CREATE_TIMEOUT_MS = 30_000;
+const ROUTE_CREATE_TIMEOUT_MS = 90_000;
 
 router.post("/", async (req, res, next) => {
   const { provider } = req.body;
