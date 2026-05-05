@@ -49,24 +49,12 @@ export class SessionManager {
     // stale conversation state between warmup and acquisition (e.g. another
     // browser task ran in the same tab). Calling it here is cheap (~3s) and
     // guarantees a clean context for every caller.
-    if (typeof session.engine?.startNewChat === "function") {
-      await session.engine.startNewChat();
-    }
+    try {
+      if (typeof session.engine?.startNewChat === "function") {
+        await session.engine.startNewChat();
+      }
 
-    if (mode && typeof session.engine?.setMode === "function") {
-      await session.engine
-        .setMode(mode)
-        .catch((err) =>
-          logger.warn(
-            `[SessionManager] setMode(${mode}) failed: ${err.message}`,
-          ),
-        );
-    }
-
-    // Default Gemini mode to 'pro' if none provided
-    if (providerId === "gemini" && !mode) {
-      mode = "pro";
-      if (typeof session.engine?.setMode === "function") {
+      if (mode && typeof session.engine?.setMode === "function") {
         await session.engine
           .setMode(mode)
           .catch((err) =>
@@ -75,6 +63,28 @@ export class SessionManager {
             ),
           );
       }
+
+      // Default Gemini mode to 'pro' if none provided
+      if (providerId === "gemini" && !mode) {
+        mode = "pro";
+        if (typeof session.engine?.setMode === "function") {
+          await session.engine
+            .setMode(mode)
+            .catch((err) =>
+              logger.warn(
+                `[SessionManager] setMode(${mode}) failed: ${err.message}`,
+              ),
+            );
+        }
+      }
+    } catch (err) {
+      // startNewChat (or setMode) failed — close the tab so we don't leak the
+      // browser page. Pool replenishment was already triggered by acquire().
+      logger.warn(
+        `[SessionManager] Session setup failed for ${providerId}: ${err.message} — closing tab`,
+      );
+      session.engine?.close?.().catch(() => {});
+      throw err;
     }
 
     logger.info(

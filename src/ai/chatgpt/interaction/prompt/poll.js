@@ -6,6 +6,10 @@ const RATE_LIMIT_SEL =
   '.text-token-text-secondary:has-text("message limit"), ' +
   'div:has-text("You\'ve reached your message limit")';
 
+// Temporary session throttle — different from per-account message limits.
+// Requires failing fast (stalled) rather than back-off retry.
+const TOO_MANY_REQUESTS_SEL = 'p:has-text("You\'re making requests too quickly")';
+
 export async function waitForChatGptCompletion(page, prevText = "") {
   const stopBtn = page.locator('[data-testid="stop-button"]');
   const errorAlert = page
@@ -42,6 +46,19 @@ export async function waitForChatGptCompletion(page, prevText = "") {
             "ChatGPT rate limit reached — message limit hit",
           );
           err.rateLimited = true;
+          throw err;
+        }
+
+        const tooManyVisible = await page
+          .locator(TOO_MANY_REQUESTS_SEL)
+          .first()
+          .isVisible({ timeout: 200 })
+          .catch(() => false);
+        if (tooManyVisible) {
+          const err = new Error(
+            "ChatGPT — Too many requests (temporary throttle)",
+          );
+          err.stalled = true;
           throw err;
         }
 
@@ -82,6 +99,7 @@ export async function waitForChatGptCompletion(page, prevText = "") {
   } catch (e) {
     if (e.message.includes("Aborted")) throw e;
     if (e.rateLimited) throw e;
+    if (e.stalled) throw e;
     logger.warn(`[ChatGPT Poll] Error or Timeout: ${e.message}`);
     return false;
   } finally {
