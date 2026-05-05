@@ -25,14 +25,6 @@ export function validateRequest(req, sessionId, provider) {
     };
   }
 
-  if (checkId && PROVIDER_CONFIG[checkId]?.disabled) {
-    return {
-      valid: false,
-      status: 403,
-      error: `Provider '${checkId}' was skipped during startup and is currently disabled.`,
-    };
-  }
-
   const cd = cooldownManager.check(checkId || provider);
   if (cd.active) {
     return {

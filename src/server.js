@@ -3,7 +3,6 @@ import net from "node:net";
 import { execSync } from "node:child_process";
 import express from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import askRouter from "./routes/ask.js";
 import sessionsRouter from "./routes/sessions.js";
 import agentRouter from "./routes/agent.js";
@@ -24,24 +23,10 @@ export const app = express();
 
 app.use(helmet());
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    error: "Too many requests, please try again later.",
-  },
-});
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Mount /api/ping before the rate limiter — it is polled every 3s by start.sh
-// and the 100-req/15-min limit would return 429 with no "status" key, causing
-// start.sh to misread the bridge as dead and kill it.
 app.use("/api/ping", healthRouter);
-app.use("/api/", limiter);
 app.use("/api/setup", setupRouter);
 app.use("/api/ask", askRouter);
 app.use("/api/sessions", sessionsRouter);
