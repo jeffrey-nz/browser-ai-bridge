@@ -135,7 +135,11 @@ async function init() {
   function startKeys() {
     if (!process.stdin.isTTY) return;
     readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
+    try {
+      process.stdin.setRawMode(true);
+    } catch {
+      return;
+    }
     process.stdin.resume();
     process.stdin.on("keypress", handleKey);
 
