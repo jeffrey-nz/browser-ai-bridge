@@ -41,6 +41,13 @@ function resetProviders() {
 }
 
 async function init() {
+  // Register early so SIGTERM during Chrome startup is logged, not silent.
+  // The comment below explains the legitimate source of this signal.
+  process.on("SIGTERM", () => {
+    logger.info("[Shutdown] SIGTERM received, exiting without killing Chrome");
+    process.exit(0);
+  });
+
   console.log("\n╔════════════════════════════════════════╗");
   console.log("║     AI Browser Automation API          ║");
   console.log("╚════════════════════════════════════════╝");
@@ -144,14 +151,6 @@ async function init() {
   startKeys();
 
   process.on("SIGINT", shutdown);
-
-  // SIGTERM is sent by a new API instance's killZombieProcess() when it starts
-  // up and finds a stale PID file. Exit cleanly without touching Chrome so the
-  // new instance's Chrome isn't killed.
-  process.on("SIGTERM", () => {
-    logger.info("[Shutdown] SIGTERM received, exiting without killing Chrome");
-    process.exit(0);
-  });
 }
 
 export { init };
