@@ -2,6 +2,17 @@ import { colors } from "#app/ui/colors.js";
 import { log } from "#app/ui/log.js";
 
 export async function stepSubmission(page, locs) {
+  // Dismiss any blocking overlay modals (e.g. ChatGPT's Voice NUX modal).
+  const modal = page
+    .locator(
+      '[data-testid*="modal"] button, [data-testid*="nux"] button, button:has-text("Continue")',
+    )
+    .first();
+  if (await modal.isVisible({ timeout: 500 }).catch(() => false)) {
+    await modal.click({ force: true }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+
   const input = page.locator(locs.inputBox).last();
 
   // textarea.innerText always returns "" regardless of content, so we branch:
@@ -14,9 +25,17 @@ export async function stepSubmission(page, locs) {
   const send = page.locator(locs.sendBtn).last();
 
   if (isContentEditable) {
-    // Contenteditable (Quill/Lexical): Enter creates a newline, so click the send button.
-    await send.waitFor({ state: "visible", timeout: 2000 });
-    await send.click({ force: true });
+    // Prefer clicking the send button; fall back to Enter if it isn't visible
+    // (e.g. Grok's send button only appears when the input has focus/content).
+    const sendVisible = await send
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    if (sendVisible) {
+      await send.click({ force: true });
+    } else {
+      await input.focus();
+      await input.press("Enter");
+    }
   } else {
     // textarea: press Enter on the focused input — fires the real onKeyDown chain
     // that React's submit handler listens on. Button click with force:true

@@ -125,14 +125,23 @@ async function runAudit() {
         provider,
       );
 
-      if (passed !== total) {
+      // Only mark as failed when a required step aborted — optional skips
+      // mean a feature isn't present on this account, not a broken locator.
+      if (failedAt) {
         auditFailed = true;
       }
+
+      const skipped = steps.filter((s) => s.result === "SKIP").length;
+      const status = failedAt
+        ? `❌ ${passed}/${total} passed`
+        : skipped > 0
+          ? `✅ OK (${skipped} optional skipped)`
+          : "✅ OK";
 
       const summary = {
         "Steps Checked": total,
         "Steps Passed": passed,
-        Status: passed === total ? "✅ OK" : `❌ ${passed}/${total} passed`,
+        Status: status,
       };
 
       tableReport[provider.name] = summary;

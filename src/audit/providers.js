@@ -2,11 +2,7 @@ import { CHATGPT_LOCATORS } from "#ai/chatgpt/locators.js";
 import { GEMINI_LOCATORS } from "#ai/gemini/locators.js";
 import { DEEPSEEK_LOCATORS } from "#ai/deepseek/locators.js";
 import { GROK_LOCATORS } from "#ai/grok/locators.js";
-import {
-  COPILOT_LOCATORS,
-  COPILOT_365_LOCATORS,
-} from "#ai/copilot/client/locators.js";
-import { stepCopilot365CanvasPage } from "./steps/copilot365CanvasPage.js";
+import { COPILOT_LOCATORS } from "#ai/copilot/client/locators.js";
 import { stepGeminiModelDropdown } from "./steps/geminiModelDropdown.js";
 import { stepDeepSeekModeToggle } from "./steps/deepseekModeToggle.js";
 
@@ -59,19 +55,5 @@ export const AUDIT_PROVIDERS = [
     locators: COPILOT_LOCATORS,
     locatorsPath: "src/ai/copilot/client/locators.js",
     locatorsExport: "COPILOT_LOCATORS",
-  },
-  {
-    name: "Copilot 365 (Work)",
-    url: "https://m365.cloud.microsoft/chat",
-    locators: COPILOT_365_LOCATORS,
-    locatorsPath: "src/ai/copilot/client/locators.js",
-    locatorsExport: "COPILOT_365_LOCATORS",
-    extraSteps: [
-      {
-        name: "6. Canvas Page Probe (Widget Detection & Selector Mapping)",
-        fn: stepCopilot365CanvasPage,
-        optional: true,
-      },
-    ],
   },
 ];

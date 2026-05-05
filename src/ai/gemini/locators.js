@@ -3,7 +3,7 @@ export const GEMINI_LOCATORS = {
     '.side-nav-action-button, button:has-text("New chat"), a[href*="/app"]',
   inputBox: 'rich-textarea .ql-editor[contenteditable="true"]',
   sendBtn: '.send-button.submit, button[aria-label*="Send message"]',
-  stopBtn: '.send-button.stop, button[aria-label*="Stop"]',
+  stopBtn: 'button[aria-label*="Stop"], .send-button.stop',
   responseBlock: "model-response, message-content",
   doneSignal:
     'message-actions, .response-actions-container, button[aria-label*="Good response"]',

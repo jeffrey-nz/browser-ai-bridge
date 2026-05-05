@@ -24,11 +24,11 @@ export async function stepInputInjection(page, locs) {
     .catch(() => false);
 
   if (isContentEditable) {
-    await page.evaluate(
-      (text) => navigator.clipboard.writeText(text),
-      AUDIT_PROMPT,
-    );
-    await input.press("Control+v");
+    // Clipboard paste fails in multi-tab CI mode (no user gesture / focus).
+    // keyboard.type() is reliable for short audit prompts across all editors.
+    await page.keyboard.press("Control+a");
+    await page.keyboard.press("Meta+a");
+    await page.keyboard.type(AUDIT_PROMPT);
   } else {
     await input.evaluate((el, text) => {
       const nativeSetter = Object.getOwnPropertyDescriptor(
