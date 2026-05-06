@@ -24,13 +24,23 @@ export async function waitForGeminiCompletion(
     if (initialMessageCount > 0) {
       await page
         .waitForFunction(
-          (count) => {
-            const current = document.querySelectorAll(
-              "model-response, response-container, message-content",
-            ).length;
-            return current > count;
+          ({ count, errTexts }) => {
+            // Bail early if "Something went wrong" snackbar appears — no point
+            // waiting 45s for a response that will never come.
+            const snackbar = document.querySelector(
+              "bard-simple-snack-bar, .mat-mdc-simple-snack-bar",
+            );
+            if (snackbar && snackbar.offsetParent !== null) {
+              const txt = (snackbar.textContent || "").toLowerCase();
+              if (errTexts.some((t) => txt.includes(t))) return true;
+            }
+            return (
+              document.querySelectorAll(
+                "model-response, response-container, message-content",
+              ).length > count
+            );
           },
-          initialMessageCount,
+          { count: initialMessageCount, errTexts: ["something went wrong", "(13)"] },
           { timeout: 45000 },
         )
         .catch(() => {});

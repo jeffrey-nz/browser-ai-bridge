@@ -23,6 +23,12 @@ export async function clickOrFallbackToEnter(
   } = options;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
+    // Check abort condition before wasting time on the click attempt.
+    if (shouldAbort) {
+      const preErr = await shouldAbort(attempt).catch(() => null);
+      if (preErr) throw preErr;
+    }
+
     if (spaceHack) {
       await applySpaceHack(page, inputBoxLocator);
     }
