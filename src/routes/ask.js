@@ -51,14 +51,19 @@ router.post("/", async (req, res, next) => {
   }
 
   // If the HTTP client disconnects before we finish writing the response
-  // (e.g. copilot-helper's 10-minute fetch timeout fires), force-release the
-  // session lock so subsequent turns don't pile up with 409. The background
-  // browser-AI turn may still be running - needsReset ensures it cleans up
-  // before the next caller uses the session.
-  res.on("close", () => {
+  // (e.g. a fetch AbortController fires), force-release the session lock so
+  // subsequent turns don't pile up with 409. The background browser-AI turn
+  // may still be running — needsReset ensures it cleans up before the next
+  // caller uses the session.
+  //
+  // Use req.on("close") not res.on("close"): res "close" only fires after the
+  // server actually tries to write to a broken socket (i.e. after the browser
+  // automation finishes), which can be 7+ minutes later. req "close" fires
+  // immediately when the client drops the TCP connection.
+  req.on("close", () => {
     if (!res.writableEnded && session.locked) {
       logger.warn(
-        `[Ask] Client disconnected mid-turn for session ${sessionId?.slice(0, 8)} - force-releasing stale lock`,
+        `[Ask] Client disconnected mid-turn for session ${session.id?.slice(0, 8)} - force-releasing stale lock`,
       );
       session.locked = false;
       session.needsReset = true;
