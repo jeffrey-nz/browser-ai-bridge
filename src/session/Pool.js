@@ -41,7 +41,10 @@ export class SessionPool {
       return;
     }
 
-    const pool = this.warmSessions.get(providerId) || [];
+    if (!this.warmSessions.has(providerId)) {
+      this.warmSessions.set(providerId, []);
+    }
+    const pool = this.warmSessions.get(providerId);
     if (pool.length >= POOL_SIZE) return;
 
     this._warming.add(providerId);
@@ -58,7 +61,7 @@ export class SessionPool {
       }
 
       if (!this.isShuttingDown) {
-        this.warmSessions.get(providerId).push(session);
+        pool.push(session);
         this._failedAt.delete(providerId); // clear any previous failure
         logger.info(`[Pool] ✨ ${providerId} standby tab is warm and ready.`);
       } else {
