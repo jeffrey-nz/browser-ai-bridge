@@ -10,17 +10,22 @@ const RATE_LIMIT_SEL =
 // Requires failing fast (stalled) rather than back-off retry.
 const TOO_MANY_REQUESTS_SEL = 'p:has-text("You\'re making requests too quickly")';
 
-export async function waitForChatGptCompletion(page, prevText = "") {
+export async function waitForChatGptCompletion(page, prevText = "", sessionId = null) {
   const stopBtn = page.locator('[data-testid="stop-button"]');
   const errorAlert = page
     .locator('.alert-error, [role="alert"]:not(.sr-only)')
     .last();
 
   let aborted = false;
-  const abortHandler = () => {
-    aborted = true;
-  };
+  const abortHandler = () => { aborted = true; };
   eventBus.once("abort_requested", abortHandler);
+
+  // Session-specific abort: fires when the HTTP client disconnects mid-poll.
+  let sessionAbortHandler = null;
+  if (sessionId) {
+    sessionAbortHandler = () => { aborted = true; };
+    eventBus.once(`session_abort:${sessionId}`, sessionAbortHandler);
+  }
 
   try {
     await page.waitForTimeout(1500);
@@ -104,5 +109,8 @@ export async function waitForChatGptCompletion(page, prevText = "") {
     return false;
   } finally {
     eventBus.off("abort_requested", abortHandler);
+    if (sessionId && sessionAbortHandler) {
+      eventBus.off(`session_abort:${sessionId}`, sessionAbortHandler);
+    }
   }
 }

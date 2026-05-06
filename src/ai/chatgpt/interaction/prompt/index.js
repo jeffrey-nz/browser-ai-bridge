@@ -14,7 +14,7 @@ export async function sendPromptWithFile(page, filePath, text, label = "Visual Q
   return sendPromptAndWait(page, text, label);
 }
 
-export async function sendPromptAndWait(page, text, label = "Prompt") {
+export async function sendPromptAndWait(page, text, label = "Prompt", sessionId = null) {
   const prevMessage = page
     .locator('[data-testid^="conversation-turn-"]')
     .last();
@@ -25,7 +25,7 @@ export async function sendPromptAndWait(page, text, label = "Prompt") {
     injectText: injectChatGptText,
     clickSend: clickChatGptSend,
     waitForCompletion: async (pg, spinner) =>
-      waitForChatGptCompletion(pg, prevText),
+      waitForChatGptCompletion(pg, prevText, sessionId),
     extractResponse: extractChatGptResponse,
   });
 }

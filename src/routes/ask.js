@@ -7,6 +7,7 @@ import { executeAskTurn } from "./ask/executor/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
+import { eventBus } from "#web/eventBus.js";
 
 const router = express.Router();
 
@@ -67,6 +68,9 @@ router.post("/", async (req, res, next) => {
       );
       session.locked = false;
       session.needsReset = true;
+      // Abort the ongoing browser poll so the tab is freed immediately
+      // rather than continuing to poll until ChatGPT responds naturally.
+      eventBus.emit(`session_abort:${session.id}`);
     }
   });
 
