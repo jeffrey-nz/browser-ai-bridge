@@ -154,21 +154,23 @@ export class SessionManager {
   async closeSession(sessionId) {
     const session = this.registry.get(sessionId);
     if (session) {
+      const wasStalled = getSessionState(sessionId) === "stalled";
       cleanupStalls(sessionId);
       sessionLogger.finalize(session.logPath);
       this.registry.delete(sessionId);
-      await this._recycleOrClose(session);
+      await this._recycleOrClose(session, wasStalled);
       return true;
     }
     return false;
   }
 
-  async _recycleOrClose(session) {
+  async _recycleOrClose(session, wasStalled = false) {
     const pool = sessionPool;
     const poolSize = Number(process.env.POOL_SIZE ?? 1);
     const currentPool = pool.warmSessions.get(session.providerId);
-    // Never recycle a session that was stalled — it may be in a broken UI state.
-    const wasStalled = getSessionState(session.id) === "stalled";
+    if (wasStalled) {
+      logger.info(`[SessionManager] Session ${session.id.slice(0, 8)} was stalled — closing tab instead of recycling.`);
+    }
     const canRecycle =
       !pool.isShuttingDown &&
       !wasStalled &&
