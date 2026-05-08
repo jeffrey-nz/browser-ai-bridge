@@ -3,7 +3,7 @@ import { createNewSession } from "./Creator.js";
 import { sessionLogger } from "./Logger.js";
 import { sessionPool } from "./Pool.js";
 import { logger } from "#utils/logger.js";
-import { getSessionState } from "../stalls.js";
+import { getSessionState, cleanupSession as cleanupStalls } from "../stalls.js";
 
 // Sliding TTL - resets on every access. Sessions that haven't been touched
 // for this long are swept; actively-used sessions survive indefinitely.
@@ -135,6 +135,7 @@ export class SessionManager {
   async closeSession(sessionId) {
     const session = this.registry.get(sessionId);
     if (session) {
+      cleanupStalls(sessionId);
       sessionLogger.finalize(session.logPath);
       this.registry.delete(sessionId);
       await this._recycleOrClose(session);

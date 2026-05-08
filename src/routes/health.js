@@ -58,6 +58,7 @@ router.get("/", (_req, res) => {
     }
     const sessions = sessionManager.listSessions();
     const providers = buildProvidersPayload(sessions);
+    const mem = process.memoryUsage();
     res.json({
       status: "ready",
       browser: getBrowserState(),
@@ -66,6 +67,11 @@ router.get("/", (_req, res) => {
       activeSessions: sessions.filter((s) => s.state === "active").length,
       stalledSessions: sessions.filter((s) => s.state === "stalled").length,
       providers,
+      mem: {
+        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        rssMB: Math.round(mem.rss / 1024 / 1024),
+      },
     });
   } catch (e) {
     logger.warn(`Ping failed: ${e.message}`);

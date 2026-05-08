@@ -95,3 +95,15 @@ export function getSessionState(sessionId) {
   if (isStalled(sessionId)) return "stalled";
   return "idle";
 }
+
+// Called by the session Manager when a session is closed/removed so that
+// orphaned entries from crashed sessions don't accumulate indefinitely.
+export function cleanupSession(sessionId) {
+  activeSessions.delete(sessionId);
+  pendingControls.delete(sessionId);
+  const fn = stallMap.get(sessionId);
+  if (fn) {
+    stallMap.delete(sessionId);
+    fn({ action: "skip" }); // resolve any waiting stall promise so callers don't hang
+  }
+}
