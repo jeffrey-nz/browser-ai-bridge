@@ -39,13 +39,6 @@ const ALL_PROVIDERS = [
     url: "https://copilot.microsoft.com/",
     readySelector: '#userInput, [data-testid="composer-input"]',
   },
-  {
-    id: "copilot365",
-    name: "Microsoft 365 Copilot (Work)",
-    url: "https://m365.cloud.microsoft/chat",
-    readySelector:
-      '#m365-chat-editor-target-element, [data-lexical-editor="true"]',
-  },
 ];
 
 export const PROVIDERS_TO_LOGIN = _enabled

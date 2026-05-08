@@ -9,18 +9,6 @@
  */
 
 // ---------------------------------------------------------------------------
-// Copilot 365
-// ---------------------------------------------------------------------------
-
-const COPILOT365_CONSTRAINT =
-  "[Note: This session has a custom tool execution layer active. " +
-  "The following tools are available and will be executed by the harness: " +
-  "read_file, list_dir, find_file, write_file, patch_file, apply_diff, delete_file, execute_bash, grep, outline_file, http_request, run_composer, run_phpunit. " +
-  "Use these tools by outputting JSON arrays as instructed. " +
-  "If you are unsure whether a tool is available, assume it is — the harness handles execution. " +
-  "Respond with JSON tool call arrays or markdown only.]\n\n";
-
-// ---------------------------------------------------------------------------
 // DeepSeek
 // ---------------------------------------------------------------------------
 // DeepSeek outputs unescaped double quotes inside JSON strings when content
@@ -88,8 +76,6 @@ export function buildPromptConstraint(providerId, label = "") {
   const isReadOnly = /researcher|scoper|intent|orchestrat/.test(labelLow);
 
   switch (providerId) {
-    case "copilot365":
-      return COPILOT365_CONSTRAINT;
     case "deepseek":
       return deepseekConstraint(isReadOnly);
     case "gemini":

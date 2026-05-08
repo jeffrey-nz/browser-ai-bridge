@@ -13,13 +13,6 @@ import {
 import { selfHeal, capturePageContext } from "../../heal/index.js";
 
 // NOTE: This file is superseded by executor/index.js (active path). Keep in sync.
-const COPILOT_365_BASE_CONSTRAINT =
-  "[Note: This session has a custom tool execution layer active. " +
-  "The following tools are available and will be executed by the harness: " +
-  "read_file, list_dir, find_file, write_file, patch_file, apply_diff, delete_file, execute_bash, grep, outline_file, http_request, run_composer, run_phpunit. " +
-  "Use these tools by outputting JSON arrays as instructed. " +
-  "Respond with JSON tool call arrays or markdown only.]\n\n";
-
 const DEEPSEEK_BASE_CONSTRAINT =
   "[FORMAT REQUIREMENT — READ CAREFULLY]\n" +
   "You MUST wrap ALL JSON tool call arrays in a ```json code block. " +
@@ -59,9 +52,7 @@ export async function executeAskTurn(session, prompt, requestId) {
   }
 
   let activePrompt = prompt;
-  if (session.providerId === "copilot365") {
-    activePrompt = COPILOT_365_BASE_CONSTRAINT + prompt;
-  } else if (session.providerId === "deepseek") {
+  if (session.providerId === "deepseek") {
     activePrompt = DEEPSEEK_BASE_CONSTRAINT + prompt;
   }
 

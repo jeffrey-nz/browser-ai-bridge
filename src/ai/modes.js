@@ -46,17 +46,6 @@ export const PROVIDER_MODES = {
     [AI_MODES.AUTO]: { label: "Auto", regex: /^auto$/i, key: "mode_auto" },
   },
 
-  copilot365: {
-    [AI_MODES.FAST]: { label: "Quick", regex: /quick/i, key: "mode_quick" },
-    [AI_MODES.THINKING]: {
-      label: "Think Deeper",
-      regex: /think deeper/i,
-      key: "mode_think_deeper",
-    },
-    [AI_MODES.PRO]: { label: "Pro", regex: /pro/i, key: "mode_pro" },
-    [AI_MODES.AUTO]: { label: "Auto", regex: /^auto$/i, key: "mode_auto" },
-  },
-
   gemini: {
     [AI_MODES.FAST]: {
       label: "Fast",

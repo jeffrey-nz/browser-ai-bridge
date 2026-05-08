@@ -35,6 +35,7 @@ export async function waitForChatGptCompletion(page, prevText = "", sessionId = 
     if (earlyThrottle) {
       const err = new Error("ChatGPT — Too many requests (temporary throttle)");
       err.stalled = true;
+      err.rateLimited = true;
       throw err;
     }
 
@@ -74,6 +75,7 @@ export async function waitForChatGptCompletion(page, prevText = "", sessionId = 
             "ChatGPT — Too many requests (temporary throttle)",
           );
           err.stalled = true;
+          err.rateLimited = true;
           throw err;
         }
 

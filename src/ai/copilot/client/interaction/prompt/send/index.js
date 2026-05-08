@@ -22,9 +22,7 @@ export async function sendPromptAndWait(
   sessionId = null,
   pollTimeoutMs = 420000,
 ) {
-  const is365 = providerName === "copilot365";
-  // Apply the widget guard to both Copilot variants — regular copilot.microsoft.com
-  // can also respond with Pages/Designer widgets instead of chat text.
+  // Apply widget guard — copilot.microsoft.com can respond with Pages/Designer widgets
   let text = fitToCharLimit(WIDGET_GUARD + initialText, providerName);
   let label = initialLabel;
   let correctionAttempts = 0;

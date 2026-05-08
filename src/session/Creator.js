@@ -6,10 +6,7 @@ import { ChatGPTProvider } from "#ai/chatgpt/session.js";
 import { GeminiProvider } from "#ai/gemini/session.js";
 import { DeepSeekProvider } from "#ai/deepseek/session.js";
 import { GrokProvider } from "#ai/grok/session.js";
-import {
-  CopilotProvider,
-  Copilot365Provider,
-} from "#ai/copilot/client/session.js";
+import { CopilotProvider } from "#ai/copilot/client/session.js";
 
 const PROVIDER_MAP = {
   chatgpt: ChatGPTProvider,
@@ -17,7 +14,6 @@ const PROVIDER_MAP = {
   deepseek: DeepSeekProvider,
   grok: GrokProvider,
   copilot: CopilotProvider,
-  copilot365: Copilot365Provider,
 };
 
 export async function createNewSession(providerId) {

@@ -2,14 +2,9 @@ import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 import { ensureLocator } from "./ensureLocator.js";
 import { PROVIDER_MODES, AI_MODES, resolveModeKey } from "#ai/modes.js";
-import { isCopilot365Url } from "../navigation.js";
 
 function resolveProvider(page, explicitProvider) {
   if (explicitProvider) return explicitProvider;
-  try {
-    const url = page.url();
-    if (isCopilot365Url(url)) return "copilot365";
-  } catch {}
   return "copilot";
 }
 
@@ -21,10 +16,7 @@ export async function setResponseMode(
   const provider = resolveProvider(page, providerName);
   const resolvedKey = resolveModeKey(modeKey);
 
-  const modeMap =
-    provider === "copilot365"
-      ? PROVIDER_MODES.copilot365
-      : PROVIDER_MODES.copilot;
+  const modeMap = PROVIDER_MODES.copilot;
 
   const config = modeMap[resolvedKey] || modeMap[AI_MODES.AUTO];
 

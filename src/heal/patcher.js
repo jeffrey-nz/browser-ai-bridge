@@ -11,7 +11,6 @@ const PROVIDER_LOCATOR_PATHS = {
   gemini: "ai/gemini/locators.js",
   grok: "ai/grok/locators.js",
   copilot: "ai/copilot/client/locators.js",
-  copilot365: "ai/copilot/client/locators.js",
 };
 
 export function extractCodeBlock(gptResponse) {

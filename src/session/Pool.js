@@ -22,7 +22,7 @@ export class SessionPool {
         this.warmSessions.set(providerId, []);
         // Do NOT pre-warm here. Tabs are opened on-demand when acquire() is
         // first called for each provider, so unused providers (e.g. grok,
-        // copilot365) never create browser tabs.
+        // unused providers never create browser tabs.
       }
     }
   }

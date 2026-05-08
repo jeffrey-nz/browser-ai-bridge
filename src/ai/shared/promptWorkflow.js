@@ -37,8 +37,7 @@ async function _runPromptWorkflowInner(page, text, label, options) {
     "Outbound prompt injected",
   );
 
-  await injectText(page, text);
-  await clickSend(page);
+  await _injectAndSendWithRecovery(page, text, injectText, clickSend, providerName);
 
   let spinner = createSpinner(`${providerName} is thinking...`).start();
   let ok = await waitForCompletion(page, spinner);
@@ -88,8 +87,13 @@ async function _runPromptWorkflowInner(page, text, label, options) {
       ok = await waitForCompletion(page, spinner);
     } else if (recovery.action === "retry_same") {
       logger.info("[RETRY] Re-injecting prompt content...");
-      await injectText(page, text);
-      await clickSend(page);
+      await _injectAndSendWithRecovery(
+        page,
+        text,
+        injectText,
+        clickSend,
+        providerName,
+      );
       spinner = createSpinner(`${providerName} is thinking...`).start();
       ok = await waitForCompletion(page, spinner);
     } else if (recovery.action === "return") {
@@ -137,4 +141,59 @@ async function _runPromptWorkflowInner(page, text, label, options) {
 
   onSuccess(responseText);
   return { ok: true, text: responseText };
+}
+
+// A submission failure (input field never cleared, button click did not trigger
+// the chat) usually means the page is in a stuck state — a stale modal, a
+// transient script error, or an unfocused composer. Reloading the tab almost
+// always recovers without needing the cycle-mode fallback to a different
+// provider. We only retry once; persistent failure escalates to the caller.
+//
+// We also recover when the input element itself was unresolvable — Playwright
+// raises "waiting for locator", "Timeout exceeded", or selector errors when
+// the composer DOM was swapped underneath us (auth modal, paywall, route
+// change). A page reload puts the composer back.
+const RECOVERABLE_RE =
+  /Failed to submit prompt|waiting for locator|Timeout .* exceeded|element is not (visible|attached)|Target (page|frame).* has been closed/i;
+
+async function _injectAndSendWithRecovery(
+  page,
+  text,
+  injectText,
+  clickSend,
+  providerName,
+) {
+  try {
+    await injectText(page, text);
+    await clickSend(page);
+    return;
+  } catch (err) {
+    const msg = err.message || "";
+    const isRecoverable = RECOVERABLE_RE.test(msg);
+    if (!isRecoverable) throw err;
+
+    logger.warn(
+      `[Prompt Workflow] ${providerName} submission failed (${msg.split("\n")[0]}) — reloading page and retrying once.`,
+    );
+
+    if (page.isClosed && page.isClosed()) {
+      // Cannot reload a closed page. Surface the failure so the caller can
+      // open a fresh session via the cycle-mode fallback.
+      throw new Error(
+        `${providerName} page was closed during submission — caller must recreate session`,
+      );
+    }
+
+    try {
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 15000 });
+      await page.waitForTimeout(2500);
+    } catch (reloadErr) {
+      logger.warn(
+        `[Prompt Workflow] page.reload() failed: ${reloadErr.message} — retry will likely fail.`,
+      );
+    }
+
+    await injectText(page, text);
+    await clickSend(page);
+  }
 }
