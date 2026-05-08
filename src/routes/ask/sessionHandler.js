@@ -33,7 +33,9 @@ export async function resolveSession(sessionId, provider, mode) {
 
 export async function cleanupAutoSession(autoCreated, session) {
   if (autoCreated && session) {
-    await session.page.close().catch(() => {});
+    // Let closeSession handle page lifecycle via _recycleOrClose — closing the
+    // page here before closeSession runs prevents the pool from recycling the
+    // tab, causing a new browser tab to be opened for every subsequent request.
     await sessionManager.closeSession(session.id);
   }
 }
