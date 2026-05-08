@@ -97,10 +97,10 @@ export class SessionPool {
     logger.debug(
       `[Pool] Pool empty for ${providerId}. Falling back to cold boot.`,
     );
-    // Trigger async warmup so the *next* request gets a fast-boot.
-    this.replenish(providerId).catch((err) =>
-      logger.warn(`[Pool] Replenish failed for ${providerId}: ${err.message}`),
-    );
+    // Do NOT trigger replenish here — createSession() is about to do its own
+    // cold boot. Firing replenish() concurrently would open a second tab for
+    // the same provider. The pool is refilled naturally when the cold-booted
+    // session is recycled back via _recycleOrClose on close.
     return null;
   }
 
