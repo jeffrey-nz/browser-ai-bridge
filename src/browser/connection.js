@@ -88,6 +88,17 @@ async function finalizeConnection(browser) {
 
   browserContext.setDefaultNavigationTimeout(15000);
 
+  // Close any stale about:blank tabs left over from previous sessions
+  const allPages = browserContext.pages();
+  const blankPages = allPages.filter((p) => {
+    const u = p.url();
+    return u === "about:blank" || u === "" || u === "about:newtab";
+  });
+  if (blankPages.length > 0) {
+    logger.info(`[Browser] Closing ${blankPages.length} stale blank tab(s)…`);
+    await Promise.allSettled(blankPages.map((p) => p.close()));
+  }
+
   browser.on("disconnected", () => {
     logger.warn("[Browser] CDP disconnected.");
     setBrowserState(BrowserState.DISCONNECTED);

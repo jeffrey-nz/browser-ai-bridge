@@ -5,6 +5,10 @@ import { sessionPool } from "./Pool.js";
 import { logger } from "#utils/logger.js";
 import { getSessionState, cleanupSession as cleanupStalls } from "../stalls.js";
 
+// Per-provider lock: prevents two concurrent createSession() calls from
+// both doing a cold boot and opening duplicate tabs for the same provider.
+const _creatingLocks = new Map(); // providerId → Promise
+
 // Sliding TTL - resets on every access. Sessions that haven't been touched
 // for this long are swept; actively-used sessions survive indefinitely.
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 60 * 60 * 1000;
@@ -38,10 +42,25 @@ export class SessionManager {
   }
 
   async createSession(providerId, mode = null) {
+    // Serialise cold-boot per provider: if another caller is already spinning
+    // up a new tab for this provider, wait for it to finish rather than
+    // opening a second tab in parallel.
+    if (_creatingLocks.has(providerId)) {
+      await _creatingLocks.get(providerId);
+    }
+
     let session = sessionPool.acquire(providerId);
 
     if (!session) {
-      session = await createNewSession(providerId);
+      let resolve;
+      const lock = new Promise((r) => { resolve = r; });
+      _creatingLocks.set(providerId, lock);
+      try {
+        session = await createNewSession(providerId);
+      } finally {
+        _creatingLocks.delete(providerId);
+        resolve();
+      }
     }
 
     // Always start a fresh chat regardless of pool vs cold-boot origin.
@@ -148,8 +167,11 @@ export class SessionManager {
     const pool = sessionPool;
     const poolSize = Number(process.env.POOL_SIZE ?? 1);
     const currentPool = pool.warmSessions.get(session.providerId);
+    // Never recycle a session that was stalled — it may be in a broken UI state.
+    const wasStalled = getSessionState(session.id) === "stalled";
     const canRecycle =
       !pool.isShuttingDown &&
+      !wasStalled &&
       currentPool &&
       currentPool.length < poolSize &&
       !pool._warming.has(session.providerId) &&
