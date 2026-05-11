@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { sessionManager } from "../session/index.js";
 import { validateRequest, validatePromptLimit } from "./ask/validation.js";
 import { resolveSession, cleanupAutoSession } from "./ask/sessionHandler.js";
+import { cooldownManager } from "../session/CooldownManager.js";
 import { executeAskTurn } from "./ask/executor/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
@@ -47,6 +48,19 @@ router.post("/", async (req, res, next) => {
     if (autoCreated && session) await cleanupAutoSession(true, session);
     if (retryAfter) res.set("Retry-After", String(retryAfter));
     return sendError(res, status, error, retryAfter ? { retryAfter } : {}, requestId);
+  }
+
+  // Re-check cooldown using the resolved session's providerId.
+  // The initial validateRequest only checks if 'provider' is in the request body,
+  // but session-based requests omit it. This ensures cooldowns are enforced
+  // even when the client only sends a sessionId.
+  const sessionCd = cooldownManager.check(session.providerId);
+  if (sessionCd.active) {
+    if (sessionCd.remainingSeconds) res.set("Retry-After", String(sessionCd.remainingSeconds));
+    await cleanupAutoSession(autoCreated, session);
+    // Return 503+stalled so the pipeline client treats this as a stall (consistent
+    // with other stall responses) rather than triggering BatchErrorHandler backoff.
+    return sendError(res, 503, "STALLED", { stalled: true, rateLimited: false, retryAfter: sessionCd.remainingSeconds }, requestId);
   }
 
   const pLimit = validatePromptLimit(session, prompt);
