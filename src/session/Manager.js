@@ -11,7 +11,7 @@ const _creatingLocks = new Map(); // providerId → Promise
 
 // Sliding TTL - resets on every access. Sessions that haven't been touched
 // for this long are swept; actively-used sessions survive indefinitely.
-const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 60 * 60 * 1000;
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 15 * 60 * 1000;
 const GC_INTERVAL_MS = 5 * 60 * 1000;
 
 export class SessionManager {
@@ -31,6 +31,14 @@ export class SessionManager {
   async _cleanupStaleSessions() {
     const now = Date.now();
     for (const session of this.registry.list()) {
+      // Close sessions whose browser tab is already gone — no point keeping them.
+      if (session.page?.isClosed?.()) {
+        logger.info(
+          `[SessionManager] GC sweeping session with closed tab: ${session.id}`,
+        );
+        await this.closeSession(session.id);
+        continue;
+      }
       const lastUsed = session.lastUsedAt ?? session.createdAt.getTime();
       if (now - lastUsed > SESSION_TTL_MS && !session.locked) {
         logger.info(
