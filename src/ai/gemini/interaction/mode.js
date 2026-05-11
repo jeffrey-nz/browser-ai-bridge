@@ -115,7 +115,15 @@ async function trySetGeminiMode(page, modeKey) {
           return;
         }
 
-        await option.click({ force: true });
+        // Scroll the option into view before clicking to avoid viewport clipping.
+        await option.scrollIntoViewIfNeeded().catch(() => {});
+        await page.waitForTimeout(200);
+        try {
+          await option.click({ force: true });
+        } catch {
+          // JS-click fallback when the element is still outside the viewport.
+          await option.evaluate((el) => el.click());
+        }
         await page.waitForTimeout(800);
 
         // Confirm via aria-current on the option (more reliable than label text).
