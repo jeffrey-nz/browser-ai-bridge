@@ -29,6 +29,7 @@ export async function handleGeminiError(err, page) {
       result: {
         ok: false,
         needsRotation: true,
+        rateLimited: true,
         reason: "Gemini UI Error (13) - Forced Cooldown applied",
       },
     };

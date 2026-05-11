@@ -6,6 +6,7 @@ import { registerStall } from "../../../stalls.js";
 import { capturePageContext } from "../../../heal/index.js";
 import { executeCoreTurn } from "./coreTurn.js";
 import { isWebMode } from "#web/mode.js";
+import { cooldownManager } from "../../../session/CooldownManager.js";
 
 export async function handleStalls(session, initialResponse, activePrompt) {
   let response = initialResponse;
@@ -17,6 +18,34 @@ export async function handleStalls(session, initialResponse, activePrompt) {
     // for the stall timeout, which would hold the session lock and cause a
     // SESSION_BUSY cascade in the calling workflow.
     if (isWebMode() || !process.stdout.isTTY || !process.stdin.isTTY) {
+      // If the provider triggered a cooldown (e.g. Gemini Error 13), wait for it
+      // to expire and retry once — keeps recovery inside the bridge instead of
+      // bouncing 503s back to the pipeline on every rate-limit hit.
+      if (response.rateLimited) {
+        const cd = cooldownManager.check(session.providerId);
+        if (cd.active && cd.remainingSeconds != null && cd.remainingSeconds <= 150) {
+          const waitSecs = cd.remainingSeconds + 2;
+          logger.info(
+            `[Ask] Rate-limited — waiting ${waitSecs}s for ${session.providerId} cooldown before in-bridge retry (session ${session.id})...`,
+          );
+          await new Promise((r) => setTimeout(r, waitSecs * 1000));
+          try {
+            await session.engine.startNewChat();
+          } catch (chatErr) {
+            logger.warn(`[Ask] startNewChat failed during cooldown retry: ${chatErr.message}`);
+          }
+          response = await executeCoreTurn(
+            session,
+            activePrompt,
+            `API Turn (post-cooldown retry ${stallAttempt})`,
+          );
+          if (response.ok) return { response: response.text };
+          logger.warn(
+            `[Ask] Post-cooldown retry still failed — falling through to auto-skip.`,
+          );
+        }
+      }
+
       logger.warn(
         `[Ask] Turn failed (attempt ${stallAttempt}) — non-interactive mode, auto-skipping stall for session ${session.id}.`,
       );
