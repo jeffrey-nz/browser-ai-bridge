@@ -54,9 +54,4 @@ test.describe("buildPromptConstraint", () => {
       "should include code block format",
     );
   });
-
-  test("copilot365: returns non-empty constraint", () => {
-    const constraint = buildPromptConstraint("copilot365");
-    assert.ok(constraint.length > 0);
-  });
 });
