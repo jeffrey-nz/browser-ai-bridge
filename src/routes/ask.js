@@ -12,7 +12,7 @@ import { eventBus } from "#web/eventBus.js";
 const router = express.Router();
 
 router.post("/", async (req, res, next) => {
-  const { sessionId, provider, prompt, label, skipConstraint, mode } = req.body;
+  const { sessionId, provider, prompt, label, skipConstraint, mode, images } = req.body;
   const isReviewerTurn = /reviewer/i.test(label ?? "");
   const pollTimeoutMs = isReviewerTurn ? 3 * 60 * 1000 : 7 * 60 * 1000;
   const requestId = crypto.randomUUID();
@@ -80,6 +80,7 @@ router.post("/", async (req, res, next) => {
         await executeAskTurn(session, prompt, requestId, label, pollTimeoutMs, {
           skipConstraint: !!skipConstraint,
           mode,
+          images: Array.isArray(images) ? images : [],
         });
 
       if (selfHealEscape) {

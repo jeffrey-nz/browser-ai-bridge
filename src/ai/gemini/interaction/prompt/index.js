@@ -1,6 +1,18 @@
 import { printResponseSummary } from "#copilot/client/interaction/prompt/summary.js";
 import { executePromptTurn, resumePolling } from "./executeTurn.js";
 import { handleGeminiError } from "./errorHandler.js";
+import { uploadFileToGemini } from "./input.js";
+import { logger } from "#utils/logger.js";
+
+export async function sendPromptWithFile(page, filePath, text, label = "Visual QA") {
+  logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
+  try {
+    await uploadFileToGemini(page, filePath);
+  } catch (err) {
+    logger.warn(`[Gemini] File upload failed: ${err.message} — sending text-only`);
+  }
+  return sendPromptAndWait(page, text, label);
+}
 
 export async function sendPromptAndWait(
   page,

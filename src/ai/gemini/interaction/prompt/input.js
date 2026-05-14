@@ -2,6 +2,50 @@ import {
   clearAndType,
   clickOrFallbackToEnter,
 } from "#ai/shared/domInteraction.js";
+import { uploadFileToPage } from "#ai/shared/uploadFile.js";
+import { logger } from "#utils/logger.js";
+import fs from "node:fs/promises";
+
+export async function uploadFileToGemini(page, filePath) {
+  try {
+    await fs.access(filePath);
+  } catch {
+    throw new Error(`Upload file not found: ${filePath}`);
+  }
+
+  // Gemini's "+" attach button opens a sub-menu; the actual file chooser only
+  // appears after clicking "Upload from computer" inside that menu, not the
+  // top-level button. Generic uploadFileToPage Strategy 2 times out on the
+  // filechooser because the first click only opens a sub-menu.
+  const menuBtn = page
+    .locator('[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]')
+    .first();
+  const menuVisible = await menuBtn.isVisible({ timeout: 3000 }).catch(() => false);
+
+  if (menuVisible) {
+    await menuBtn.click();
+    const uploadItem = page
+      .locator(
+        '[role="menuitem"]:has-text("computer"), button:has-text("Upload from computer"), [role="option"]:has-text("computer")',
+      )
+      .first();
+    await uploadItem.waitFor({ state: "visible", timeout: 5000 });
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent("filechooser", { timeout: 10000 }),
+      uploadItem.click(),
+    ]);
+    await fileChooser.setFiles(filePath);
+    logger.info(`[Gemini] Uploaded file via sub-menu file chooser (${filePath})`);
+    await page.waitForTimeout(1500);
+    return true;
+  }
+
+  return uploadFileToPage(page, filePath, {
+    attachmentBtnSelector:
+      'button[aria-label*="attach" i], button[aria-label*="image" i], [aria-label="Add image"], [aria-label="Add file"]',
+    timeoutMs: 10000,
+  });
+}
 
 export async function injectGeminiText(page, text) {
   await clearAndType(

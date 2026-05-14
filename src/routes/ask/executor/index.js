@@ -6,6 +6,7 @@ import { executeCoreTurn } from "./coreTurn.js";
 import { handleRotationIfNeeded } from "./rotator.js";
 import { handleStalls } from "./stallLoop.js";
 import { gatherMetrics } from "./metrics.js";
+import { saveImagesToTempFiles, cleanupTempFiles } from "./imageAttachments.js";
 
 export async function executeAskTurn(
   session,
@@ -13,7 +14,29 @@ export async function executeAskTurn(
   requestId,
   label = "API Turn",
   pollTimeoutMs = 420000,
-  { skipConstraint = false, mode = null } = {},
+  { skipConstraint = false, mode = null, images = [] } = {},
+) {
+  const attachmentPaths = images.length
+    ? await saveImagesToTempFiles(images)
+    : [];
+  try {
+    return await runAskTurn(session, prompt, requestId, label, pollTimeoutMs, {
+      skipConstraint,
+      mode,
+      attachmentPaths,
+    });
+  } finally {
+    if (attachmentPaths.length) await cleanupTempFiles(attachmentPaths);
+  }
+}
+
+async function runAskTurn(
+  session,
+  prompt,
+  requestId,
+  label,
+  pollTimeoutMs,
+  { skipConstraint, mode, attachmentPaths },
 ) {
   sessionManager.logTranscript(session.id, "USER", prompt, { requestId });
 
@@ -98,6 +121,7 @@ export async function executeAskTurn(
     activePrompt,
     label,
     pollTimeoutMs,
+    { attachmentPaths },
   );
 
   // Rate-limit recovery: the provider returned a rate-limit message in its
@@ -118,7 +142,7 @@ export async function executeAskTurn(
       } catch (e) {
         logger.warn(`[Ask] Failed to start new chat after rate limit: ${e.message}`);
       }
-      response = await executeCoreTurn(session, activePrompt, label, pollTimeoutMs);
+      response = await executeCoreTurn(session, activePrompt, label, pollTimeoutMs, { attachmentPaths });
       if (!response.rateLimited) break;
       logger.warn(`[Ask] Still rate-limited after ${waitMs / 1000}s wait — extending back-off.`);
     }

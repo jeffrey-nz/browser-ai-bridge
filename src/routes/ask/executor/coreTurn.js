@@ -6,9 +6,29 @@ export async function executeCoreTurn(
   promptText,
   label,
   pollTimeoutMs,
+  { attachmentPaths = [] } = {},
 ) {
   markActive(session.id);
   try {
+    if (
+      attachmentPaths.length > 0 &&
+      typeof session.engine?.sendPromptWithFile === "function"
+    ) {
+      // Only the first attachment is forwarded — current providers accept one
+      // image per turn. Multi-image support would require provider-side changes.
+      const filePath = attachmentPaths[0];
+      if (attachmentPaths.length > 1) {
+        logger.warn(
+          `[Ask] ${attachmentPaths.length} attachments queued, but provider only supports 1 — sending first.`,
+        );
+      }
+      return await session.engine.sendPromptWithFile(
+        promptText,
+        label,
+        session.id,
+        filePath,
+      );
+    }
     return await session.engine.sendPromptAndWait(
       promptText,
       label,
