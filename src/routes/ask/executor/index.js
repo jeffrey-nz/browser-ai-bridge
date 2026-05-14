@@ -140,11 +140,21 @@ async function runAskTurn(
           logger.info(`[Ask] Started fresh chat after rate-limit wait.`);
         }
       } catch (e) {
-        logger.warn(`[Ask] Failed to start new chat after rate limit: ${e.message}`);
+        logger.warn(
+          `[Ask] Failed to start new chat after rate limit: ${e.message}`,
+        );
       }
-      response = await executeCoreTurn(session, activePrompt, label, pollTimeoutMs, { attachmentPaths });
+      response = await executeCoreTurn(
+        session,
+        activePrompt,
+        label,
+        pollTimeoutMs,
+        { attachmentPaths },
+      );
       if (!response.rateLimited) break;
-      logger.warn(`[Ask] Still rate-limited after ${waitMs / 1000}s wait — extending back-off.`);
+      logger.warn(
+        `[Ask] Still rate-limited after ${waitMs / 1000}s wait — extending back-off.`,
+      );
     }
   }
 

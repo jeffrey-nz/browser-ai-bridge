@@ -18,9 +18,13 @@ export async function uploadFileToGemini(page, filePath) {
   // top-level button. Generic uploadFileToPage Strategy 2 times out on the
   // filechooser because the first click only opens a sub-menu.
   const menuBtn = page
-    .locator('[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]')
+    .locator(
+      '[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]',
+    )
     .first();
-  const menuVisible = await menuBtn.isVisible({ timeout: 3000 }).catch(() => false);
+  const menuVisible = await menuBtn
+    .isVisible({ timeout: 3000 })
+    .catch(() => false);
 
   if (menuVisible) {
     await menuBtn.click();
@@ -35,7 +39,9 @@ export async function uploadFileToGemini(page, filePath) {
       uploadItem.click(),
     ]);
     await fileChooser.setFiles(filePath);
-    logger.info(`[Gemini] Uploaded file via sub-menu file chooser (${filePath})`);
+    logger.info(
+      `[Gemini] Uploaded file via sub-menu file chooser (${filePath})`,
+    );
     await page.waitForTimeout(1500);
     return true;
   }

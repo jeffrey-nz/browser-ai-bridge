@@ -76,18 +76,28 @@ router.post("/", async (req, res) => {
   if (sessionId) {
     session = sessionManager.getSession(sessionId);
   } else if (provider) {
-    const found = allSessions.find((s) => s.providerId === provider && s.state !== "busy");
+    const found = allSessions.find(
+      (s) => s.providerId === provider && s.state !== "busy",
+    );
     if (found) session = sessionManager.getSession(found.id);
   } else {
     const found = allSessions.find((s) => s.state !== "busy");
     if (found) session = sessionManager.getSession(found.id);
   }
   if (!session) {
-    return sendError(res, 404, `No available session (provider: ${provider || "any"})`);
+    return sendError(
+      res,
+      404,
+      `No available session (provider: ${provider || "any"})`,
+    );
   }
 
   if (!session.engine?.sendPromptWithFile) {
-    return sendError(res, 501, `Provider '${session.providerId}' does not support file upload`);
+    return sendError(
+      res,
+      501,
+      `Provider '${session.providerId}' does not support file upload`,
+    );
   }
 
   const tempPath = join(tmpdir(), `visual-ask-${randomUUID()}.png`);
@@ -101,14 +111,23 @@ router.post("/", async (req, res) => {
       try {
         page.on("console", () => {});
         page.on("pageerror", () => {});
-        await page.goto(screenshotUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+        await page.goto(screenshotUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: 15000,
+        });
         await page.waitForTimeout(1000);
-        screenshotBuf = await page.screenshot({ type: "png", fullPage: false, scale: "css" });
+        screenshotBuf = await page.screenshot({
+          type: "png",
+          fullPage: false,
+          scale: "css",
+        });
       } finally {
         page.close().catch(() => {});
       }
     } catch (err) {
-      logger.warn(`[VisualAsk] Screenshot failed for ${screenshotUrl}: ${err.message}`);
+      logger.warn(
+        `[VisualAsk] Screenshot failed for ${screenshotUrl}: ${err.message}`,
+      );
       return sendError(res, 503, `Screenshot failed: ${err.message}`);
     }
 
@@ -116,12 +135,18 @@ router.post("/", async (req, res) => {
     try {
       await writeFile(tempPath, screenshotBuf);
     } catch (err) {
-      return sendError(res, 500, `Failed to write temp screenshot: ${err.message}`);
+      return sendError(
+        res,
+        500,
+        `Failed to write temp screenshot: ${err.message}`,
+      );
     }
 
     // 3. Upload screenshot + send prompt via browser automation
     try {
-      logger.info(`[VisualAsk] Uploading ${screenshotUrl} screenshot to ${session.providerId} session`);
+      logger.info(
+        `[VisualAsk] Uploading ${screenshotUrl} screenshot to ${session.providerId} session`,
+      );
       const result = await session.engine.sendPromptWithFile(
         prompt,
         label,

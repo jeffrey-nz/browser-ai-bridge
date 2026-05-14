@@ -29,23 +29,30 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     const count = await fileInputs.count();
     if (count > 0) {
       await fileInputs.first().setInputFiles(filePath);
-      logger.info(`[UploadFile] Set files directly on input[type="file"] (${filePath})`);
+      logger.info(
+        `[UploadFile] Set files directly on input[type="file"] (${filePath})`,
+      );
       await page.waitForTimeout(1500);
       return true;
     }
   } catch (err) {
-    logger.debug(`[UploadFile] Direct file input strategy failed: ${err.message}`);
+    logger.debug(
+      `[UploadFile] Direct file input strategy failed: ${err.message}`,
+    );
   }
 
   // Strategy 2: Click attachment button → intercept file chooser
-  const btnSelector = attachmentBtnSelector ||
+  const btnSelector =
+    attachmentBtnSelector ||
     'button[aria-label*="attach" i], button[aria-label*="upload" i], button[aria-label*="file" i], ' +
-    'button[title*="attach" i], button[title*="upload" i], ' +
-    '[class*="upload" i] button, [class*="attach" i] button';
+      'button[title*="attach" i], button[title*="upload" i], ' +
+      '[class*="upload" i] button, [class*="attach" i] button';
 
   try {
     const btn = page.locator(btnSelector).first();
-    const btnVisible = await btn.isVisible({ timeout: 3000 }).catch(() => false);
+    const btnVisible = await btn
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
 
     if (btnVisible) {
       const [fileChooser] = await Promise.all([
@@ -61,5 +68,7 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     logger.debug(`[UploadFile] File chooser strategy failed: ${err.message}`);
   }
 
-  throw new Error(`Could not upload file: no file input or attachment button found on page`);
+  throw new Error(
+    `Could not upload file: no file input or attachment button found on page`,
+  );
 }

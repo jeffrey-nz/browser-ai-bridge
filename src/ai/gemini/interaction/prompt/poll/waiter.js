@@ -40,7 +40,10 @@ export async function waitForGeminiCompletion(
               ).length > count
             );
           },
-          { count: initialMessageCount, errTexts: ["something went wrong", "(13)"] },
+          {
+            count: initialMessageCount,
+            errTexts: ["something went wrong", "(13)"],
+          },
           { timeout: 45000 },
         )
         .catch(() => {});
@@ -91,14 +94,18 @@ export async function waitForGeminiCompletion(
               const btn = page.locator(sel).first();
               if (await btn.isVisible({ timeout: 200 }).catch(() => false)) {
                 await btn.click({ force: true }).catch(() => {});
-                logger.info("[Gemini Poll] Canvas panel detected and dismissed");
+                logger.info(
+                  "[Gemini Poll] Canvas panel detected and dismissed",
+                );
                 canvasDismissed = true;
                 break;
               }
             }
             if (!canvasDismissed) {
               // Log once so we can discover the actual selector via screenshot
-              logger.warn("[Gemini Poll] Canvas panel visible but no close button matched — generation may be slow");
+              logger.warn(
+                "[Gemini Poll] Canvas panel visible but no close button matched — generation may be slow",
+              );
               canvasDismissed = true; // avoid spamming
             }
           }

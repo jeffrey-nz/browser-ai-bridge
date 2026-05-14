@@ -37,7 +37,13 @@ async function _runPromptWorkflowInner(page, text, label, options) {
     "Outbound prompt injected",
   );
 
-  await _injectAndSendWithRecovery(page, text, injectText, clickSend, providerName);
+  await _injectAndSendWithRecovery(
+    page,
+    text,
+    injectText,
+    clickSend,
+    providerName,
+  );
 
   let spinner = createSpinner(`${providerName} is thinking...`).start();
   let ok = await waitForCompletion(page, spinner);
@@ -136,7 +142,11 @@ async function _runPromptWorkflowInner(page, text, label, options) {
     logger.warn(
       `[Prompt Workflow] ${providerName} rate-limit response detected in response body — signalling caller.`,
     );
-    return { ok: false, rateLimited: true, reason: "Rate limit detected in response body" };
+    return {
+      ok: false,
+      rateLimited: true,
+      reason: "Rate limit detected in response body",
+    };
   }
 
   onSuccess(responseText);

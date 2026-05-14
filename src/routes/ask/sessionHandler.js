@@ -15,7 +15,10 @@ export async function resolveSession(sessionId, provider, mode) {
       session = sessionManager.getSession(newId);
       autoCreated = true;
       if (!session) {
-        return { error: "Session created but immediately unavailable (page closed)", status: 500 };
+        return {
+          error: "Session created but immediately unavailable (page closed)",
+          status: 500,
+        };
       }
     } catch (err) {
       return { error: `Failed to create session: ${err.message}`, status: 500 };

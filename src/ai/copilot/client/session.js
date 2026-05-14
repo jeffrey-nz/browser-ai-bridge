@@ -35,4 +35,3 @@ export class CopilotProvider extends BaseProvider {
     await injectAndSubmit(this.page, text);
   }
 }
-

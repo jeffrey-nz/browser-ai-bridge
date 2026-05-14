@@ -48,7 +48,10 @@ export async function extractGeminiResponse(page) {
   // If the main chat response is suspiciously short (< 20 chars) or contains no
   // JSON brackets, Gemini may have routed content to a Canvas/artifact panel.
   // Try to extract from the canvas as a fallback so we don't lose tool calls.
-  if (cleaned.length < 20 || (!cleaned.includes("[") && !cleaned.includes("{"))) {
+  if (
+    cleaned.length < 20 ||
+    (!cleaned.includes("[") && !cleaned.includes("{"))
+  ) {
     const canvasSelectors = [
       "ms-artifact",
       "artifact-viewer",

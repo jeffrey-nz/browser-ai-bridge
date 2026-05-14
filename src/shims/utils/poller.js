@@ -16,16 +16,23 @@ export async function pollUntil(conditionFn, options = {}) {
   while (Date.now() < deadline) {
     try {
       const iterTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("iteration_timeout")), iterationTimeoutMs)
+        setTimeout(
+          () => reject(new Error("iteration_timeout")),
+          iterationTimeoutMs,
+        ),
       );
       const result = await Promise.race([conditionFn(), iterTimeout]);
       if (result) return result;
     } catch (err) {
       if (err.controlAbort) throw err;
       if (err.message === "iteration_timeout") {
-        logger.trace(`[Poller] Condition check timed out (>${iterationTimeoutMs}ms), retrying`);
+        logger.trace(
+          `[Poller] Condition check timed out (>${iterationTimeoutMs}ms), retrying`,
+        );
       } else {
-        logger.trace(`[Poller] Condition check threw, ignoring: ${err.message}`);
+        logger.trace(
+          `[Poller] Condition check threw, ignoring: ${err.message}`,
+        );
       }
     }
     await new Promise((r) => setTimeout(r, pollIntervalMs));

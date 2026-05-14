@@ -53,7 +53,9 @@ export class SessionManager {
 
     if (!session) {
       let resolve;
-      const lock = new Promise((r) => { resolve = r; });
+      const lock = new Promise((r) => {
+        resolve = r;
+      });
       _creatingLocks.set(providerId, lock);
       try {
         session = await createNewSession(providerId);
@@ -169,7 +171,9 @@ export class SessionManager {
     const poolSize = Number(process.env.POOL_SIZE ?? 1);
     const currentPool = pool.warmSessions.get(session.providerId);
     if (wasStalled) {
-      logger.info(`[SessionManager] Session ${session.id.slice(0, 8)} was stalled — closing tab instead of recycling.`);
+      logger.info(
+        `[SessionManager] Session ${session.id.slice(0, 8)} was stalled — closing tab instead of recycling.`,
+      );
     }
     const canRecycle =
       !pool.isShuttingDown &&

@@ -17,7 +17,9 @@ export const TOO_MANY_REQUESTS_SEL = [
 ].join(", ");
 
 export async function isTooManyRequests(page, timeoutMs = 3000) {
-  return page.locator(TOO_MANY_REQUESTS_SEL).first()
+  return page
+    .locator(TOO_MANY_REQUESTS_SEL)
+    .first()
     .isVisible({ timeout: timeoutMs })
     .catch(() => false);
 }

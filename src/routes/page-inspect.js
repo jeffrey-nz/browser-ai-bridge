@@ -52,27 +52,35 @@ router.get("/", async (req, res) => {
 
     // Get #root innerHTML (empty if app didn't mount)
     const rootHtml = await page.evaluate(() => {
-      const root = document.getElementById("root") || document.getElementById("app");
+      const root =
+        document.getElementById("root") || document.getElementById("app");
       return root ? root.innerHTML.trim() : "";
     });
 
     // Get visible error overlay text (Vite error overlay, React error boundary)
     const errorText = await page.evaluate(() => {
       const viteOverlay = document.querySelector(
-        "vite-error-overlay, [class*='error-overlay'], [id*='error-overlay']"
+        "vite-error-overlay, [class*='error-overlay'], [id*='error-overlay']",
       );
-      if (viteOverlay) return viteOverlay.shadowRoot?.textContent?.slice(0, 500) || viteOverlay.textContent?.slice(0, 500) || "";
+      if (viteOverlay)
+        return (
+          viteOverlay.shadowRoot?.textContent?.slice(0, 500) ||
+          viteOverlay.textContent?.slice(0, 500) ||
+          ""
+        );
 
       // React error boundary or uncaught error display
       const errorEl = document.querySelector(
-        "[class*='error-boundary'], [class*='ErrorBoundary'], [data-reactroot] [class*='error']"
+        "[class*='error-boundary'], [class*='ErrorBoundary'], [data-reactroot] [class*='error']",
       );
       return errorEl ? errorEl.textContent?.slice(0, 500) || "" : "";
     });
 
     const hasContent = rootHtml.length > 30; // more than just empty wrapper divs
 
-    logger.info(`[PageInspect] ${url}: hasContent=${hasContent} errorText=${!!errorText} consoleErrors=${consoleErrors.length}`);
+    logger.info(
+      `[PageInspect] ${url}: hasContent=${hasContent} errorText=${!!errorText} consoleErrors=${consoleErrors.length}`,
+    );
 
     return sendSuccess(res, {
       url,

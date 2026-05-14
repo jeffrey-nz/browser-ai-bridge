@@ -14,7 +14,10 @@ const RATE_LIMIT_PAGE_SEL = [
   "p",
   "span",
 ]
-  .map((s) => `${s}:text-matches("(messages? are too frequent|rate limit|too many requests)", "i")`)
+  .map(
+    (s) =>
+      `${s}:text-matches("(messages? are too frequent|rate limit|too many requests)", "i")`,
+  )
   .join(", ");
 
 export async function getDeepSeekDomState(
@@ -56,7 +59,9 @@ export async function getDeepSeekDomState(
   }
 
   // Check both the response text and page-level error containers for rate-limit messages.
-  const rateLimitInResponse = currentText ? RATE_LIMIT_RE.test(currentText) : false;
+  const rateLimitInResponse = currentText
+    ? RATE_LIMIT_RE.test(currentText)
+    : false;
   const rateLimitOnPage = rateLimitInResponse
     ? false // skip redundant page scan if already found in response
     : await page

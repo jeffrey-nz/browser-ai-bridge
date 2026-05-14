@@ -27,7 +27,11 @@ class CooldownManager {
 
     const remainingMs = unlockTime - Date.now();
     if (remainingMs > 0) {
-      return { active: true, remainingSeconds: Math.ceil(remainingMs / 1000), until: unlockTime };
+      return {
+        active: true,
+        remainingSeconds: Math.ceil(remainingMs / 1000),
+        until: unlockTime,
+      };
     } else {
       this.cooldowns.delete(providerId);
       eventBus.emit("sync_event", {

@@ -16,7 +16,9 @@ export class SessionPool {
   }
 
   async initializePool() {
-    logger.info("Initializing connection pool (lazy — tabs open on first use)...");
+    logger.info(
+      "Initializing connection pool (lazy — tabs open on first use)...",
+    );
     for (const [providerId, config] of Object.entries(PROVIDER_CONFIG)) {
       if (!config.disabled) {
         this.warmSessions.set(providerId, []);

@@ -90,15 +90,25 @@ router.post("/", async (req, res) => {
 
   const ready = await waitForReady(port);
   if (!ready) {
-    try { process.kill(-proc.pid, "SIGKILL"); } catch { proc.kill("SIGKILL"); }
+    try {
+      process.kill(-proc.pid, "SIGKILL");
+    } catch {
+      proc.kill("SIGKILL");
+    }
     return sendError(res, 503, "Dev server did not become ready in 45s", {
       logs: logLines.join("").slice(-3000),
     });
   }
 
   registry.set(proc.pid, { proc, projectDir, port, logLines });
-  logger.info(`[DevServer] started pid=${proc.pid} port=${port} dir=${projectDir}`);
-  return sendSuccess(res, { pid: proc.pid, url: `http://localhost:${port}`, ready: true });
+  logger.info(
+    `[DevServer] started pid=${proc.pid} port=${port} dir=${projectDir}`,
+  );
+  return sendSuccess(res, {
+    pid: proc.pid,
+    url: `http://localhost:${port}`,
+    ready: true,
+  });
 });
 
 // DELETE /api/devserver/:pid
@@ -125,7 +135,11 @@ export function killAllDevServers() {
     try {
       process.kill(-pid, "SIGKILL");
     } catch {
-      try { proc.kill("SIGKILL"); } catch { /* already dead */ }
+      try {
+        proc.kill("SIGKILL");
+      } catch {
+        /* already dead */
+      }
     }
     registry.delete(pid);
   }

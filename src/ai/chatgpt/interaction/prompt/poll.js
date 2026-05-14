@@ -7,20 +7,28 @@ const RATE_LIMIT_SEL =
   '.text-token-text-secondary:has-text("message limit"), ' +
   'div:has-text("You\'ve reached your message limit")';
 
-export async function waitForChatGptCompletion(page, prevText = "", sessionId = null) {
+export async function waitForChatGptCompletion(
+  page,
+  prevText = "",
+  sessionId = null,
+) {
   const stopBtn = page.locator('[data-testid="stop-button"]');
   const errorAlert = page
     .locator('.alert-error, [role="alert"]:not(.sr-only)')
     .last();
 
   let aborted = false;
-  const abortHandler = () => { aborted = true; };
+  const abortHandler = () => {
+    aborted = true;
+  };
   eventBus.once("abort_requested", abortHandler);
 
   // Session-specific abort: fires when the HTTP client disconnects mid-poll.
   let sessionAbortHandler = null;
   if (sessionId) {
-    sessionAbortHandler = () => { aborted = true; };
+    sessionAbortHandler = () => {
+      aborted = true;
+    };
     eventBus.once(`session_abort:${sessionId}`, sessionAbortHandler);
   }
 

@@ -4,12 +4,19 @@ import { handleGeminiError } from "./errorHandler.js";
 import { uploadFileToGemini } from "./input.js";
 import { logger } from "#utils/logger.js";
 
-export async function sendPromptWithFile(page, filePath, text, label = "Visual QA") {
+export async function sendPromptWithFile(
+  page,
+  filePath,
+  text,
+  label = "Visual QA",
+) {
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   try {
     await uploadFileToGemini(page, filePath);
   } catch (err) {
-    logger.warn(`[Gemini] File upload failed: ${err.message} — sending text-only`);
+    logger.warn(
+      `[Gemini] File upload failed: ${err.message} — sending text-only`,
+    );
   }
   return sendPromptAndWait(page, text, label);
 }
