@@ -5,6 +5,7 @@ import { isCopilot365Url } from "../navigation.js";
 import { renderDebugDump } from "./debugDump.js";
 import { waitForComposerReady } from "./chat/composer.js";
 import { triggerNewChatUI, reloadChatContext } from "./chat/navigation.js";
+import { clearComposerAttachments } from "./chat/clearComposerAttachments.js";
 
 export async function startNewChat(page) {
   log(`\n✨ Starting a new chat context...`);
@@ -33,6 +34,9 @@ export async function startNewChat(page) {
   // First attempt: wait for composer to be ready
   try {
     await waitForComposerReady(page);
+    // Composer state can outlive the conversation reset — clear any leftover
+    // attachments now that the composer is interactive.
+    await clearComposerAttachments(page);
     log(
       `  ${colors.green("✅")} Clean context established.${is365 ? " (Copilot365)" : ""}`,
     );
@@ -50,6 +54,7 @@ export async function startNewChat(page) {
 
   try {
     await waitForComposerReady(page);
+    await clearComposerAttachments(page);
     log(
       `  ${colors.green("✅")} Clean context established after reload.${is365 ? " (Copilot365)" : ""}`,
     );
