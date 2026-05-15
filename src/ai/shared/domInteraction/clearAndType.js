@@ -86,7 +86,29 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
 
   let injected = false;
 
-  if (useClipboard) {
+  // Strategy 0 — Playwright .fill() on plain TEXTAREA/INPUT.
+  // Most reliable for React-controlled textareas (Copilot's composer) because
+  // Playwright dispatches the same input events the page is listening for.
+  // It's also atomic — no partial-paste failures.
+  try {
+    const isPlainTextarea = await inputBoxLocator
+      .evaluate(
+        (el) =>
+          el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type === "text"),
+      )
+      .catch(() => false);
+    if (isPlainTextarea) {
+      await inputBoxLocator.fill(payload, { timeout: 8000 });
+      // .fill() auto-clears first, so this also satisfies the clear step.
+      await page.waitForTimeout(200);
+      const afterFill = await readValue(inputBoxLocator);
+      if (afterFill.length >= Math.min(payload.length, 50)) {
+        injected = true;
+      }
+    }
+  } catch {}
+
+  if (!injected && useClipboard) {
     try {
       const context = page.context();
       await context
