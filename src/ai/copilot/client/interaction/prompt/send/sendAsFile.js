@@ -99,8 +99,12 @@ async function waitForAttachmentChip(page, timeoutMs = 6000) {
  *   - the submit-button becomes enabled (it's disabled during upload), OR
  *   - the fixed budget elapses (safety net).
  */
-async function waitForUploadComplete(page, timeoutMs = 12000) {
+async function waitForUploadComplete(page, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
+  const startedAt = Date.now();
+  // Minimum wait — even if all signals say "done" early, Copilot's
+  // server-side ingestion needs at least a few seconds for a 22k file.
+  const MIN_WAIT_MS = 2500;
   while (Date.now() < deadline) {
     const stillUploading = await page
       .evaluate(() => {
@@ -112,13 +116,9 @@ async function waitForUploadComplete(page, timeoutMs = 12000) {
         return false;
       })
       .catch(() => false);
-    const submitEnabled = await page
-      .locator('[data-testid="submit-button"]:not([disabled])')
-      .first()
-      .isVisible({ timeout: 200 })
-      .catch(() => false);
-    if (!stillUploading && submitEnabled) return true;
-    await page.waitForTimeout(400);
+    const elapsed = Date.now() - startedAt;
+    if (!stillUploading && elapsed >= MIN_WAIT_MS) return true;
+    await page.waitForTimeout(500);
   }
   return false;
 }
@@ -248,9 +248,12 @@ export async function sendPromptAsFile(page, fullText) {
     // The chip appears as soon as the file is selected, but Copilot uploads
     // to its server asynchronously. If we submit before the upload completes
     // the assistant receives no file ("document list returned empty set").
-    // Wait either until the chip leaves an "uploading" / progress state or
-    // a fixed budget elapses.
-    await waitForUploadComplete(page, 12000);
+    const ready = await waitForUploadComplete(page, 15000);
+    log(
+      ready
+        ? colors.dim("  [Copilot] Upload reported complete.")
+        : colors.yellow("  [Copilot] Upload-complete signal not detected within 15s — proceeding anyway."),
+    );
 
     // Cover message — include the verbatim OUTPUT FORMAT from the prompt
     // so Copilot doesn't invent its own shape when the trim drops it.
