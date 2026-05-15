@@ -31,24 +31,54 @@ import { truncateBlocks } from "../compactor/truncators/blocks.js";
 const COPILOT_FILE_SOFT_CAP = 22000;
 
 // The cover message has to FIGHT for the model's attention against the big
-// attached prompt. We explicitly call out the two failure modes I've seen:
-// inventing keys (goal/success_criteria) and treating the file as a document
-// to summarise instead of instructions to obey.
-const COVER_MESSAGE =
+// attached prompt. The mid-prompt trim sometimes drops the OUTPUT FORMAT
+// section, so we ALSO try to extract it and embed it verbatim in the cover.
+const COVER_MESSAGE_BASE =
   "The attached .txt file is your COMPLETE system prompt for THIS turn — " +
   "not a document to summarise.\n\n" +
   "REQUIREMENTS for your reply:\n" +
-  "1. Find the OUTPUT FORMAT (or 'OUTPUT:', 'tool calls', or final-section) " +
-  "instructions inside the file and OBEY THEM EXACTLY.\n" +
+  "1. Find the OUTPUT FORMAT / OUTPUT: / 'output the JSON' instructions " +
+  "inside the file and OBEY THEM EXACTLY.\n" +
   "2. Use the EXACT JSON keys and array shape the file requires. Do NOT " +
   "invent new keys like 'goal' or 'success_criteria' unless the file " +
-  "explicitly asks for them.\n" +
+  "asks for them.\n" +
   "3. If the file asks for a JSON array of tool calls, output ONLY the " +
   "array — no prose before or after.\n" +
   "4. If the file asks for an object with a 'subtasks' array, output that " +
   "object with the array fully populated.\n" +
   "5. Reply in this chat directly. Plain text or a single ```json``` " +
   "code block. No external documents.";
+
+/**
+ * Pull the OUTPUT FORMAT block out of an agent prompt so we can echo it in
+ * the cover message. Heuristic: header line `OUTPUT FORMAT:` or `OUTPUT:`
+ * followed by up to 30 non-blank lines or 1800 chars. Returns "" if not
+ * found.
+ */
+function extractOutputFormat(promptText) {
+  const m = promptText.match(
+    /^[ \t]*OUTPUT(?:[ _]FORMAT)?\s*:[ \t]*\n([\s\S]{1,1800}?)(?:\n[ \t]*(?:CRITICAL RULES|NEW PROJECT|CSS FILE|REACT|VITE|SECURITY|EXAMPLES|---|$))/im,
+  );
+  if (m && m[1]) return m[1].trim();
+  // Fallback: any block that starts with the magic phrase, capped at 1500
+  // chars so we don't drown the cover message.
+  const m2 = promptText.match(
+    /OUTPUT(?:[ _]FORMAT)?:[ \t]*\n([\s\S]{1,1500})/i,
+  );
+  return m2?.[1]?.trim() || "";
+}
+
+function buildCoverMessage(promptText) {
+  const fmt = extractOutputFormat(promptText);
+  if (!fmt) return COVER_MESSAGE_BASE;
+  return (
+    COVER_MESSAGE_BASE +
+    "\n\n" +
+    "REMINDER OF THE EXACT OUTPUT FORMAT (verbatim from the attached file " +
+    "— follow this, not your own interpretation):\n\n" +
+    fmt
+  );
+}
 
 async function waitForAttachmentChip(page, timeoutMs = 6000) {
   const chip = page.locator('[aria-label^="Attachment"]').first();
@@ -222,10 +252,15 @@ export async function sendPromptAsFile(page, fullText) {
     // a fixed budget elapses.
     await waitForUploadComplete(page, 12000);
 
-    // Cover message.
+    // Cover message — include the verbatim OUTPUT FORMAT from the prompt
+    // so Copilot doesn't invent its own shape when the trim drops it.
+    const coverMessage = buildCoverMessage(text);
     const textarea = page.locator('[data-testid="composer-input"]').first();
     await textarea.click({ force: true }).catch(() => {});
-    await textarea.fill(COVER_MESSAGE, { timeout: 5000 });
+    // The cover can grow past 10k when the OUTPUT FORMAT is large; if so,
+    // .fill() still works because the COVER itself is small relative to the
+    // file. Slice to 9500 to stay under Copilot's textarea limit.
+    await textarea.fill(coverMessage.slice(0, 9500), { timeout: 5000 });
     await page.waitForTimeout(300);
 
     // Submit.
