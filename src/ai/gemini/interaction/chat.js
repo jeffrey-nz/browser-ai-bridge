@@ -24,6 +24,12 @@ export async function startNewChat(page) {
     .waitFor({ state: "visible", timeout: 8000 })
     .catch(() => page.waitForTimeout(2000));
 
+  // Dismiss any pop-up overlay (e.g. Google account chooser, Gemini upgrade
+  // prompt). Headless Chrome can trigger these on first profile load.
+  // Escape is a no-op when nothing is open and avoids brittle selector matching.
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.waitForTimeout(200);
+
   if (isAlreadyFresh) {
     log(`  ${colors.green("✔")} Already on fresh context — reusing tab.`);
   } else {

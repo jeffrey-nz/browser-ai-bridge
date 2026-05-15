@@ -26,8 +26,14 @@ export function getChromeArgs(port, userDataDir) {
     `--export-tagged-pdf`,
   ];
 
-  if (process.env.CI === "true" || process.env.HEADLESS === "true") {
+  const headlessMode = process.env.HEADLESS;
+  if (process.env.CI === "true" || headlessMode === "true") {
     args.push("--headless=new");
+  } else if (headlessMode === "offscreen") {
+    // Offscreen mode: visible Chrome, but window positioned off-screen.
+    // Use this when --headless=new triggers anti-bot prompts (Google account
+    // chooser on Gemini, etc.) but you still don't want a window in the way.
+    args.push("--window-position=-32000,-32000", "--window-size=1280,800");
   }
 
   return args;

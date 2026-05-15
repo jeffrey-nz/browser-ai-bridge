@@ -112,6 +112,21 @@ Stalls are detected via `markActive` / `markInactive` in `stalls.js`.
   `package.json#imports`). New top-level folders under `src/` need an
   alias entry.
 
+## Headless / invisible operation
+
+Three modes, controlled by the `HEADLESS` env var:
+
+| `HEADLESS=`       | Chrome flag                       | Notes                                                                                                                                                |
+| ----------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _unset_ (default) | none                              | Regular headful Chrome window. Use during dev.                                                                                                       |
+| `true`            | `--headless=new`                  | True headless. **Triggers a Google account-chooser modal on Gemini** that blocks input — avoid for Gemini. Fine for ChatGPT and others if logged in. |
+| `offscreen`       | `--window-position=-32000,-32000` | Visible Chrome, positioned off-screen. Sidesteps anti-bot detection entirely. **Use this for autonomous testing against Gemini.**                    |
+
+Tested headless paths (May 2026):
+
+- `HEADLESS=offscreen` + Gemini → 6/6 audit, agent runs ran fibonacci (402s) and balanced-parens (312s) tasks to completion with reviewer approval.
+- `HEADLESS=true` + Gemini → blocked by Google account modal even though login state transfers correctly.
+
 ## Tests
 
 ```bash
