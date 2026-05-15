@@ -21,10 +21,20 @@ import fs from "node:fs/promises";
 import crypto from "node:crypto";
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
+import { truncateBlocks } from "../compactor/truncators/blocks.js";
+
+// Copilot's file reader caps each attachment at roughly 25k characters — beyond
+// that it reports the file as truncated ("IsTruncated=true") and the model only
+// sees the head, missing the OUTPUT FORMAT section that comes near the end of
+// an agent prompt. We pre-trim heavy blocks (file contents, tool histories) so
+// the prompt fits without losing the directives the model needs to follow.
+const COPILOT_FILE_SOFT_CAP = 22000;
 
 const COVER_MESSAGE =
-  "The full instructions for this turn are in the attached file. " +
-  "Read it carefully and respond in this chat as plain text or a JSON code block.";
+  "The attached .txt file is your COMPLETE system prompt for this turn. " +
+  "Read every word, then produce EXACTLY the output format the prompt specifies " +
+  "(including JSON keys / array shape — do NOT invent new keys or summarise). " +
+  "Reply in this chat as plain text or a single ```json``` code block.";
 
 async function waitForAttachmentChip(page, timeoutMs = 6000) {
   const chip = page.locator('[aria-label^="Attachment"]').first();
@@ -104,14 +114,41 @@ async function uploadViaPlusMenu(page, filePath) {
  * Returns false on any failure so the caller can fall back.
  */
 export async function sendPromptAsFile(page, fullText) {
+  // Pre-trim if the prompt would exceed Copilot's file reader cap. We use
+  // the existing block truncator which collapses [TOOL RESULT] / [FILE]
+  // blocks down to head+tail summaries — preserves the OUTPUT FORMAT
+  // section and CRITICAL RULES which always live at the start/end of the
+  // prompt.
+  let text = fullText;
+  if (text.length > COPILOT_FILE_SOFT_CAP) {
+    const beforeLen = text.length;
+    text = truncateBlocks(text, 1200);
+    if (text.length > COPILOT_FILE_SOFT_CAP) {
+      // Still too big: hard-trim the middle, keeping head (instructions)
+      // and tail (output format). Asymmetric: more head than tail because
+      // OUTPUT FORMAT and CRITICAL RULES typically come early/late.
+      const head = Math.floor(COPILOT_FILE_SOFT_CAP * 0.55);
+      const tail = COPILOT_FILE_SOFT_CAP - head - 200;
+      text =
+        text.slice(0, head) +
+        `\n\n…[${text.length - head - tail} chars trimmed mid-prompt to fit Copilot's file reader]…\n\n` +
+        text.slice(-tail);
+    }
+    log(
+      colors.dim(
+        `  [Copilot] Prompt trimmed ${beforeLen} → ${text.length} chars for file upload.`,
+      ),
+    );
+  }
+
   const tmpName = `copilot-prompt-${crypto.randomBytes(6).toString("hex")}.txt`;
   const tmpPath = path.join(os.tmpdir(), tmpName);
-  await fs.writeFile(tmpPath, fullText, "utf8");
+  await fs.writeFile(tmpPath, text, "utf8");
 
   try {
     log(
       colors.dim(
-        `  [Copilot] Prompt is ${fullText.length} chars — uploading as ${tmpName} (UI limit ~10240).`,
+        `  [Copilot] Prompt is ${text.length} chars — uploading as ${tmpName}.`,
       ),
     );
 
