@@ -30,11 +30,25 @@ import { truncateBlocks } from "../compactor/truncators/blocks.js";
 // the prompt fits without losing the directives the model needs to follow.
 const COPILOT_FILE_SOFT_CAP = 22000;
 
+// The cover message has to FIGHT for the model's attention against the big
+// attached prompt. We explicitly call out the two failure modes I've seen:
+// inventing keys (goal/success_criteria) and treating the file as a document
+// to summarise instead of instructions to obey.
 const COVER_MESSAGE =
-  "The attached .txt file is your COMPLETE system prompt for this turn. " +
-  "Read every word, then produce EXACTLY the output format the prompt specifies " +
-  "(including JSON keys / array shape — do NOT invent new keys or summarise). " +
-  "Reply in this chat as plain text or a single ```json``` code block.";
+  "The attached .txt file is your COMPLETE system prompt for THIS turn — " +
+  "not a document to summarise.\n\n" +
+  "REQUIREMENTS for your reply:\n" +
+  "1. Find the OUTPUT FORMAT (or 'OUTPUT:', 'tool calls', or final-section) " +
+  "instructions inside the file and OBEY THEM EXACTLY.\n" +
+  "2. Use the EXACT JSON keys and array shape the file requires. Do NOT " +
+  "invent new keys like 'goal' or 'success_criteria' unless the file " +
+  "explicitly asks for them.\n" +
+  "3. If the file asks for a JSON array of tool calls, output ONLY the " +
+  "array — no prose before or after.\n" +
+  "4. If the file asks for an object with a 'subtasks' array, output that " +
+  "object with the array fully populated.\n" +
+  "5. Reply in this chat directly. Plain text or a single ```json``` " +
+  "code block. No external documents.";
 
 async function waitForAttachmentChip(page, timeoutMs = 6000) {
   const chip = page.locator('[aria-label^="Attachment"]').first();
