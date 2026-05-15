@@ -4,24 +4,35 @@ import { extractCodeBlocks } from "./codeBlocks.js";
 /**
  * Strip UI chrome that bleeds into innerText extraction:
  *   - "Copilot said" (screen-reader label that prefixes every AI message)
- *   - "See my thinking" (chain-of-thought toggle button)
- *   - "Show thinking" (alternate label)
+ *   - "See my thinking" / "Show thinking" (chain-of-thought toggle button)
  *   - "Download" (download-as-file action)
+ *   - "JSON Copy", "JavaScript Copy", etc. (code-block language tag + copy button)
+ *   - Plain "Copy" button text
  *
- * Without this, a response like `{ "goal": "..." }` arrives as
- * `Copilot said See my thinking { "goal": "..." }`, which trips every
- * downstream JSON parser the agent has — including projectManager's, which
- * then thinks the response was empty and forces 3 retries.
+ * Without this, a response like `{ "goal": "..." }` arrives as something like
+ * `Copilot said See my thinking JSON Copy { "goal": "..." }` and every
+ * downstream JSON parser the agent has treats it as junk.
+ *
+ * Uses [\s ] to also match non-breaking spaces, which Copilot inserts
+ * between chrome elements.
  */
 function stripCopilotChrome(text) {
   if (!text) return text;
   let t = text;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 8; i++) {
     const before = t;
     t = t.replace(/^Copilot said[\s ]+/i, "");
-    t = t.replace(/^(See|Show)\s+my\s+thinking[\s ]+/i, "");
-    t = t.replace(/^(See|Show)\s+thinking[\s ]+/i, "");
+    t = t.replace(/^(See|Show)[\s ]+my[\s ]+thinking[\s ]+/i, "");
+    t = t.replace(/^(See|Show)[\s ]+thinking[\s ]+/i, "");
     t = t.replace(/^Download[\s ]*\n?/i, "");
+    // Code-block chrome: language tag + copy button bleeds into innerText
+    // when a code block is part of the message.
+    t = t.replace(
+      /^(json|javascript|typescript|markdown|html|css|python|bash|shell|yaml|xml|sql|java|csharp|c#|go|rust|ruby|php)[\s ]+copy[\s ]*\n?/i,
+      "",
+    );
+    // Plain "Copy" at start (when code block has no language label).
+    t = t.replace(/^Copy[\s ]*\n/i, "");
     if (t === before) break;
   }
   return t;
