@@ -1,6 +1,32 @@
 import { getLastMessageContainer, OUTER_CONTAINER_SEL } from "./locator.js";
 import { extractCodeBlocks } from "./codeBlocks.js";
 
+/**
+ * Strip UI chrome that bleeds into innerText extraction:
+ *   - "Copilot said" (screen-reader label that prefixes every AI message)
+ *   - "See my thinking" (chain-of-thought toggle button)
+ *   - "Show thinking" (alternate label)
+ *   - "Download" (download-as-file action)
+ *
+ * Without this, a response like `{ "goal": "..." }` arrives as
+ * `Copilot said See my thinking { "goal": "..." }`, which trips every
+ * downstream JSON parser the agent has — including projectManager's, which
+ * then thinks the response was empty and forces 3 retries.
+ */
+function stripCopilotChrome(text) {
+  if (!text) return text;
+  let t = text;
+  for (let i = 0; i < 4; i++) {
+    const before = t;
+    t = t.replace(/^Copilot said[\s ]+/i, "");
+    t = t.replace(/^(See|Show)\s+my\s+thinking[\s ]+/i, "");
+    t = t.replace(/^(See|Show)\s+thinking[\s ]+/i, "");
+    t = t.replace(/^Download[\s ]*\n?/i, "");
+    if (t === before) break;
+  }
+  return t;
+}
+
 export async function extractLastMessage(page, options = {}) {
   const { optional = false, fast = false } = options;
   const lastMessage = await getLastMessageContainer(page, { optional });
@@ -39,7 +65,7 @@ export async function extractLastMessage(page, options = {}) {
     if (progressText) return progressText.trim();
   }
 
-  if (fast) return text.replace(/^Download\s*\n/i, "").trim();
+  if (fast) return stripCopilotChrome(text).trim();
 
   const codeBlocks = lastMessage.locator(
     '[class*="scriptor-component-code-block"], pre, .code-block-container, code',
@@ -65,8 +91,8 @@ export async function extractLastMessage(page, options = {}) {
       blockCount,
     );
 
-    return `${rawText}\n\n${clipboardBlocks}`.trim();
+    return stripCopilotChrome(`${rawText}\n\n${clipboardBlocks}`).trim();
   }
 
-  return text.replace(/^Download\s*\n/i, "").trim();
+  return stripCopilotChrome(text).trim();
 }
