@@ -107,19 +107,32 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
         const waitTime =
           payload.length > 90000 ? 4500 : payload.length > 40000 ? 1800 : 500;
         await page.waitForTimeout(waitTime);
-        injected = true;
+        // Verify the paste actually landed — clipboard paste silently fails
+        // in offscreen-window mode (page not focused) and on some controlled
+        // editors that swallow paste events. Don't claim success blindly.
+        const afterPaste = await readValue(inputBoxLocator);
+        if (afterPaste.length > 0) injected = true;
       }
     } catch {}
   }
 
   if (!injected) {
     try {
-      injected = await evalSetValue(inputBoxLocator, payload);
-      if (injected) await page.waitForTimeout(800);
+      const setOk = await evalSetValue(inputBoxLocator, payload);
+      if (setOk) {
+        if (triggerEvents) await evalDispatchEvents(inputBoxLocator);
+        await page.waitForTimeout(400);
+        const afterEval = await readValue(inputBoxLocator);
+        if (afterEval.length > 0) injected = true;
+      }
     } catch {}
   }
 
   if (!injected) {
+    // Last-resort: keyboard.insertText is what Playwright uses internally for
+    // page.fill() — works for React-controlled editors that ignore raw value
+    // assignment because it dispatches synthetic InputEvent through the real
+    // input handler chain.
     const size = Number.isFinite(Number(chunkSize))
       ? Math.max(1, Number(chunkSize))
       : 20000;
