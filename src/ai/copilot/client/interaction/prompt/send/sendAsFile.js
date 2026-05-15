@@ -46,6 +46,39 @@ async function waitForAttachmentChip(page, timeoutMs = 6000) {
   }
 }
 
+/**
+ * After the chip is visible, Copilot still has to finish uploading the file to
+ * its server. Submitting too early means the assistant sees an empty document
+ * list. Wait until either:
+ *   - the chip stops showing progress indicators (any [role="progressbar"]
+ *     inside it disappears), AND it doesn't say "Uploading"/"Loading", OR
+ *   - the submit-button becomes enabled (it's disabled during upload), OR
+ *   - the fixed budget elapses (safety net).
+ */
+async function waitForUploadComplete(page, timeoutMs = 12000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const stillUploading = await page
+      .evaluate(() => {
+        const chip = document.querySelector('[aria-label^="Attachment"]');
+        if (!chip) return false;
+        if (chip.querySelector('[role="progressbar"]')) return true;
+        const t = (chip.textContent || "").toLowerCase();
+        if (/uploading|loading|processing/.test(t)) return true;
+        return false;
+      })
+      .catch(() => false);
+    const submitEnabled = await page
+      .locator('[data-testid="submit-button"]:not([disabled])')
+      .first()
+      .isVisible({ timeout: 200 })
+      .catch(() => false);
+    if (!stillUploading && submitEnabled) return true;
+    await page.waitForTimeout(400);
+  }
+  return false;
+}
+
 async function uploadViaHiddenInput(page, filePath) {
   try {
     const fileInput = page
@@ -166,7 +199,14 @@ export async function sendPromptAsFile(page, fullText) {
       );
       return false;
     }
-    log(colors.dim("  [Copilot] Attachment confirmed in composer."));
+    log(colors.dim("  [Copilot] Attachment chip visible — waiting for server-side upload to complete."));
+
+    // The chip appears as soon as the file is selected, but Copilot uploads
+    // to its server asynchronously. If we submit before the upload completes
+    // the assistant receives no file ("document list returned empty set").
+    // Wait either until the chip leaves an "uploading" / progress state or
+    // a fixed budget elapses.
+    await waitForUploadComplete(page, 12000);
 
     // Cover message.
     const textarea = page.locator('[data-testid="composer-input"]').first();
