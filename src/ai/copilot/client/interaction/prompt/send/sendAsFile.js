@@ -232,11 +232,15 @@ export async function sendPromptAsFile(page, fullText) {
       ),
     );
 
-    // Try direct first (fast path), then fall back to "+" menu + filechooser.
-    let attached = await uploadViaHiddenInput(page, tmpPath);
+    // Try the "+" menu → filechooser path first. Copilot's UI shows an
+    // attachment chip for setInputFiles BUT the server never actually
+    // registers the file unless the upload goes through the proper menu
+    // flow (Copilot's frontend wires the filechooser event to the upload
+    // endpoint; the hidden input alone is a decoy).
+    let attached = await uploadViaPlusMenu(page, tmpPath);
     if (!attached) {
-      log(colors.dim("  [Copilot] Falling back to '+' menu upload..."));
-      attached = await uploadViaPlusMenu(page, tmpPath);
+      log(colors.dim("  [Copilot] '+' menu failed — falling back to direct setInputFiles..."));
+      attached = await uploadViaHiddenInput(page, tmpPath);
     }
     if (!attached) {
       log(
