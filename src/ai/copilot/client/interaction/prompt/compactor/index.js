@@ -34,11 +34,23 @@ export function fitToCharLimit(text, providerName = "copilot") {
   compacted = truncateMemory(compacted);
   if (compacted.length <= limit) return compacted;
 
+  // Last-resort hard trim with a budget split that strongly favours head and
+  // tail (where OUTPUT FORMAT / CRITICAL RULES live in agent prompts). The
+  // middle gets a "[trimmed N chars]" marker so the model knows context was
+  // dropped but the directive sections stay intact.
+  const headBudget = Math.floor(limit * 0.6) - 100;
+  const tailBudget = limit - headBudget - 200;
+  const dropped = compacted.length - headBudget - tailBudget;
+  const hardTrimmed =
+    compacted.slice(0, headBudget) +
+    `\n\n…[${dropped} chars trimmed from middle to fit ${providerName} hard limit; OUTPUT FORMAT and CRITICAL RULES preserved at start/end]…\n\n` +
+    compacted.slice(-tailBudget);
+
   log(
     colors.yellow(
-      `  ⚠️ Message still over limit (${compacted.length}/${limit}). Delegating to multi-turn chunking.`,
+      `  Hard-trimmed mid-prompt to fit ${providerName} (${compacted.length} → ${hardTrimmed.length}).`,
     ),
   );
 
-  return compacted;
+  return hardTrimmed;
 }

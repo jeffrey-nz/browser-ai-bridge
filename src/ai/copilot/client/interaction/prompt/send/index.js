@@ -11,9 +11,13 @@ import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 
 // Copilot's web UI rejects prompts longer than ~10,240 characters with a
-// "Message exceeds 10240 characters." banner that disables submit. Anything
-// over this gets uploaded as a .txt attachment instead.
-const COPILOT_UI_HARD_LIMIT = 10000;
+// "Message exceeds 10240 characters." banner that disables submit.
+//
+// We aggressively trim down to fit the textarea directly. File-upload mode
+// works only intermittently — Copilot's server-side document ingestion is
+// flaky and we keep getting "no file attached" replies even after the chip
+// appears and our wait reports complete. Direct textarea is reliable.
+const COPILOT_UI_HARD_LIMIT = 9500;
 
 // Neutral format reminder — deliberately avoids naming M365 products (Pages, Canvas,
 // Loop, Designer) because those exact product names in imperative "do not" phrasing
