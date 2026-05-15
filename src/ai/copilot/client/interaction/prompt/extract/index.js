@@ -33,6 +33,13 @@ function stripCopilotChrome(text) {
     );
     // Plain "Copy" at start (when code block has no language label).
     t = t.replace(/^Copy[\s ]*\n/i, "");
+    // Plan-revision sentinels Copilot sometimes emits before structured
+    // output: "PLAN_REVISED", "PLAN_OK", "OUTPUT:" etc. Strip only when
+    // followed by JSON-like content so we don't swallow real prose.
+    t = t.replace(
+      /^(PLAN_REVISED|PLAN_OK|PLAN_VALID|OUTPUT|RESPONSE|RESULT|ANSWER)[:\s ]+(?=[\[{`])/i,
+      "",
+    );
     if (t === before) break;
   }
   return t;
