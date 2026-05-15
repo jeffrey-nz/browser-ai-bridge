@@ -5,8 +5,15 @@ import { printResponseSummary } from "../summary.js";
 import { getCharLimit, fitToCharLimit } from "../compactor/index.js";
 import { chunkText } from "./chunker.js";
 import { processChunks } from "./processChunks.js";
+import { sendPromptAsFile } from "./sendAsFile.js";
+import { waitForResponseAndExtract } from "./waitAndExtract.js";
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
+
+// Copilot's web UI rejects prompts longer than ~10,240 characters with a
+// "Message exceeds 10240 characters." banner that disables submit. Anything
+// over this gets uploaded as a .txt attachment instead.
+const COPILOT_UI_HARD_LIMIT = 10000;
 
 // Neutral format reminder — deliberately avoids naming M365 products (Pages, Canvas,
 // Loop, Designer) because those exact product names in imperative "do not" phrasing
@@ -28,6 +35,26 @@ export async function sendPromptAndWait(
   let correctionAttempts = 0;
 
   while (true) {
+    // Over Copilot's UI hard limit — upload as a file attachment instead of
+    // trying to inject 50k chars into a 10k textarea (which Copilot disables).
+    if (text.length > COPILOT_UI_HARD_LIMIT) {
+      const ok = await sendPromptAsFile(page, text);
+      if (ok) {
+        const result = await waitForResponseAndExtract(page, label, sessionId, pollTimeoutMs);
+        if (result?.ok) {
+          printResponseSummary(result.text);
+          return result;
+        }
+        // Fall through to retry the legacy chunker path if the file flow
+        // produced no usable response.
+      }
+      log(
+        colors.yellow(
+          "  [Copilot] File-upload path didn't yield a response — falling back to chunker.",
+        ),
+      );
+    }
+
     const activeLimit = getCharLimit(providerName);
     const CHUNK_MAX = activeLimit - 500;
 
