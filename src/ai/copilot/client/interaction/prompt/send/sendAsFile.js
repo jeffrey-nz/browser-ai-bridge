@@ -99,12 +99,15 @@ async function waitForAttachmentChip(page, timeoutMs = 6000) {
  *   - the submit-button becomes enabled (it's disabled during upload), OR
  *   - the fixed budget elapses (safety net).
  */
-async function waitForUploadComplete(page, timeoutMs = 15000) {
+async function waitForUploadComplete(page, timeoutMs = 25000) {
   const deadline = Date.now() + timeoutMs;
+  // Copilot's chip appears instantly after setInputFiles but the actual
+  // upload + server-side document indexing takes time. The chip never
+  // shows an explicit progress indicator for small files, so our only
+  // signal is wall-clock time. Empirically a 22k file needs 8-10s before
+  // the model can see it; we wait longer to be safe.
+  const MIN_WAIT_MS = 10000;
   const startedAt = Date.now();
-  // Minimum wait — even if all signals say "done" early, Copilot's
-  // server-side ingestion needs at least a few seconds for a 22k file.
-  const MIN_WAIT_MS = 2500;
   while (Date.now() < deadline) {
     const stillUploading = await page
       .evaluate(() => {
