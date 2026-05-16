@@ -104,6 +104,13 @@ router.post("/", async (req, res, next) => {
         requestId,
       });
 
+      // A persistent submission failure means the browser tab is stuck (rate-limit
+      // modal, auth wall, DOM in bad state). Close the page so _recycleOrClose
+      // doesn't put a broken tab back into the pool for the next request.
+      if (err.message?.includes("Failed to submit prompt")) {
+        session.page?.close().catch(() => {});
+      }
+
       if (err.stalled) {
         return sendError(
           res,
