@@ -39,6 +39,6 @@ export async function clickChatGptSend(page) {
       .first(),
     page.locator('#prompt-textarea, [data-testid="composer-input"]').last(),
     page.locator('[data-testid="stop-button"]').last(),
-    { retries: 5, ctrlEnterFallback: true },
+    { retries: 5, ctrlEnterFallback: true, verifyWaitMs: 5000, postClickWaitMs: 3000 },
   );
 }
