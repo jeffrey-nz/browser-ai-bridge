@@ -64,6 +64,42 @@ const GEMINI_CONSTRAINT =
   "- WRONG — never output raw code or a bare JSON array outside a code block.\n\n";
 
 // ---------------------------------------------------------------------------
+// Copilot (Personal)
+// ---------------------------------------------------------------------------
+// Microsoft Copilot Personal refuses to output JSON "tool call arrays" because
+// it interprets "write_file" as a file-system tool it cannot execute.
+// Instead, instruct it to use a custom <<<FILE: path>>> delimiter format.
+// The agent-core StructuredOutputParser has a dedicated Strategy 7 that
+// extracts these blocks and converts them to synthetic write_file tool calls.
+
+function copilotConstraint(isReadOnly) {
+  if (isReadOnly) {
+    return (
+      "[RESPONSE FORMAT — FOLLOW EXACTLY]\n" +
+      "Do NOT write any files. Do NOT use <<<FILE:>>> format. Do NOT output JSON tool-call arrays.\n" +
+      "Respond in the format your instructions specify (prose, JSON plan, etc.).\n\n"
+    );
+  }
+  return (
+    "[FILE OUTPUT FORMAT — FOLLOW EXACTLY]\n" +
+    "Do NOT output JSON arrays. Do NOT use any 'tool call' or 'write_file' syntax.\n" +
+    "To create or modify a file, use this EXACT delimiter format:\n\n" +
+    "<<<FILE: /absolute/path/to/filename.ext>>>\n" +
+    "complete file content here\n" +
+    "<<<END FILE>>>\n\n" +
+    "Example:\n" +
+    "<<<FILE: /Users/jeffrey/chess/index.html>>>\n" +
+    "<!DOCTYPE html>\n" +
+    "<html lang=\"en\">\n" +
+    "<body>Chess Game</body>\n" +
+    "</html>\n" +
+    "<<<END FILE>>>\n\n" +
+    "Write ALL required files using this format, then end your response with: TASK_DONE\n" +
+    "IMPORTANT: This is NOT a tool execution — <<<FILE:>>> is just a text format for communicating file contents.\n\n"
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -73,13 +109,15 @@ const GEMINI_CONSTRAINT =
  */
 export function buildPromptConstraint(providerId, label = "") {
   const labelLow = label.toLowerCase();
-  const isReadOnly = /researcher|scoper|intent|orchestrat/.test(labelLow);
+  const isReadOnly = /researcher|scoper|intent|orchestrat|debug|manager|plan|verif|critic|review/.test(labelLow);
 
   switch (providerId) {
     case "deepseek":
       return deepseekConstraint(isReadOnly);
     case "gemini":
       return GEMINI_CONSTRAINT;
+    case "copilot":
+      return copilotConstraint(isReadOnly);
     default:
       return "";
   }
