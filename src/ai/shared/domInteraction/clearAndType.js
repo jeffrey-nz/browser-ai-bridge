@@ -103,29 +103,46 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
 
   let injected = false;
 
+  // Detect whether the target is a contenteditable element (ProseMirror / rich-text
+  // editors like ChatGPT's composer). These editors only accept text via real keyboard
+  // events — direct value assignment and clipboard paste both bypass ProseMirror's
+  // internal transaction system, leaving the editor's internal state empty (send button
+  // stays disabled). For contenteditable we skip straight to keyboard.insertText below.
+  const isContentEditable = await inputBoxLocator
+    .evaluate((el) => el.isContentEditable === true)
+    .catch(() => false);
+
   // Strategy 0 — Playwright .fill() on plain TEXTAREA/INPUT.
   // Most reliable for React-controlled textareas (Copilot's composer) because
   // Playwright dispatches the same input events the page is listening for.
   // It's also atomic — no partial-paste failures.
-  try {
-    const isPlainTextarea = await inputBoxLocator
-      .evaluate(
-        (el) =>
-          el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type === "text"),
-      )
-      .catch(() => false);
-    if (isPlainTextarea) {
-      await inputBoxLocator.fill(payload, { timeout: 8000 });
-      // .fill() auto-clears first, so this also satisfies the clear step.
-      await page.waitForTimeout(200);
-      const afterFill = await readValue(inputBoxLocator);
-      if (afterFill.length >= Math.min(payload.length, 50)) {
-        injected = true;
+  // Skip for contenteditable (ProseMirror) — .fill() doesn't update editor state.
+  if (!isContentEditable) {
+    try {
+      const isPlainTextarea = await inputBoxLocator
+        .evaluate(
+          (el) =>
+            el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type === "text"),
+        )
+        .catch(() => false);
+      if (isPlainTextarea) {
+        await inputBoxLocator.fill(payload, { timeout: 8000 });
+        // .fill() auto-clears first, so this also satisfies the clear step.
+        await page.waitForTimeout(200);
+        const afterFill = await readValue(inputBoxLocator);
+        if (afterFill.length >= Math.min(payload.length, 50)) {
+          injected = true;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
-  if (!injected && useClipboard) {
+  // Strategy 1 — Clipboard paste (Ctrl/Cmd+V).
+  // Works for most editors but NOT for ProseMirror contenteditable: paste via
+  // keyboard shortcut doesn't dispatch the synthetic paste event ProseMirror listens
+  // for in a headless browser, leaving editor state empty despite DOM showing text.
+  // Skip for contenteditable to avoid false-positive injected=true via readValue.
+  if (!injected && !isContentEditable && useClipboard) {
     try {
       const context = page.context();
       await context
@@ -155,7 +172,11 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
     } catch {}
   }
 
-  if (!injected) {
+  // Strategy 2 — direct DOM value assignment + event dispatch.
+  // Skip for contenteditable (ProseMirror): el.innerText = v sets the DOM but not
+  // ProseMirror's internal state, and readValue would report non-empty via innerText,
+  // falsely setting injected=true and blocking Strategy 3 (keyboard.insertText).
+  if (!injected && !isContentEditable) {
     try {
       const setOk = await evalSetValue(inputBoxLocator, payload);
       if (setOk) {
@@ -168,18 +189,44 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
   }
 
   if (!injected) {
-    // Last-resort: keyboard.insertText is what Playwright uses internally for
-    // page.fill() — works for React-controlled editors that ignore raw value
-    // assignment because it dispatches synthetic InputEvent through the real
-    // input handler chain.
-    const size = Number.isFinite(Number(chunkSize))
-      ? Math.max(1, Number(chunkSize))
-      : 20000;
-    for (let i = 0; i < payload.length; i += size) {
-      await page.keyboard.insertText(payload.slice(i, i + size));
-      await page.waitForTimeout(80);
+    // For contenteditable / ProseMirror editors: document.execCommand('insertText')
+    // fires the correct browser-native input events including InputEvent with
+    // inputType="insertText", which ProseMirror's input handler processes correctly.
+    // keyboard.insertText only dispatches a synthetic input event that ProseMirror
+    // may not handle in all configurations. execCommand goes through the real
+    // browser text insertion path (same as human typing).
+    if (isContentEditable) {
+      // Insert in chunks to avoid browser limits on execCommand size (~100KB)
+      const chunkBytes = 50000;
+      for (let i = 0; i < payload.length; i += chunkBytes) {
+        const chunk = payload.slice(i, i + chunkBytes);
+        const ok = await inputBoxLocator.evaluate((el, txt) => {
+          el.focus();
+          // Select all existing content first (only on first chunk)
+          return document.execCommand("insertText", false, txt);
+        }, chunk).catch(() => false);
+        await page.waitForTimeout(100);
+        if (!ok) break;
+      }
+      // Verify text was inserted by checking DOM content
+      const afterExec = await readValue(inputBoxLocator);
+      if (afterExec.length > 0) {
+        injected = true;
+      }
     }
-    injected = true;
+
+    if (!injected) {
+      // Last-resort: keyboard.insertText — works for React-controlled editors that
+      // ignore raw value assignment because it dispatches synthetic InputEvent.
+      const size = Number.isFinite(Number(chunkSize))
+        ? Math.max(1, Number(chunkSize))
+        : 20000;
+      for (let i = 0; i < payload.length; i += size) {
+        await page.keyboard.insertText(payload.slice(i, i + size));
+        await page.waitForTimeout(80);
+      }
+      injected = true;
+    }
   }
 
   if (triggerEvents) {
