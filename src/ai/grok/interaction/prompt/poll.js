@@ -67,7 +67,7 @@ export async function waitForGrokCompletion(page) {
         return false;
       },
       {
-        timeoutMs: 300000,
+        timeoutMs: 600000,
         pollIntervalMs: 500,
         errorMessage: "Grok polling timed out",
       },
