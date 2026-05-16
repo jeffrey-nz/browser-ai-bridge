@@ -35,10 +35,27 @@ async function evalDispatchEvents(locator) {
   await locator
     .evaluate((el) => {
       try {
-        el.dispatchEvent(new Event("input", { bubbles: true }));
+        // React 16+ tracks the last-synced value internally. Direct el.value = x
+        // or el.innerText = x won't trigger onChange unless we go through the
+        // native prototype setter, which bypasses React's value intercept.
+        // This is the "nativeInputValueSetter" technique widely used for React inputs.
+        if (el.tagName === "TEXTAREA" || el.tagName === "INPUT") {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            Object.getPrototypeOf(el),
+            "value",
+          )?.set;
+          if (nativeSetter) {
+            nativeSetter.call(el, el.value); // re-set via native setter to untrack React's old value
+          }
+        } else if (el.isContentEditable) {
+          // ProseMirror / contenteditable: dispatch an InputEvent with the
+          // data attribute set so React (and ProseMirror) see a real keystroke.
+          el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: " " }));
+        }
+        el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent("keyup", { key: "a", bubbles: true }));
       } catch {}
     })
     .catch(() => {});
