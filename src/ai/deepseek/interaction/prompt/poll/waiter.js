@@ -65,6 +65,19 @@ export async function waitForDeepSeekCompletion(
           throw err;
         }
 
+        // "A message is being generated" — a previous request is still in
+        // flight. Signal the caller to wait briefly and retry the same prompt.
+        if (domState.isBusyGenerating) {
+          logger.warn(
+            `[DeepSeek Poll] "A message is being generated" detected — signalling caller for short retry.`,
+          );
+          const err = new Error(
+            `DeepSeek busy: A message is being generated, please try again later`,
+          );
+          err.busyGenerating = true;
+          throw err;
+        }
+
         // Regenerate button means generation failed (server error, not rate
         // limit) — fail fast rather than burning the 300s timeout.
         if (domState.regenerateVisible) {
@@ -92,6 +105,7 @@ export async function waitForDeepSeekCompletion(
       } catch (playwrightErr) {
         if (playwrightErr.controlAbort) throw playwrightErr;
         if (playwrightErr.rateLimited) throw playwrightErr;
+        if (playwrightErr.busyGenerating) throw playwrightErr;
         logger.trace(
           `[DeepSeek Poll] Transient error: ${playwrightErr.message}`,
         );
@@ -109,6 +123,7 @@ export async function waitForDeepSeekCompletion(
   } catch (e) {
     if (e.controlAbort || e.message.includes("Aborted")) throw e;
     if (e.rateLimited) throw e;
+    if (e.busyGenerating) throw e;
     logger.warn(`[DeepSeek Poll] Error: ${e.message}`);
     return false;
   } finally {

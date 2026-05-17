@@ -13,6 +13,12 @@ export async function runPromptWorkflow(page, text, label, options) {
       );
       return { ok: false, rateLimited: true, reason: err.message };
     }
+    if (err.busyGenerating) {
+      logger.warn(
+        `[Prompt Workflow] DeepSeek busy (still generating) for ${options.providerName}: ${err.message}`,
+      );
+      return { ok: false, busyGenerating: true, reason: err.message };
+    }
     throw err;
   }
 }
@@ -155,6 +161,19 @@ async function _runPromptWorkflowInner(page, text, label, options) {
       ok: false,
       rateLimited: true,
       reason: "Rate limit detected in response body",
+    };
+  }
+
+  // Busy-generating detection: DeepSeek returned this in the response body
+  // when a prior generation was still in flight during submission.
+  if (/a message is being generated/i.test(responseText)) {
+    logger.warn(
+      `[Prompt Workflow] ${providerName} busy-generating response detected in response body — signalling caller.`,
+    );
+    return {
+      ok: false,
+      busyGenerating: true,
+      reason: "Busy generating detected in response body",
     };
   }
 

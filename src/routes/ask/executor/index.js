@@ -126,6 +126,27 @@ async function runAskTurn(
     { attachmentPaths },
   );
 
+  // "A message is being generated" recovery: a previous DeepSeek generation was
+  // still in flight when we submitted. Wait briefly then retry in the same chat
+  // (no new chat — the session is fine, just busy). Use 3 retries: 20s, 30s, 60s.
+  if (response.busyGenerating) {
+    const waits = [20000, 30000, 60000];
+    for (const waitMs of waits) {
+      logger.warn(
+        `[Ask] DeepSeek busy (still generating) for session ${session.id} — waiting ${waitMs / 1000}s then retrying.`,
+      );
+      await new Promise((r) => setTimeout(r, waitMs));
+      response = await executeCoreTurn(
+        session,
+        activePrompt,
+        label,
+        pollTimeoutMs,
+        { attachmentPaths },
+      );
+      if (!response.busyGenerating) break;
+    }
+  }
+
   // Rate-limit recovery: the provider returned a rate-limit message in its
   // response body. Retry with back-off. DeepSeek "Messages too frequent" typically
   // resets in 1-2 min; ChatGPT hourly. Use 4 retries: 90s, 90s, 120s, 300s.
