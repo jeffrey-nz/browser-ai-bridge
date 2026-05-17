@@ -39,6 +39,7 @@ export async function clickDeepSeekSend(page) {
     page.locator(sendSel).last(),
     page.locator(inputSel).last(),
     page.locator(stopSel).last(),
-    { retries: 5, ctrlEnterFallback: true },
+    // DeepSeek uses a textarea where Enter submits — Ctrl+Enter adds a newline.
+    { retries: 5, ctrlEnterFallback: false },
   );
 }

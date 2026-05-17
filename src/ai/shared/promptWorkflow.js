@@ -55,10 +55,12 @@ async function _runPromptWorkflowInner(page, text, label, options) {
     spinner.fail(`${providerName} stalled, timed out, or was blocked.`);
 
     // Before opening the interactive recovery dashboard, attempt an early
-    // extraction. If the provider returned a rate-limit message (even though
-    // the poll loop didn't detect completion), surface it as rateLimited so
-    // the executor's automatic backoff handles it instead of blocking on a
-    // human operator prompt.
+    // extraction. Two cases:
+    // 1. Rate-limit message: surface as rateLimited so the executor's backoff
+    //    handles it instead of blocking on a human operator prompt.
+    // 2. Valid response despite poll timeout: return success directly. This
+    //    handles broken stop-button locators where generation completed but
+    //    the poll loop never detected the stop button appearing/disappearing.
     try {
       const earlyText = await extractResponse(page);
       if (earlyText && RATE_LIMIT_RE.test(earlyText)) {
@@ -70,6 +72,13 @@ async function _runPromptWorkflowInner(page, text, label, options) {
           rateLimited: true,
           reason: "Rate limit detected on early extraction",
         };
+      }
+      if (earlyText && earlyText.trim().length >= 50) {
+        logger.info(
+          `[Prompt Workflow] Valid response found on early extraction after poll timeout (${earlyText.trim().length} chars) — using it.`,
+        );
+        onSuccess(earlyText);
+        return { ok: true, text: earlyText };
       }
     } catch (_e) {
       // ignore — fall through to normal recovery

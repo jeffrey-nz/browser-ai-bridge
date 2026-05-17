@@ -20,10 +20,18 @@
 //    write_file confuses DeepSeek when writes are blocked with READ-ONLY errors)
 //  - all other phases        → write_file example
 
-function deepseekConstraint(isReadOnly) {
+function deepseekConstraint(isReadOnly, projectDir) {
+  // Note: we deliberately do NOT embed the actual projectDir in the example path.
+  // When the example path matches the project root, DeepSeek copies it verbatim
+  // including the placeholder filename, causing write_file calls to wrong paths.
+  // Using an obviously-generic path outside the project root ensures isWrongPath
+  // in run.js catches any literal copy and fires a correction that directs DeepSeek
+  // to the real path from "File(s) to create" in its task instructions.
+  // Use a clearly-symbolic path that cannot be mistaken for a real file.
+  // Using a dollar-sign variable prevents DeepSeek from copying it verbatim as a real path.
   const example = isReadOnly
-    ? '[{"tool": "read_file", "path": "/abs/path/to/file.js"}]'
-    : '[{"tool": "write_file", "path": "/abs/path", "content": "file content here"}]';
+    ? `[{"tool": "read_file", "path": "$YOUR_FILE_PATH"}]`
+    : `[{"tool": "write_file", "path": "$YOUR_FILE_PATH", "content": "complete file content here"}]`;
 
   return (
     "[FORMAT REQUIREMENT — READ CAREFULLY]\n" +
@@ -35,6 +43,7 @@ function deepseekConstraint(isReadOnly) {
     example +
     "\n" +
     "```\n" +
+    "⚠️ The path in the example above is a placeholder — use the ACTUAL absolute path from your task instructions.\n" +
     "If you have completed your analysis and have no further tool calls to make, " +
     "respond with an empty array:\n" +
     "```json\n[]\n```\n" +
@@ -106,14 +115,21 @@ function copilotConstraint(isReadOnly) {
 /**
  * Returns the prompt constraint string for the given provider.
  * Pass the turn label so the constraint can use a phase-appropriate example.
+ * Pass projectDir so the example path in the constraint matches the actual project.
  */
-export function buildPromptConstraint(providerId, label = "") {
+export function buildPromptConstraint(providerId, label = "", projectDir = "") {
   const labelLow = label.toLowerCase();
   const isReadOnly = /researcher|scoper|intent|orchestrat|debug|manager|plan|verif|critic|review/.test(labelLow);
 
+  // Analysis/planning phases output JSON objects or prose, NOT write_file tool calls.
+  // The tool-call FORMAT REQUIREMENT contradicts their instructions and causes DeepSeek
+  // to echo the constraint back or output tool calls instead of the expected JSON plan.
+  const isPlanningPhase = /projectmanager|planvalidat|critic|report|\bintent\b|\bscoper\b|\borchestrat\b|reviewer/.test(labelLow);
+
   switch (providerId) {
     case "deepseek":
-      return deepseekConstraint(isReadOnly);
+      if (isPlanningPhase) return "";
+      return deepseekConstraint(isReadOnly, projectDir);
     case "gemini":
       return GEMINI_CONSTRAINT;
     case "copilot":

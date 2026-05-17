@@ -14,7 +14,7 @@ export async function executeAskTurn(
   requestId,
   label = "API Turn",
   pollTimeoutMs = 420000,
-  { skipConstraint = false, mode = null, images = [] } = {},
+  { skipConstraint = false, mode = null, images = [], projectDir = "" } = {},
 ) {
   const attachmentPaths = images.length
     ? await saveImagesToTempFiles(images)
@@ -24,6 +24,7 @@ export async function executeAskTurn(
       skipConstraint,
       mode,
       attachmentPaths,
+      projectDir,
     });
   } finally {
     if (attachmentPaths.length) await cleanupTempFiles(attachmentPaths);
@@ -36,7 +37,7 @@ async function runAskTurn(
   requestId,
   label,
   pollTimeoutMs,
-  { skipConstraint, mode, attachmentPaths },
+  { skipConstraint, mode, attachmentPaths, projectDir = "" },
 ) {
   sessionManager.logTranscript(session.id, "USER", prompt, { requestId });
 
@@ -112,6 +113,7 @@ async function runAskTurn(
     prompt,
     skipConstraint,
     label,
+    projectDir,
   );
 
   const isReviewerTurn = /reviewer/i.test(label);
@@ -125,10 +127,10 @@ async function runAskTurn(
   );
 
   // Rate-limit recovery: the provider returned a rate-limit message in its
-  // response body. Retry with exponential back-off. ChatGPT's message limit
-  // resets on an hourly cycle, so we try up to 3 times (45s → 3min → 10min).
+  // response body. Retry with back-off. DeepSeek "Messages too frequent" typically
+  // resets in 1-2 min; ChatGPT hourly. Use 4 retries: 90s, 90s, 120s, 300s.
   if (response.rateLimited) {
-    const waits = [45000, 180000, 600000];
+    const waits = [90000, 90000, 120000, 300000];
     for (const waitMs of waits) {
       logger.warn(
         `[Ask] Rate-limit detected for session ${session.id} — waiting ${waitMs / 1000}s then retrying in a fresh chat.`,

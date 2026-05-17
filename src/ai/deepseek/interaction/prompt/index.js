@@ -36,18 +36,9 @@ export async function sendPromptAndWait(
   label = "Prompt",
   sessionId = null,
 ) {
-  const responseSel = await resolveSelector(
-    page,
-    DEEPSEEK_LOCATORS.responseBlock,
-  );
-  // Broad selector (used by the poll loop to detect any new content)
-  const initialMsgCount = await page
-    .locator(responseSel)
-    .count()
-    .catch(() => 0);
-  // AI-response-only count (used by the extractor).
-  // .ds-markdown only wraps AI responses, not user messages — this avoids
-  // capturing the sent prompt text (which contains the <scope_doc> template).
+  // Count AI-response blocks only (.ds-markdown is AI-only, not user messages).
+  // Use the same count for both the poll loop and the extractor so user messages
+  // typed into the input are never mistaken for new AI responses.
   const initialAiBlockCount = await page
     .locator(".ds-markdown")
     .count()
@@ -58,7 +49,7 @@ export async function sendPromptAndWait(
     injectText: injectDeepSeekText,
     clickSend: clickDeepSeekSend,
     waitForCompletion: async (pg, spinner) =>
-      waitForDeepSeekCompletion(pg, initialMsgCount, sessionId),
+      waitForDeepSeekCompletion(pg, initialAiBlockCount, sessionId),
     extractResponse: (pg) => extractDeepSeekResponse(pg, initialAiBlockCount),
     onFailure: (msg) => {
       log(

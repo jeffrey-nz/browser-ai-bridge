@@ -26,6 +26,9 @@ export async function getDeepSeekDomState(
   stopBtnSel,
   responseBlockSel,
 ) {
+  // Use .ds-markdown for count/text — it is AI-response-only (user messages
+  // never get this class). The broad responseBlockSel would capture user messages
+  // and cause the poll to complete early (treating the sent prompt as a response).
   const [isBlocked, isGenerating, currentCount, regenerateVisible] =
     await Promise.all([
       page
@@ -38,7 +41,7 @@ export async function getDeepSeekDomState(
         .isVisible({ timeout: 200 })
         .catch(() => false),
       page
-        .locator(responseBlockSel)
+        .locator(".ds-markdown")
         .count()
         .catch(() => 0),
       page
@@ -52,7 +55,7 @@ export async function getDeepSeekDomState(
 
   if (currentCount > 0) {
     currentText = await page
-      .locator(responseBlockSel)
+      .locator(".ds-markdown")
       .last()
       .innerText({ timeout: 300 })
       .catch(() => "");
@@ -67,7 +70,7 @@ export async function getDeepSeekDomState(
     : await page
         .locator(RATE_LIMIT_PAGE_SEL)
         .first()
-        .isVisible({ timeout: 200 })
+        .isVisible({ timeout: 600 })
         .catch(() => false);
 
   const isRateLimited = rateLimitInResponse || rateLimitOnPage;

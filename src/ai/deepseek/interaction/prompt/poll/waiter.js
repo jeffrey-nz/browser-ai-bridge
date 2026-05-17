@@ -84,6 +84,9 @@ export async function waitForDeepSeekCompletion(
         );
 
         if (isComplete && !isNetworkActive) {
+          // Allow DeepSeek's UI to fully settle before the next turn can be
+          // injected — prevents "input did not clear" failures on turn 2+.
+          await page.waitForTimeout(2500);
           return true;
         }
       } catch (playwrightErr) {

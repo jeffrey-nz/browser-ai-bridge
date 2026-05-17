@@ -5,7 +5,8 @@ export function buildInitialPrompt(
   prompt,
   skipConstraint = false,
   label = "",
+  projectDir = "",
 ) {
   if (skipConstraint) return prompt;
-  return buildPromptConstraint(providerId, label) + prompt;
+  return buildPromptConstraint(providerId, label, projectDir) + prompt;
 }
