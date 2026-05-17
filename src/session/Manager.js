@@ -49,6 +49,21 @@ export class SessionManager {
       await _creatingLocks.get(providerId);
     }
 
+    // Before opening a new tab, close any idle (unlocked) sessions for this
+    // provider that are left over from prior runs killed without cleanup.
+    // Prevents DeepSeek tab accumulation when agent-core is restarted frequently.
+    const idleSessions = this.registry.list().filter(
+      s => s.providerId === providerId && !s.locked
+    );
+    if (idleSessions.length > 0) {
+      logger.info(
+        `[SessionManager] Closing ${idleSessions.length} idle ${providerId} session(s) before creating new one`
+      );
+      for (const s of idleSessions) {
+        await this.closeSession(s.id).catch(() => {});
+      }
+    }
+
     let session = sessionPool.acquire(providerId);
 
     if (!session) {
