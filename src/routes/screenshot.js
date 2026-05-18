@@ -73,7 +73,11 @@ router.get("/", async (req, res) => {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
     await page.waitForTimeout(800);
 
-    const buf = await page.screenshot({ type: "png", fullPage: false, scale: "css" });
+    const buf = await page.screenshot({
+      type: "png",
+      fullPage: false,
+      scale: "css",
+    });
     logger.info(`[Screenshot] Captured ${url} (${buf.length} bytes)`);
 
     return sendSuccess(res, {
@@ -100,7 +104,9 @@ router.get("/session/:id", async (req, res) => {
 
   try {
     const { buf, fingerprint } = await captureSession(session);
-    logger.info(`[Screenshot] Session ${session.id.slice(0, 8)} (${session.providerId}) ${buf.length} bytes`);
+    logger.info(
+      `[Screenshot] Session ${session.id.slice(0, 8)} (${session.providerId}) ${buf.length} bytes`,
+    );
 
     return sendSuccess(res, {
       sessionId: session.id,
@@ -136,7 +142,11 @@ router.get("/sessions", async (req, res) => {
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
-      results.push({ sessionId: id, providerId: session.providerId, error: err.message });
+      results.push({
+        sessionId: id,
+        providerId: session.providerId,
+        error: err.message,
+      });
     }
   }
 
@@ -167,7 +177,9 @@ router.get("/monitor", async (req, res) => {
           bufLength: buf.length,
           timestamp: Date.now(),
         });
-        logger.info(`[Monitor] Baselined session ${id.slice(0, 8)} (${providerId})`);
+        logger.info(
+          `[Monitor] Baselined session ${id.slice(0, 8)} (${providerId})`,
+        );
         report.push({
           sessionId: id,
           providerId,
@@ -241,7 +253,9 @@ router.post("/baseline/:id", async (req, res) => {
       bufLength: buf.length,
       timestamp: Date.now(),
     });
-    logger.info(`[Monitor] Re-baselined session ${req.params.id.slice(0, 8)} (${session.providerId})`);
+    logger.info(
+      `[Monitor] Re-baselined session ${req.params.id.slice(0, 8)} (${session.providerId})`,
+    );
 
     return sendSuccess(res, {
       sessionId: req.params.id,
@@ -250,7 +264,9 @@ router.post("/baseline/:id", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    logger.warn(`[Monitor] Baseline failed for ${req.params.id}: ${err.message}`);
+    logger.warn(
+      `[Monitor] Baseline failed for ${req.params.id}: ${err.message}`,
+    );
     return sendError(res, 500, `Baseline failed: ${err.message}`);
   }
 });

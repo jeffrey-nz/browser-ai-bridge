@@ -40,14 +40,18 @@ export async function startNewChat(page) {
     .catch(() => false);
 
   if (hasAccountChooser) {
-    log(colors.dim("  [Gemini] Account chooser detected — attempting dismiss."));
+    log(
+      colors.dim("  [Gemini] Account chooser detected — attempting dismiss."),
+    );
 
     // Try clicking the X close button inside the iframe via frameLocator.
     let dismissed = false;
     try {
       const closeBtn = page
         .frameLocator('iframe[name="account"]')
-        .locator('[aria-label*="Close" i], button[jsname][aria-label*="lose" i]')
+        .locator(
+          '[aria-label*="Close" i], button[jsname][aria-label*="lose" i]',
+        )
         .first();
       if (await closeBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
         await closeBtn.click({ timeout: 2000 }).catch(() => {});
@@ -63,10 +67,7 @@ export async function startNewChat(page) {
           .first()
           .boundingBox();
         if (box) {
-          await page.mouse.click(
-            box.x + box.width - 24,
-            box.y + 24,
-          );
+          await page.mouse.click(box.x + box.width - 24, box.y + 24);
         }
       } catch {}
     }

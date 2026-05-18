@@ -44,7 +44,12 @@ export async function sendPromptAndWait(
     if (text.length > COPILOT_UI_HARD_LIMIT) {
       const ok = await sendPromptAsFile(page, text);
       if (ok) {
-        const result = await waitForResponseAndExtract(page, label, sessionId, pollTimeoutMs);
+        const result = await waitForResponseAndExtract(
+          page,
+          label,
+          sessionId,
+          pollTimeoutMs,
+        );
         if (result?.ok) {
           printResponseSummary(result.text);
           return result;

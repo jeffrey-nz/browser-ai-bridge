@@ -50,12 +50,25 @@ async function evalDispatchEvents(locator) {
         } else if (el.isContentEditable) {
           // ProseMirror / contenteditable: dispatch an InputEvent with the
           // data attribute set so React (and ProseMirror) see a real keystroke.
-          el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: " " }));
+          el.dispatchEvent(
+            new InputEvent("input", {
+              bubbles: true,
+              cancelable: true,
+              inputType: "insertText",
+              data: " ",
+            }),
+          );
         }
-        el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true }));
+        el.dispatchEvent(
+          new InputEvent("input", { bubbles: true, cancelable: true }),
+        );
         el.dispatchEvent(new Event("change", { bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent("keyup", { key: "a", bubbles: true }));
+        el.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+        );
+        el.dispatchEvent(
+          new KeyboardEvent("keyup", { key: "a", bubbles: true }),
+        );
       } catch {}
     })
     .catch(() => {});
@@ -122,7 +135,8 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
       const isPlainTextarea = await inputBoxLocator
         .evaluate(
           (el) =>
-            el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type === "text"),
+            el.tagName === "TEXTAREA" ||
+            (el.tagName === "INPUT" && el.type === "text"),
         )
         .catch(() => false);
       if (isPlainTextarea) {
@@ -200,11 +214,13 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
       const chunkBytes = 50000;
       for (let i = 0; i < payload.length; i += chunkBytes) {
         const chunk = payload.slice(i, i + chunkBytes);
-        const ok = await inputBoxLocator.evaluate((el, txt) => {
-          el.focus();
-          // Select all existing content first (only on first chunk)
-          return document.execCommand("insertText", false, txt);
-        }, chunk).catch(() => false);
+        const ok = await inputBoxLocator
+          .evaluate((el, txt) => {
+            el.focus();
+            // Select all existing content first (only on first chunk)
+            return document.execCommand("insertText", false, txt);
+          }, chunk)
+          .catch(() => false);
         await page.waitForTimeout(100);
         if (!ok) break;
       }

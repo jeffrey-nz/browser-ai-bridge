@@ -146,9 +146,7 @@ async function uploadViaHiddenInput(page, filePath) {
 
 async function uploadViaPlusMenu(page, filePath) {
   try {
-    const plus = page
-      .locator('[data-testid="composer-create-button"]')
-      .first();
+    const plus = page.locator('[data-testid="composer-create-button"]').first();
     await plus.click({ force: true, timeout: 3000 });
     await page.waitForTimeout(400);
 
@@ -239,7 +237,11 @@ export async function sendPromptAsFile(page, fullText) {
     // endpoint; the hidden input alone is a decoy).
     let attached = await uploadViaPlusMenu(page, tmpPath);
     if (!attached) {
-      log(colors.dim("  [Copilot] '+' menu failed — falling back to direct setInputFiles..."));
+      log(
+        colors.dim(
+          "  [Copilot] '+' menu failed — falling back to direct setInputFiles...",
+        ),
+      );
       attached = await uploadViaHiddenInput(page, tmpPath);
     }
     if (!attached) {
@@ -250,7 +252,11 @@ export async function sendPromptAsFile(page, fullText) {
       );
       return false;
     }
-    log(colors.dim("  [Copilot] Attachment chip visible — waiting for server-side upload to complete."));
+    log(
+      colors.dim(
+        "  [Copilot] Attachment chip visible — waiting for server-side upload to complete.",
+      ),
+    );
 
     // The chip appears as soon as the file is selected, but Copilot uploads
     // to its server asynchronously. If we submit before the upload completes
@@ -259,7 +265,9 @@ export async function sendPromptAsFile(page, fullText) {
     log(
       ready
         ? colors.dim("  [Copilot] Upload reported complete.")
-        : colors.yellow("  [Copilot] Upload-complete signal not detected within 15s — proceeding anyway."),
+        : colors.yellow(
+            "  [Copilot] Upload-complete signal not detected within 15s — proceeding anyway.",
+          ),
     );
 
     // Cover message — include the verbatim OUTPUT FORMAT from the prompt
@@ -274,7 +282,9 @@ export async function sendPromptAsFile(page, fullText) {
     await page.waitForTimeout(300);
 
     // Submit.
-    const submit = page.locator('[data-testid="submit-button"]:not([disabled])').first();
+    const submit = page
+      .locator('[data-testid="submit-button"]:not([disabled])')
+      .first();
     const submitVisible = await submit
       .isVisible({ timeout: 3000 })
       .catch(() => false);

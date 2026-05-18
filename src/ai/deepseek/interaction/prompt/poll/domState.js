@@ -69,8 +69,12 @@ export async function getDeepSeekDomState(
   }
 
   // Check both response text and page-level containers for rate-limit and busy messages.
-  const rateLimitInResponse = currentText ? RATE_LIMIT_RE.test(currentText) : false;
-  const busyInResponse = currentText ? BUSY_GENERATING_RE.test(currentText) : false;
+  const rateLimitInResponse = currentText
+    ? RATE_LIMIT_RE.test(currentText)
+    : false;
+  const busyInResponse = currentText
+    ? BUSY_GENERATING_RE.test(currentText)
+    : false;
 
   const rateLimitOnPage = rateLimitInResponse
     ? false

@@ -20,9 +20,11 @@ test.describe("buildPromptConstraint", () => {
     );
   });
 
-  test("deepseek: uses read_file example for scoper label", () => {
+  test("deepseek: returns empty string for scoper label (planning phase)", () => {
+    // scoper is a planning phase — no FORMAT REQUIREMENT injected to avoid
+    // confusing DeepSeek into echoing the constraint instead of its JSON plan.
     const constraint = buildPromptConstraint("deepseek", "scoper");
-    assert.ok(constraint.includes("read_file"));
+    assert.equal(constraint, "");
   });
 
   test("deepseek: uses write_file example for coder label", () => {

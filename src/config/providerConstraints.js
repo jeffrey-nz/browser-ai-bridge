@@ -99,7 +99,7 @@ function copilotConstraint(isReadOnly) {
     "Example:\n" +
     "<<<FILE: /Users/jeffrey/chess/index.html>>>\n" +
     "<!DOCTYPE html>\n" +
-    "<html lang=\"en\">\n" +
+    '<html lang="en">\n' +
     "<body>Chess Game</body>\n" +
     "</html>\n" +
     "<<<END FILE>>>\n\n" +
@@ -119,12 +119,18 @@ function copilotConstraint(isReadOnly) {
  */
 export function buildPromptConstraint(providerId, label = "", projectDir = "") {
   const labelLow = label.toLowerCase();
-  const isReadOnly = /researcher|scoper|intent|orchestrat|debug|manager|plan|verif|critic|review/.test(labelLow);
+  const isReadOnly =
+    /researcher|scoper|intent|orchestrat|debug|manager|plan|verif|critic|review/.test(
+      labelLow,
+    );
 
   // Analysis/planning phases output JSON objects or prose, NOT write_file tool calls.
   // The tool-call FORMAT REQUIREMENT contradicts their instructions and causes DeepSeek
   // to echo the constraint back or output tool calls instead of the expected JSON plan.
-  const isPlanningPhase = /projectmanager|planvalidat|critic|report|\bintent\b|\bscoper\b|\borchestrat\b|reviewer/.test(labelLow);
+  const isPlanningPhase =
+    /projectmanager|planvalidat|critic|report|\bintent\b|\bscoper\b|\borchestrat\b|reviewer/.test(
+      labelLow,
+    );
 
   switch (providerId) {
     case "deepseek":

@@ -47,11 +47,13 @@ export async function startNewChat(page) {
     const smartSearch = page
       .locator('.ds-toggle-button:has-text("Smart Search")')
       .first();
-    const isVisible = await smartSearch.isVisible({ timeout: 2000 }).catch(() => false);
+    const isVisible = await smartSearch
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
     if (isVisible) {
-      const isSelected = await smartSearch.evaluate((el) =>
-        el.classList.contains("ds-toggle-button--selected"),
-      ).catch(() => false);
+      const isSelected = await smartSearch
+        .evaluate((el) => el.classList.contains("ds-toggle-button--selected"))
+        .catch(() => false);
       if (isSelected) {
         await smartSearch.click();
         log(`  ${colors.green("✔")} Smart Search disabled.`);

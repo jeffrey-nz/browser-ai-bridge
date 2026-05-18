@@ -9,17 +9,34 @@ import { extractLastMessage } from "../extract/index.js";
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 
-export async function waitForResponseAndExtract(page, label, sessionId, pollTimeoutMs) {
+export async function waitForResponseAndExtract(
+  page,
+  label,
+  sessionId,
+  pollTimeoutMs,
+) {
   try {
     log(colors.dim(`  [Copilot] Waiting for response to '${label}'...`));
     // waitForCompletion signature: (page, submitResult, spinner, sessionId, pollTimeoutMs)
-    const completed = await waitForCompletion(page, {}, null, sessionId, pollTimeoutMs);
+    const completed = await waitForCompletion(
+      page,
+      {},
+      null,
+      sessionId,
+      pollTimeoutMs,
+    );
     if (!completed) {
-      return { ok: false, reason: "Generation did not complete within timeout." };
+      return {
+        ok: false,
+        reason: "Generation did not complete within timeout.",
+      };
     }
     const text = await extractLastMessage(page);
     if (!text || !text.trim()) {
-      return { ok: false, reason: "Response was empty after generation completed." };
+      return {
+        ok: false,
+        reason: "Response was empty after generation completed.",
+      };
     }
     return { ok: true, text };
   } catch (err) {
