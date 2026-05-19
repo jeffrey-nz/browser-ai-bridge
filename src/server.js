@@ -14,6 +14,9 @@ import setupRouter from "./routes/setup.js";
 import devserverRouter, { killAllDevServers } from "./routes/devserver.js";
 import visualAskRouter from "./routes/visual-ask.js";
 import pageInspectRouter from "./routes/page-inspect.js";
+import evaluateRouter from "./routes/evaluate.js";
+import clickRouter from "./routes/click.js";
+import waitForRouter from "./routes/wait-for.js";
 import { eventBus } from "#web/eventBus.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
 import "express-async-errors";
@@ -37,6 +40,9 @@ app.use("/api/prompt", promptRouter);
 app.use("/api/devserver", devserverRouter);
 app.use("/api/visual-ask", visualAskRouter);
 app.use("/api/page-inspect", pageInspectRouter);
+app.use("/api/evaluate", evaluateRouter);
+app.use("/api/click", clickRouter);
+app.use("/api/wait-for", waitForRouter);
 
 app.get("/api/sync", (req, res) => {
   res.writeHead(200, {

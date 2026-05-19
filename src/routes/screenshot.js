@@ -12,6 +12,7 @@ import crypto from "node:crypto";
 import express from "express";
 import { getBrowserContext } from "../browser/index.js";
 import { sessionManager } from "../session/index.js";
+import { checkUrlSafety } from "#utils/urlSecurity.js";
 import { calculateDomFingerprint } from "../ai/shared/domFingerprint.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
@@ -47,21 +48,27 @@ async function captureSession(session) {
 // Existing: open a fresh page, navigate, screenshot, close.
 
 router.get("/", async (req, res) => {
-  const { url } = req.query;
+  const {
+    url,
+    width    = "1280",
+    height   = "900",
+    fullPage = "false",
+    delay    = "0",
+    darkMode = "false",
+  } = req.query;
 
   if (!url || typeof url !== "string") {
     return sendError(res, 400, "Missing required query parameter: url");
   }
 
-  let parsed;
-  try {
-    parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return sendError(res, 400, "Only http/https URLs are supported");
-    }
-  } catch {
-    return sendError(res, 400, `Invalid URL: ${url}`);
-  }
+  const safety = checkUrlSafety(url);
+  if (safety) return sendError(res, 400, safety);
+
+  const vpWidth    = Math.min(Math.max(parseInt(width,  10) || 1280, 320),  3840);
+  const vpHeight   = Math.min(Math.max(parseInt(height, 10) || 900,  200),  2160);
+  const isFullPage = fullPage === "true";
+  const delayMs    = Math.min(Math.max(parseInt(delay,  10) || 0,     0), 10_000);
+  const isDark     = darkMode === "true";
 
   let page = null;
   try {
@@ -70,19 +77,28 @@ router.get("/", async (req, res) => {
     page.on("console", () => {});
     page.on("pageerror", () => {});
 
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
-    await page.waitForTimeout(800);
+    await page.setViewportSize({ width: vpWidth, height: vpHeight });
+    if (isDark) await page.emulateMedia({ colorScheme: "dark" });
 
-    const buf = await page.screenshot({
-      type: "png",
-      fullPage: false,
-      scale: "css",
-    });
-    logger.info(`[Screenshot] Captured ${url} (${buf.length} bytes)`);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
+    await page.waitForTimeout(800 + delayMs);
+
+    const [buf, title] = await Promise.all([
+      page.screenshot({ type: "png", fullPage: isFullPage, scale: "css" }),
+      page.title().catch(() => ""),
+    ]);
+
+    logger.info(
+      `[Screenshot] ${url} ${vpWidth}×${vpHeight}${isFullPage ? " full" : ""}${isDark ? " dark" : ""} (${buf.length} bytes)`,
+    );
 
     return sendSuccess(res, {
       url,
+      title,
       screenshotBase64: buf.toString("base64"),
+      viewport: { width: vpWidth, height: vpHeight },
+      fullPage: isFullPage,
+      darkMode: isDark,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

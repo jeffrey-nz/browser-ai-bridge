@@ -130,7 +130,7 @@ async function runAskTurn(
   // still in flight when we submitted. Wait briefly then retry in the same chat
   // (no new chat — the session is fine, just busy). Use 3 retries: 20s, 30s, 60s.
   if (response.busyGenerating) {
-    const waits = [20000, 30000, 60000];
+    const waits = [20000, 30000, 60000].map(w => Math.floor(w * (0.75 + Math.random() * 0.5)));
     for (const waitMs of waits) {
       logger.warn(
         `[Ask] DeepSeek busy (still generating) for session ${session.id} — waiting ${waitMs / 1000}s then retrying.`,
@@ -151,7 +151,7 @@ async function runAskTurn(
   // response body. Retry with back-off. DeepSeek "Messages too frequent" typically
   // resets in 1-2 min; ChatGPT hourly. Use 4 retries: 90s, 90s, 120s, 300s.
   if (response.rateLimited) {
-    const waits = [90000, 90000, 120000, 300000];
+    const waits = [90000, 90000, 120000, 300000].map(w => Math.floor(w * (0.75 + Math.random() * 0.5)));
     for (const waitMs of waits) {
       logger.warn(
         `[Ask] Rate-limit detected for session ${session.id} — waiting ${waitMs / 1000}s then retrying in a fresh chat.`,

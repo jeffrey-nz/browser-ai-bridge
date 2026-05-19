@@ -5,6 +5,7 @@ import { sessionManager } from "../session/index.js";
 import { cooldownManager } from "../session/CooldownManager.js";
 import { setupState } from "../setup/state.js";
 import { PROVIDER_CONFIG } from "../config/providers.js";
+import { getDevServerCount } from "./devserver.js";
 import { logger } from "#utils/logger.js";
 
 const router = express.Router();
@@ -66,6 +67,7 @@ router.get("/", (_req, res) => {
       sessions: sessions.length,
       activeSessions: sessions.filter((s) => s.state === "active").length,
       stalledSessions: sessions.filter((s) => s.state === "stalled").length,
+      devServers: getDevServerCount(),
       providers,
       mem: {
         heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),

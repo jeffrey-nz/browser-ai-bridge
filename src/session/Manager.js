@@ -147,7 +147,7 @@ export class SessionManager {
     const session = this.registry.get(sessionId);
     if (!session) return null;
 
-    if (session.page.isClosed()) {
+    if (!session.page || session.page.isClosed()) {
       this.closeSession(sessionId);
       return null;
     }

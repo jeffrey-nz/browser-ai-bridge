@@ -29,6 +29,7 @@ export async function resolveSession(sessionId, provider, mode) {
     return {
       error: "Session is busy processing another prompt",
       status: 409,
+      retryAfter: 0.5,
       autoCreated,
       session,
     };

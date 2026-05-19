@@ -38,14 +38,15 @@ router.post("/", async (req, res, next) => {
     );
   }
 
-  const { session, autoCreated, error, status } = await resolveSession(
+  const { session, autoCreated, error, status, retryAfter } = await resolveSession(
     sessionId,
     provider,
     mode,
   );
   if (error) {
     if (autoCreated && session) await cleanupAutoSession(true, session);
-    return sendError(res, status, error, {}, requestId);
+    if (retryAfter) res.set("Retry-After", String(retryAfter));
+    return sendError(res, status, error, retryAfter ? { retryAfter } : {}, requestId);
   }
 
   const pLimit = validatePromptLimit(session, prompt);

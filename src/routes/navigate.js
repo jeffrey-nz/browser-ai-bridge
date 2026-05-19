@@ -9,6 +9,7 @@
 
 import express from "express";
 import { getBrowserContext } from "../browser/index.js";
+import { checkUrlSafety } from "#utils/urlSecurity.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
 
@@ -21,14 +22,8 @@ router.post("/", async (req, res) => {
     return sendError(res, 400, "Missing required body parameter: url");
   }
 
-  try {
-    const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      return sendError(res, 400, "Only http/https URLs are supported");
-    }
-  } catch {
-    return sendError(res, 400, `Invalid URL: ${url}`);
-  }
+  const safety = checkUrlSafety(url);
+  if (safety) return sendError(res, 400, safety);
 
   try {
     const { context } = await getBrowserContext();

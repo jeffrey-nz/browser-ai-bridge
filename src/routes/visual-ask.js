@@ -23,6 +23,7 @@ import { join } from "node:path";
 import { getBrowserContext } from "../browser/index.js";
 import { sessionManager } from "../session/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
+import { checkUrlSafety } from "#utils/urlSecurity.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
 
@@ -58,16 +59,8 @@ router.post("/", async (req, res) => {
   } = req.body;
 
   if (!screenshotUrl) return sendError(res, 400, "Missing screenshotUrl");
-  // Validate URL
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(screenshotUrl);
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      return sendError(res, 400, "Only http/https URLs are supported");
-    }
-  } catch {
-    return sendError(res, 400, `Invalid screenshotUrl: ${screenshotUrl}`);
-  }
+  const safety = checkUrlSafety(screenshotUrl);
+  if (safety) return sendError(res, 400, safety);
 
   // Find the session — prefer explicit sessionId, then provider match, then any available.
   // Always resolve to the full session object (which includes engine) via getSession().

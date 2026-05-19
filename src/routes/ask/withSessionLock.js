@@ -18,7 +18,9 @@ export async function withSessionLock(session, autoCreated, fn) {
   try {
     return await fn();
   } finally {
-    session.locked = false;
+    // Cleanup must finish before clearing locked so the session pool can't
+    // re-acquire this session while its page is still being closed/recycled.
     await cleanupAutoSession(autoCreated, session);
+    session.locked = false;
   }
 }
