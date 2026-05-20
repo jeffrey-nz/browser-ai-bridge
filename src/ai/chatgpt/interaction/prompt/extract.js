@@ -69,11 +69,102 @@ async function extractMarkdownPreservingCode(page, lastTurn) {
   return (result || "").trim();
 }
 
+// Python dunder names. ChatGPT's Copy-button markdown serializer treats the
+// source token __init__ as bold (markdown: __x__ ≡ **x**) and emits it back as
+// **init**, which is a SyntaxError in Python. Restore the double-underscore form
+// for the known dunder set — narrow enough to never touch real ** operators
+// (exponent, *args/**kwargs) since those are not __word__ in the source.
+const PY_DUNDERS = [
+  "init", "name", "main", "str", "repr", "eq", "ne", "lt", "le", "gt", "ge",
+  "hash", "call", "iter", "next", "len", "getitem", "setitem", "delitem",
+  "contains", "enter", "exit", "dict", "doc", "file", "all", "module",
+  "class", "bool", "add", "sub", "mul", "truediv", "floordiv", "mod", "pow",
+  "new", "del", "format", "sizeof", "index", "slots", "abs", "neg", "pos",
+  "round", "int", "float", "bytes", "dir", "getattr", "setattr", "delattr",
+  "getattribute", "reversed", "post_init", "init_subclass", "set_name",
+];
+const DUNDER_RE = new RegExp(`\\*\\*(${PY_DUNDERS.join("|")})\\*\\*`, "g");
+
+function restoreDunders(text) {
+  if (!text) return text;
+  return text.replace(DUNDER_RE, "__$1__");
+}
+
+/**
+ * Extract the response via ChatGPT's own "Copy" button.
+ *
+ * This is the ONLY fully reliable method: the copy button runs ChatGPT's
+ * internal serializer which reconstructs the EXACT markdown source the model
+ * produced — every space of indentation, every blank line, every code fence.
+ * Scraping the rendered DOM cannot recover indentation that markdown's
+ * 4-space-indented-code-block rule consumed, so the copy button is preferred.
+ *
+ * Returns the clipboard text, or "" if the copy button can't be found/clicked.
+ */
+async function extractViaCopyButton(page, lastTurn) {
+  const tag = "[chatgpt-extract]";
+  try {
+    // Clipboard read requires the page to be the focused/foreground tab.
+    await page.bringToFront().catch(() => {});
+    // The action bar (with the Copy button) only renders on hover for some
+    // ChatGPT versions — hover the turn first to force it into the DOM.
+    await lastTurn.hover({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(120);
+
+    // ONLY the per-message copy button — never a per-code-block copy button
+    // (those copy a single block, not the whole response).
+    const copySelectors = [
+      '[data-testid="copy-turn-action-button"]',
+      'button[aria-label="Copy"]:not([data-testid*="code"])',
+      'button[aria-label="Copy message"]',
+    ];
+    let clicked = false;
+    for (const sel of copySelectors) {
+      const btn = lastTurn.locator(sel).last();
+      const n = await btn.count().catch(() => 0);
+      if (n > 0) {
+        const ok = await btn.click({ timeout: 2500 }).then(() => true).catch(() => false);
+        if (ok) {
+          clicked = true;
+          console.log(`${tag} copy button clicked via "${sel}"`);
+          break;
+        }
+      }
+    }
+    if (!clicked) {
+      console.log(`${tag} no copy button found — falling back to DOM walk`);
+      return "";
+    }
+    // Give ChatGPT's clipboard write a moment to land, then read it back.
+    await page.waitForTimeout(250);
+    const text = await page.evaluate(async () => {
+      try { return await navigator.clipboard.readText(); }
+      catch (e) { return "__CLIP_ERR__" + (e?.message || "unknown"); }
+    }).catch(() => "");
+    if (typeof text === "string" && text.startsWith("__CLIP_ERR__")) {
+      console.log(`${tag} clipboard read failed: ${text.slice(12)} — falling back to DOM walk`);
+      return "";
+    }
+    const trimmed = (text || "").trim();
+    console.log(`${tag} clipboard extraction: ${trimmed.length} chars`);
+    return trimmed;
+  } catch (e) {
+    console.log(`${tag} copy-button extraction threw: ${e?.message || e} — falling back`);
+    return "";
+  }
+}
+
 export async function extractChatGptResponse(page) {
   const lastTurn = page.locator('[data-testid^="conversation-turn-"]').last();
 
-  // Primary: .markdown div, but use textContent for <pre> code blocks so that
-  // multi-space indentation (Python, YAML, indented JSON) is preserved.
+  // Primary: ChatGPT's Copy button → raw markdown via clipboard. Exact source,
+  // immune to the markdown-renderer indentation loss that breaks DOM scraping.
+  // restoreDunders undoes the __x__→**x** bold round-trip in the serializer.
+  const copyText = await extractViaCopyButton(page, lastTurn);
+  if (copyText && copyText.length > 10) return restoreDunders(cleanAiResponse(copyText));
+
+  // Secondary: .markdown DOM walk — use textContent/innerText hybrid so that
+  // multi-space indentation is preserved as far as the rendered DOM allows.
   const codeAwareText = await extractMarkdownPreservingCode(page, lastTurn);
   if (codeAwareText && codeAwareText.length > 10) return cleanAiResponse(codeAwareText);
 
