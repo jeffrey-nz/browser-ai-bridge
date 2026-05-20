@@ -1,9 +1,26 @@
+import crypto from "node:crypto";
 import { logger } from "#utils/logger.js";
 import { eventBus } from "#web/eventBus.js";
 import { pollUntil } from "#utils/poller.js";
 import { getPollLocators, getDoneSignal } from "./locators.js";
 import { checkSnackbarError } from "./errorMonitor.js";
 import { evaluateCompletion } from "./evaluator.js";
+
+// Screenshot-based stall detection: every SHOT_INTERVAL_MS we hash a
+// screenshot of the page. While Gemini is genuinely working the page changes
+// (streaming text, animating spinner), so an unchanged screenshot for
+// SHOT_STALL_MS means the tab is visually frozen — a wedged turn.
+const SHOT_INTERVAL_MS = 15000;
+const SHOT_STALL_MS = 120000;
+
+async function _screenshotHash(page) {
+  try {
+    const buf = await page.screenshot({ type: "png", fullPage: false });
+    return crypto.createHash("sha1").update(buf).digest("hex");
+  } catch {
+    return null;
+  }
+}
 
 export async function waitForGeminiCompletion(
   page,
@@ -19,7 +36,18 @@ export async function waitForGeminiCompletion(
   eventBus.once("abort_requested", abortHandler);
 
   try {
-    const state = { lastTextLength: 0, stableIterations: 0 };
+    const state = {
+      lastTextLength: 0,
+      stableIterations: 0,
+      lastChangeMs: Date.now(),
+      shotHash: null,
+      shotChangeMs: Date.now(),
+      lastShotMs: 0,
+    };
+    // If the response text neither grows nor settles for this long, the turn
+    // is wedged (stuck "generating", canvas glitch, dead session) — bail early
+    // rather than holding the caller for the full poll timeout.
+    const NO_PROGRESS_STALL_MS = 240000;
 
     if (initialMessageCount > 0) {
       await page
@@ -122,6 +150,39 @@ export async function waitForGeminiCompletion(
           .then((t) => t.length)
           .catch(() => 0);
 
+        // Stall guard A — response text: if it neither grows nor settles for
+        // NO_PROGRESS_STALL_MS, the turn is wedged.
+        if (currentTextLength !== state.lastTextLength) {
+          state.lastChangeMs = Date.now();
+        } else if (Date.now() - state.lastChangeMs > NO_PROGRESS_STALL_MS) {
+          logger.warn("[Gemini Poll] No response progress — treating as stalled");
+          throw new Error("TIMEOUT");
+        }
+
+        // Stall guard B — screenshot: while Gemini is still "generating" the
+        // page should be changing visually. If a screenshot is byte-identical
+        // for SHOT_STALL_MS while still generating, the tab is frozen.
+        if (isGenerating && Date.now() - state.lastShotMs > SHOT_INTERVAL_MS) {
+          state.lastShotMs = Date.now();
+          const hash = await _screenshotHash(page);
+          if (hash) {
+            if (hash !== state.shotHash) {
+              state.shotHash = hash;
+              state.shotChangeMs = Date.now();
+            } else if (Date.now() - state.shotChangeMs > SHOT_STALL_MS) {
+              logger.warn(
+                "[Gemini Poll] Page visually frozen while generating — treating as stalled",
+              );
+              throw new Error("TIMEOUT");
+            }
+          }
+        } else if (!isGenerating) {
+          // Not generating — reset the visual-stall clock so a static, settled
+          // page is never mistaken for a freeze.
+          state.shotChangeMs = Date.now();
+          state.shotHash = null;
+        }
+
         const isComplete = evaluateCompletion(
           isGenerating,
           isDone,
@@ -137,7 +198,7 @@ export async function waitForGeminiCompletion(
         state.lastTextLength = currentTextLength;
         return false;
       },
-      { timeoutMs: 420000, pollIntervalMs: 500, errorMessage: "TIMEOUT" },
+      { timeoutMs: 900000, pollIntervalMs: 500, errorMessage: "TIMEOUT" },
     );
 
     return "SUCCESS";
