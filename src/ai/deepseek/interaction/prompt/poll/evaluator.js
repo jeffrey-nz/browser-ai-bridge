@@ -35,14 +35,27 @@ export function evaluateDeepSeekCompletion(
     stateContext.lastTextLength = currentText.length;
   }
 
+  // Idle-completion fallback: fires when generation appears stopped for ~12.5s.
+  // It MUST also require the response text to have stopped growing — otherwise
+  // a briefly-missed stop-button / streaming-network signal lets this fire
+  // mid-stream and capture a truncated response (observed: plans/code cut off
+  // near a fixed ~3900-char wall-clock position).
   if (!isGenerating) {
-    stateContext.idleIterations = (stateContext.idleIterations || 0) + 1;
+    const textStillGrowing =
+      currentText.length > (stateContext.idleTextLength || 0);
+    stateContext.idleTextLength = currentText.length;
 
-    if (stateContext.idleIterations > 25) {
-      return true;
+    if (textStillGrowing) {
+      stateContext.idleIterations = 0;
+    } else {
+      stateContext.idleIterations = (stateContext.idleIterations || 0) + 1;
+      if (stateContext.idleIterations > 25) {
+        return true;
+      }
     }
   } else {
     stateContext.idleIterations = 0;
+    stateContext.idleTextLength = currentText.length;
   }
 
   return false;
