@@ -13,13 +13,20 @@ export async function uploadFileToGemini(page, filePath) {
     throw new Error(`Upload file not found: ${filePath}`);
   }
 
-  // Gemini's "+" attach button opens a sub-menu; the actual file chooser only
-  // appears after clicking "Upload from computer" inside that menu, not the
-  // top-level button. Generic uploadFileToPage Strategy 2 times out on the
+  // Gemini's composer button opens a sub-menu; the OS file chooser only
+  // appears after clicking the "Files" / "Upload from computer" item inside
+  // that menu, not the top-level button. The menu button was renamed to
+  // "Upload & tools" (older builds: "Open upload file menu"). It is a
+  // <gem-icon-button> custom element wrapping a plain <button>; the inner
+  // button reports as pointer-intercepted, so we target the host element and
+  // force the click. Generic uploadFileToPage Strategy 2 times out on the
   // filechooser because the first click only opens a sub-menu.
   const menuBtn = page
     .locator(
-      '[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]',
+      'gem-icon-button[arialabel="Upload & tools"], ' +
+        'gem-icon-button[aria-label="Upload & tools"], ' +
+        'button[aria-label="Upload & tools"], [aria-label="Upload & tools"], ' +
+        '[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]',
     )
     .first();
   const menuVisible = await menuBtn
@@ -27,16 +34,31 @@ export async function uploadFileToGemini(page, filePath) {
     .catch(() => false);
 
   if (menuVisible) {
-    await menuBtn.click();
+    await menuBtn.click({ force: true });
+    // The menu item is "Files" in current builds; older builds used
+    // "Upload from computer".
     const uploadItem = page
       .locator(
-        '[role="menuitem"]:has-text("computer"), button:has-text("Upload from computer"), [role="option"]:has-text("computer")',
+        'button:has-text("Upload from computer"), ' +
+          '[role="menuitem"]:has-text("Upload from computer"), ' +
+          '[role="menuitem"]:has-text("computer"), ' +
+          'button:text-is("Files"), [role="menuitem"]:text-is("Files"), ' +
+          'button:has-text("Files")',
       )
       .first();
     await uploadItem.waitFor({ state: "visible", timeout: 5000 });
+    // The menu panel animates in and can briefly sit partly off-screen, so
+    // scroll the item into view before clicking.
+    await uploadItem
+      .scrollIntoViewIfNeeded({ timeout: 2000 })
+      .catch(() => {});
     const [fileChooser] = await Promise.all([
       page.waitForEvent("filechooser", { timeout: 10000 }),
-      uploadItem.click(),
+      uploadItem.click({ force: true }).catch(async () => {
+        // Fallback: dispatch a DOM click if the normal click is blocked by
+        // viewport/animation state. Playwright still catches the chooser.
+        await uploadItem.dispatchEvent("click");
+      }),
     ]);
     await fileChooser.setFiles(filePath);
     logger.info(
