@@ -10,7 +10,10 @@ export const DEEPSEEK_LOCATORS = {
   responseBlock:
     ".ds-markdown, .markdown-body, .ds-message, .ds-chat-message, [class*='markdown'], [class*='message-content']",
   doneSignal: null,
+  // DeepSeek renamed the reasoning toggle "DeepThink" → "Deep thinking"
+  // (a div.ds-toggle-button). Match the current label, keeping the old one as
+  // a fallback for older builds.
   modeToggle:
-    '[aria-label*="DeepThink" i], .ds-switch-label:has-text("DeepThink"), .ds-toggle-button:has-text("DeepThink")',
+    '.ds-toggle-button:has-text("Deep thinking"), [class*="toggle-button"]:has-text("Deep thinking"), div[role="button"]:has-text("Deep thinking"), [aria-label*="DeepThink" i], .ds-toggle-button:has-text("DeepThink")',
   cloudflareOverlay: "#cf-overlay, .cf-browser-verification",
 };

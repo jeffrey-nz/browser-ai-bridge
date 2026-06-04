@@ -1,8 +1,9 @@
 import { colors } from "#app/ui/colors.js";
 import { log } from "#app/ui/log.js";
 
+// DeepSeek renamed "DeepThink" → "Deep thinking" (div.ds-toggle-button).
 const TOGGLE_SEL =
-  '.ds-toggle-button:has-text("DeepThink"), .ds-switch-label:has-text("DeepThink"), [aria-label*="DeepThink" i]';
+  '.ds-toggle-button:has-text("Deep thinking"), [class*="toggle-button"]:has-text("Deep thinking"), div[role="button"]:has-text("Deep thinking"), [aria-label*="DeepThink" i], .ds-toggle-button:has-text("DeepThink")';
 
 async function isToggleOn(toggle) {
   return toggle
