@@ -1,16 +1,17 @@
 /**
- * POST /api/image-ask
+ * POST /api/audio-ask
  *
- * Uploads an EXISTING image (provided by the caller as a local file path or a
- * base64 data string) to an AI provider session and asks a question about it.
+ * Uploads an EXISTING audio clip (provided by the caller as a local file path
+ * or a base64 data string) to an AI provider session and asks a question
+ * about it.
  *
- * Unlike /api/visual-ask — which screenshots a live URL first — this endpoint
- * takes an image the caller already has (e.g. a rendered sheet-music PNG) and
- * sends it straight to the AI for visual analysis.
+ * The companion to /api/image-ask: where image-ask lets the AI *see* an
+ * artefact, audio-ask lets the AI *hear* one — e.g. a synth render of a
+ * transcribed score, so the model can catch wrong notes / rhythm by ear.
  *
- * Body: { imagePath?, imageBase64?, prompt, provider?, sessionId?, label? }
- *   - Provide exactly one of imagePath (a path on this machine) or imageBase64
- *     (raw base64, optionally with a "data:image/png;base64," prefix).
+ * Body: { audioPath?, audioBase64?, prompt, provider?, sessionId?, label? }
+ *   - Provide exactly one of audioPath (a path on this machine) or audioBase64
+ *     (raw base64, optionally with a "data:audio/wav;base64," prefix).
  * Response: { success, response }
  *
  * Errors: 400 (bad params), 404 (session not found), 501 (provider has no file
@@ -29,21 +30,35 @@ import { logger } from "#utils/logger.js";
 
 const router = Router();
 
+// Map a data-URI mime type to a sensible file extension. Gemini keys file
+// handling off the extension, so a wrong one can make the upload silently fail.
+const MIME_EXT = {
+  "audio/wav": ".wav",
+  "audio/x-wav": ".wav",
+  "audio/wave": ".wav",
+  "audio/mpeg": ".mp3",
+  "audio/mp3": ".mp3",
+  "audio/ogg": ".ogg",
+  "audio/flac": ".flac",
+  "audio/mp4": ".m4a",
+  "audio/aac": ".aac",
+};
+
 router.post("/", async (req, res) => {
   const {
     sessionId,
     provider,
-    imagePath,
-    imageBase64,
+    audioPath,
+    audioBase64,
     prompt,
-    label = "image-analysis",
+    label = "audio-analysis",
   } = req.body;
 
   if (!prompt || typeof prompt !== "string") {
     return sendError(res, 400, "Missing prompt");
   }
-  if (!imagePath && !imageBase64) {
-    return sendError(res, 400, "Provide imagePath or imageBase64");
+  if (!audioPath && !audioBase64) {
+    return sendError(res, 400, "Provide audioPath or audioBase64");
   }
 
   // Resolve the session — explicit id, then a free existing one, otherwise
@@ -74,7 +89,11 @@ router.post("/", async (req, res) => {
     }
   }
   if (!session) {
-    return sendError(res, 404, `No available session (provider: ${provider || "any"})`);
+    return sendError(
+      res,
+      404,
+      `No available session (provider: ${provider || "any"})`,
+    );
   }
   if (!session.engine?.sendPromptWithFile) {
     return sendError(
@@ -84,32 +103,38 @@ router.post("/", async (req, res) => {
     );
   }
 
-  // Decide the file to upload. For imagePath we use it directly (no temp file);
-  // for imageBase64 we decode to a temp PNG.
-  let uploadPath = imagePath;
+  // Decide the file to upload. For audioPath we use it directly (no temp file);
+  // for audioBase64 we decode to a temp file with an extension matching the
+  // declared mime type (defaulting to .wav).
+  let uploadPath = audioPath;
   let tempPath = null;
   if (!uploadPath) {
-    let b64 = imageBase64;
+    let b64 = audioBase64;
+    let ext = ".wav";
+    if (b64.startsWith("data:")) {
+      const mime = b64.slice(5, b64.indexOf(";")).toLowerCase();
+      ext = MIME_EXT[mime] || ".wav";
+    }
     const comma = b64.indexOf(",");
     if (b64.startsWith("data:") && comma !== -1) b64 = b64.slice(comma + 1);
-    tempPath = join(tmpdir(), `image-ask-${randomUUID()}.png`);
+    tempPath = join(tmpdir(), `audio-ask-${randomUUID()}${ext}`);
     try {
       await writeFile(tempPath, Buffer.from(b64, "base64"));
     } catch (err) {
-      return sendError(res, 500, `Failed to write temp image: ${err.message}`);
+      return sendError(res, 500, `Failed to write temp audio: ${err.message}`);
     }
     uploadPath = tempPath;
   } else {
     try {
       await access(uploadPath);
     } catch {
-      return sendError(res, 400, `imagePath not found: ${uploadPath}`);
+      return sendError(res, 400, `audioPath not found: ${uploadPath}`);
     }
   }
 
   return withSessionLock(session, false, async () => {
     try {
-      // /api/image-ask is a stateless one-shot. Start a clean chat first so
+      // /api/audio-ask is a stateless one-shot. Start a clean chat first so
       // conversation history never accumulates on a reused session — a bloated
       // chat makes the model re-process every past turn and slows (then times
       // out) each later call.
@@ -117,11 +142,11 @@ router.post("/", async (req, res) => {
         await session.engine
           .startNewChat()
           .catch((e) =>
-            logger.warn(`[ImageAsk] startNewChat failed: ${e.message}`),
+            logger.warn(`[AudioAsk] startNewChat failed: ${e.message}`),
           );
       }
       logger.info(
-        `[ImageAsk] Uploading ${uploadPath} to ${session.providerId} session`,
+        `[AudioAsk] Uploading ${uploadPath} to ${session.providerId} session`,
       );
       const result = await session.engine.sendPromptWithFile(
         prompt,
@@ -131,8 +156,8 @@ router.post("/", async (req, res) => {
       );
       return sendSuccess(res, { response: result?.text ?? "" });
     } catch (err) {
-      logger.warn(`[ImageAsk] sendPromptWithFile failed: ${err.message}`);
-      return sendError(res, 500, `Image ask failed: ${err.message}`);
+      logger.warn(`[AudioAsk] sendPromptWithFile failed: ${err.message}`);
+      return sendError(res, 500, `Audio ask failed: ${err.message}`);
     } finally {
       if (tempPath) unlink(tempPath).catch(() => {});
       if (autoCreated) {

@@ -64,7 +64,15 @@ export async function uploadFileToGemini(page, filePath) {
     logger.info(
       `[Gemini] Uploaded file via sub-menu file chooser (${filePath})`,
     );
-    await page.waitForTimeout(1500);
+    // Gemini ingests the file before the prompt can be sent; large files
+    // (multi-MB audio renders) take noticeably longer than a small PNG.
+    // Scale the settle wait by file size: ~1.5s base + 1s per MB, capped 30s.
+    let settleMs = 1500;
+    try {
+      const { size } = await fs.stat(filePath);
+      settleMs = Math.min(30000, 1500 + Math.round(size / 1024 / 1024) * 1000);
+    } catch {}
+    await page.waitForTimeout(settleMs);
     return true;
   }
 
