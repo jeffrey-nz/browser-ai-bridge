@@ -46,23 +46,15 @@ export const PROVIDER_MODES = {
     [AI_MODES.AUTO]: { label: "Auto", regex: /^auto$/i, key: "mode_auto" },
   },
 
+  // Gemini's mode menu now uses opaque hashed test-ids
+  // (e.g. bard-mode-option-56fdd199312815e2) and version-numbered labels
+  // ("3.5 Flash", "3.5 Thinking", "3.1 Pro"). Both change over time, so each
+  // option is matched by a stable keyword regex on its visible text instead.
   gemini: {
-    [AI_MODES.FAST]: {
-      label: "Fast",
-      testId: "bard-mode-option-fast",
-    },
-    [AI_MODES.THINKING]: {
-      label: "Thinking",
-      testId: "bard-mode-option-thinking",
-    },
-    [AI_MODES.PRO]: {
-      label: "Pro",
-      testId: "bard-mode-option-pro",
-    },
-    [AI_MODES.AUTO]: {
-      label: "Fast",
-      testId: "bard-mode-option-fast",
-    },
+    [AI_MODES.FAST]: { label: "Fast", match: /flash/i },
+    [AI_MODES.THINKING]: { label: "Thinking", match: /thinking/i },
+    [AI_MODES.PRO]: { label: "Pro", match: /\bpro\b/i },
+    [AI_MODES.AUTO]: { label: "Fast", match: /flash/i },
   },
 
   chatgpt: {

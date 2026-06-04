@@ -38,17 +38,28 @@ async function trySetGeminiMode(page, modeKey) {
 
   log(`\n⚙️  Setting Gemini mode to: ${colors.bold(config.label)}...`);
 
+  const match = config.match || /flash/i;
   const switcher = page.locator('[data-test-id="bard-mode-menu-button"]');
+
+  // Find the menu option whose visible text matches the target keyword.
+  // Gemini's option test-ids are opaque hashes, so we resolve by text.
+  async function findOption() {
+    const opts = page.locator('[data-test-id^="bard-mode-option-"]');
+    const n = await opts.count();
+    for (let i = 0; i < n; i++) {
+      const opt = opts.nth(i);
+      const txt = (await opt.innerText().catch(() => "")).trim();
+      if (match.test(txt)) return { opt, txt };
+    }
+    return { opt: null, txt: null };
+  }
 
   try {
     await switcher.waitFor({ state: "visible", timeout: 15000 });
 
-    const labelSpan = switcher
-      .locator('[data-test-id="logo-pill-label-container"] span')
-      .first();
-    const currentText = (await labelSpan.innerText().catch(() => "")).trim();
+    const currentText = (await switcher.innerText().catch(() => "")).trim();
 
-    if (currentText.toLowerCase() === config.label.toLowerCase()) {
+    if (match.test(currentText)) {
       log(`  ${colors.blue("ℹ")} Mode "${currentText}" is already active.`);
       return;
     }
@@ -65,9 +76,12 @@ async function trySetGeminiMode(page, modeKey) {
         await switcher.click({ force: true });
         await page.waitForTimeout(600);
 
-        const option = page
-          .locator(`[data-test-id="${config.testId}"]`)
-          .first();
+        const { opt: option, txt: optText } = await findOption();
+        if (!option) {
+          throw new Error(
+            `no mode option matching ${match} in the menu`,
+          );
+        }
         await option.waitFor({ state: "visible", timeout: 6000 });
 
         // Already active?
@@ -114,23 +128,23 @@ async function trySetGeminiMode(page, modeKey) {
           break;
         }
 
-        // Fallback: poll the pill label for up to 7s.
+        // Fallback: poll the menu-button label for up to 7s.
         for (let i = 0; i < 14; i++) {
           await page.waitForTimeout(500);
           const updatedText = (
-            await labelSpan.innerText().catch(() => "")
+            await switcher.innerText().catch(() => "")
           ).trim();
-          if (updatedText.toLowerCase() === config.label.toLowerCase()) {
+          if (match.test(updatedText)) {
             verified = true;
             break;
           }
         }
 
         if (verified) {
-          log(`  ${colors.green("✔")} Mode confirmed: ${config.label}`);
+          log(`  ${colors.green("✔")} Mode confirmed: ${config.label} (${optText})`);
           break;
         } else {
-          const still = (await labelSpan.innerText().catch(() => "?")).trim();
+          const still = (await switcher.innerText().catch(() => "?")).trim();
           throw new Error(
             `Label did not update after click. Still shows: "${still}"`,
           );

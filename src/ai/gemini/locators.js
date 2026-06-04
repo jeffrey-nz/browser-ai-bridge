@@ -8,12 +8,16 @@ export const GEMINI_LOCATORS = {
   doneSignal:
     'message-actions, .response-actions-container, button[aria-label*="Good response"]',
 
+  // Mode menu. Option test-ids are opaque hashes
+  // (bard-mode-option-<hash>) and labels are version-numbered
+  // ("3.5 Flash", "3.5 Thinking", "3.1 Pro"), so options are matched by a
+  // stable keyword on their visible text. NB: "Fast" mode is labelled
+  // "Flash" in the UI.
   modeDropdown:
-    "button.input-area-switch, button.bard-mode-menu-btn-for-nested-menu, .mode-picker-in-header",
+    '[data-test-id="bard-mode-menu-button"], button.input-area-switch',
   modes: {
-    fast: '.gds-mode-switch-menu .bard-mode-list-button:has-text("Fast"), [role="menuitem"]:has-text("Fast")',
-    thinking:
-      '.gds-mode-switch-menu .bard-mode-list-button:has-text("Thinking"), [role="menuitem"]:has-text("Thinking")',
-    pro: '.gds-mode-switch-menu .bard-mode-list-button:has-text("Pro"), [role="menuitem"]:has-text("Pro")',
+    fast: '[data-test-id^="bard-mode-option-"]:has-text("Flash")',
+    thinking: '[data-test-id^="bard-mode-option-"]:has-text("Thinking")',
+    pro: '[data-test-id^="bard-mode-option-"]:has-text("Pro")',
   },
 };
