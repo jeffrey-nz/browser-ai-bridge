@@ -37,6 +37,7 @@ router.post("/", async (req, res) => {
     imageBase64,
     prompt,
     label = "image-analysis",
+    mode = null,
   } = req.body;
 
   if (!prompt || typeof prompt !== "string") {
@@ -120,8 +121,18 @@ router.post("/", async (req, res) => {
             logger.warn(`[ImageAsk] startNewChat failed: ${e.message}`),
           );
       }
+      // Honour a requested model/mode (e.g. "fast" → Gemini Flash). Without
+      // this the visual transcription runs on whatever model the tab was last
+      // left on — a slow "Pro"/"Thinking" model makes every bar crawl.
+      if (mode && typeof session.engine?.setMode === "function") {
+        await session.engine
+          .setMode(mode)
+          .catch((e) =>
+            logger.warn(`[ImageAsk] setMode ${mode} failed: ${e.message}`),
+          );
+      }
       logger.info(
-        `[ImageAsk] Uploading ${uploadPath} to ${session.providerId} session`,
+        `[ImageAsk] Uploading ${uploadPath} to ${session.providerId} session (mode: ${mode || "default"})`,
       );
       const result = await session.engine.sendPromptWithFile(
         prompt,

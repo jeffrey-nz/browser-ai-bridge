@@ -52,6 +52,7 @@ router.post("/", async (req, res) => {
     audioBase64,
     prompt,
     label = "audio-analysis",
+    mode = null,
   } = req.body;
 
   if (!prompt || typeof prompt !== "string") {
@@ -145,8 +146,17 @@ router.post("/", async (req, res) => {
             logger.warn(`[AudioAsk] startNewChat failed: ${e.message}`),
           );
       }
+      // Honour a requested model/mode (e.g. "fast" → Gemini Flash) so audio
+      // validation isn't left on a slow "Pro"/"Thinking" model.
+      if (mode && typeof session.engine?.setMode === "function") {
+        await session.engine
+          .setMode(mode)
+          .catch((e) =>
+            logger.warn(`[AudioAsk] setMode ${mode} failed: ${e.message}`),
+          );
+      }
       logger.info(
-        `[AudioAsk] Uploading ${uploadPath} to ${session.providerId} session`,
+        `[AudioAsk] Uploading ${uploadPath} to ${session.providerId} session (mode: ${mode || "default"})`,
       );
       const result = await session.engine.sendPromptWithFile(
         prompt,
