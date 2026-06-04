@@ -26,6 +26,7 @@ export async function waitForGeminiCompletion(
   page,
   spinner,
   initialMessageCount,
+  sessionId = null,
 ) {
   const locators = getPollLocators(page);
 
@@ -34,6 +35,18 @@ export async function waitForGeminiCompletion(
     aborted = true;
   };
   eventBus.once("abort_requested", abortHandler);
+
+  // Session-specific abort: fires when the HTTP client disconnects mid-poll
+  // (e.g. the caller's fetch AbortController or a Stop in the dashboard). Until
+  // now Gemini ignored this — only the never-emitted global abort_requested was
+  // wired — so an in-flight turn could not be interrupted.
+  let sessionAbortHandler = null;
+  if (sessionId) {
+    sessionAbortHandler = () => {
+      aborted = true;
+    };
+    eventBus.once(`session_abort:${sessionId}`, sessionAbortHandler);
+  }
 
   try {
     const state = {
@@ -233,5 +246,8 @@ export async function waitForGeminiCompletion(
     return "ERROR";
   } finally {
     eventBus.off("abort_requested", abortHandler);
+    if (sessionId && sessionAbortHandler) {
+      eventBus.off(`session_abort:${sessionId}`, sessionAbortHandler);
+    }
   }
 }

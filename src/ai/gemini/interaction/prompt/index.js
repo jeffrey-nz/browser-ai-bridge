@@ -9,6 +9,7 @@ export async function sendPromptWithFile(
   filePath,
   text,
   label = "Visual QA",
+  sessionId = null,
 ) {
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   try {
@@ -18,13 +19,14 @@ export async function sendPromptWithFile(
       `[Gemini] File upload failed: ${err.message} — sending text-only`,
     );
   }
-  return sendPromptAndWait(page, text, label);
+  return sendPromptAndWait(page, text, label, sessionId);
 }
 
 export async function sendPromptAndWait(
   page,
   initialText,
   initialLabel = "Prompt",
+  sessionId = null,
 ) {
   let text = initialText;
   let label = initialLabel;
@@ -34,9 +36,9 @@ export async function sendPromptAndWait(
     try {
       let result;
       if (action === "keep_waiting") {
-        result = await resumePolling(page);
+        result = await resumePolling(page, sessionId);
       } else {
-        result = await executePromptTurn(page, text, label);
+        result = await executePromptTurn(page, text, label, sessionId);
       }
 
       printResponseSummary(result.text);

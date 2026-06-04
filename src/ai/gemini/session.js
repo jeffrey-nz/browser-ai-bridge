@@ -27,12 +27,12 @@ export class GeminiProvider extends BaseProvider {
     return await setMode(this.page, mode);
   }
 
-  async sendPromptAndWait(text, label) {
-    return await sendPromptAndWait(this.page, text, label);
+  async sendPromptAndWait(text, label, sessionId = null) {
+    return await sendPromptAndWait(this.page, text, label, sessionId);
   }
 
-  async sendPromptWithFile(text, label, _sessionId, filePath) {
-    return await sendPromptWithFile(this.page, filePath, text, label);
+  async sendPromptWithFile(text, label, sessionId, filePath) {
+    return await sendPromptWithFile(this.page, filePath, text, label, sessionId);
   }
 
   async sendPromptOnly(text) {

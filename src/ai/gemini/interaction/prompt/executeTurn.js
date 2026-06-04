@@ -51,7 +51,7 @@ async function handlePostPoll(page, spinner, pollResult) {
   return { text: responseText };
 }
 
-export async function executePromptTurn(page, text, label) {
+export async function executePromptTurn(page, text, label, sessionId = null) {
   const messageCount = await page.evaluate(
     () => document.querySelectorAll("message-content, model-response").length,
   );
@@ -68,6 +68,7 @@ export async function executePromptTurn(page, text, label) {
       page,
       spinner,
       messageCount,
+      sessionId,
     );
     return await handlePostPoll(page, spinner, pollResult);
   } catch (err) {
@@ -76,11 +77,11 @@ export async function executePromptTurn(page, text, label) {
   }
 }
 
-export async function resumePolling(page) {
+export async function resumePolling(page, sessionId = null) {
   const spinner = createSpinner(`Gemini is thinking... (Resumed)`).start();
 
   try {
-    const pollResult = await waitForGeminiCompletion(page, spinner, 0);
+    const pollResult = await waitForGeminiCompletion(page, spinner, 0, sessionId);
     return await handlePostPoll(page, spinner, pollResult);
   } catch (err) {
     err.spinner = spinner;
