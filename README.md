@@ -64,6 +64,19 @@ LOG_LEVEL=info
 
 See [`.env.example`](.env.example) for all available options.
 
+### Skipping login verification
+
+Set `BROWSER_AI_ASSUME_LOGGED_IN=1` to trust that every provider is already
+signed in. The first-run setup then skips the per-provider login detection and
+the **Ready / Skip** confirmation entirely — tabs are still opened/reused so the
+providers are primed, but nothing is verified and you're never prompted. Useful
+when your Chrome profile already has every provider logged in and you just want
+the bridge to come up unattended.
+
+```bash
+BROWSER_AI_ASSUME_LOGGED_IN=1 npm start
+```
+
 ## First-run setup
 
 On first start, an interactive wizard opens Chrome and walks through authenticating each provider:

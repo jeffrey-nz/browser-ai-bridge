@@ -15,7 +15,24 @@ export async function runLoginSequence(context) {
   console.log("=============================================");
 
   const isNonInteractive = !process.stdout.isTTY || !process.stdin.isTTY;
-  const rl = isNonInteractive ? null : makeRl();
+
+  // BROWSER_AI_ASSUME_LOGGED_IN=1 — trust that every provider is already signed
+  // in: skip the per-provider login detection and the Ready/Skip confirmation
+  // entirely, and don't prompt for setup scope. Tabs are still opened/reused so
+  // the providers are primed, just never verified.
+  const assumeLoggedIn = /^(1|true|yes|on)$/i.test(
+    process.env.BROWSER_AI_ASSUME_LOGGED_IN || "",
+  );
+
+  const rl = isNonInteractive || assumeLoggedIn ? null : makeRl();
+
+  if (assumeLoggedIn) {
+    console.log(
+      colors.yellow(
+        "   ⚡ BROWSER_AI_ASSUME_LOGGED_IN set — assuming all providers are logged in (no verification).",
+      ),
+    );
+  }
 
   let providersToRun = PROVIDERS_TO_LOGIN;
 
@@ -23,7 +40,7 @@ export async function runLoginSequence(context) {
   // has already made the selection, asking again is redundant.
   const scopeAlreadyChosen = !!process.env.BROWSER_AI_PROVIDERS;
 
-  if (!isNonInteractive && !scopeAlreadyChosen) {
+  if (!isNonInteractive && !scopeAlreadyChosen && !assumeLoggedIn) {
     const scopeOptions = [
       { label: colors.green("Configure ALL providers"), value: "ALL" },
       ...PROVIDERS_TO_LOGIN.map((p) => ({
@@ -90,13 +107,19 @@ export async function runLoginSequence(context) {
       claimExternalPage(page);
       await page.bringToFront().catch(() => {});
 
-      const isDetected = await page
-        .locator(provider.readySelector)
-        .first()
-        .isVisible({ timeout: 2500 })
-        .catch(() => false);
+      const isDetected = assumeLoggedIn
+        ? true
+        : await page
+            .locator(provider.readySelector)
+            .first()
+            .isVisible({ timeout: 2500 })
+            .catch(() => false);
 
-      if (isDetected) {
+      if (assumeLoggedIn) {
+        console.log(
+          colors.green(`   [Assumed] Skipping login check — treating as ready.`),
+        );
+      } else if (isDetected) {
         console.log(colors.green(`   [Detected] Interface found.`));
       } else {
         console.log(
@@ -106,9 +129,10 @@ export async function runLoginSequence(context) {
         );
       }
 
-      if (isNonInteractive) {
+      if (isNonInteractive || assumeLoggedIn) {
+        const reason = assumeLoggedIn ? "Assume-logged-in" : "Non-interactive";
         console.log(
-          `   ${colors.yellow("⚡")} [Auto] Non-interactive mode — assuming ${provider.name} is ready.`,
+          `   ${colors.yellow("⚡")} [Auto] ${reason} mode — assuming ${provider.name} is ready.`,
         );
         releaseExternalPage(page);
         continue;
