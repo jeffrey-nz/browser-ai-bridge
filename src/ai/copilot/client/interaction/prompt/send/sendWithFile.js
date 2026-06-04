@@ -1,0 +1,50 @@
+/**
+ * Send a prompt to Copilot ABOUT an attached image (an image-ask), so the
+ * bridge can fall back to Copilot for sheet-music vision when Gemini is down.
+ *
+ * Unlike sendAsFile.js (which uploads a long *text* prompt as a .txt), this
+ * uploads the caller's image and asks the prompt against it — one message,
+ * then wait + extract.
+ */
+import { attachFileToCopilot } from "./sendAsFile.js";
+import { injectAndSubmit } from "./submitter.js";
+import { waitForResponseAndExtract } from "./waitAndExtract.js";
+import { printResponseSummary } from "../summary.js";
+import { logger } from "#utils/logger.js";
+
+// Keep Copilot answering inline (it otherwise loves to spin up Pages/Designer
+// widgets); deliberately avoids naming M365 products, which trip its filter.
+const IMG_GUARD =
+  "[Format: Reply directly in this chat as plain text or a code block. " +
+  "Do not use external document editors or media tools.]\n\n";
+
+export async function sendPromptWithFile(
+  page,
+  filePath,
+  text,
+  label = "Visual QA",
+  sessionId = null,
+  pollTimeoutMs = 420000,
+) {
+  logger.info(`[Copilot] Uploading image for visual analysis: ${filePath}`);
+  try {
+    const ok = await attachFileToCopilot(page, filePath);
+    if (!ok) {
+      logger.warn("[Copilot] Image attach failed — sending text-only");
+    }
+  } catch (err) {
+    logger.warn(
+      `[Copilot] Image upload failed: ${err.message} — sending text-only`,
+    );
+  }
+
+  await injectAndSubmit(page, IMG_GUARD + text);
+  const result = await waitForResponseAndExtract(
+    page,
+    label,
+    sessionId,
+    pollTimeoutMs,
+  );
+  if (result?.ok) printResponseSummary(result.text);
+  return result;
+}

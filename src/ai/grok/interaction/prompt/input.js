@@ -2,6 +2,22 @@ import {
   clearAndType,
   clickOrFallbackToEnter,
 } from "#ai/shared/domInteraction.js";
+import { uploadFileToPage } from "#ai/shared/uploadFile.js";
+
+export async function uploadFileToGrok(page, filePath) {
+  // Grok's composer keeps a hidden <input type="file"> in most builds, which
+  // the shared helper's Strategy 1 (direct setInputFiles) handles; the
+  // selectors below are the Strategy-2 fallback (click → OS file chooser).
+  const grokAttachSelector =
+    'input[type="file"], ' +
+    'button[aria-label*="attach" i], button[aria-label*="upload" i], ' +
+    'button[aria-label*="add" i][aria-label*="file" i], ' +
+    'button[aria-label*="image" i], button[data-testid*="attach" i], ' +
+    'button[title*="attach" i]';
+  return uploadFileToPage(page, filePath, {
+    attachmentBtnSelector: grokAttachSelector,
+  });
+}
 
 export async function injectGrokText(page, text) {
   await clearAndType(

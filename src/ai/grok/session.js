@@ -2,6 +2,7 @@ import { BaseProvider } from "#ai/shared/BaseProvider.js";
 import {
   startNewChat,
   sendPromptAndWait,
+  sendPromptWithFile,
   setMode,
 } from "./interaction/index.js";
 import { injectGrokText, clickGrokSend } from "./interaction/prompt/input.js";
@@ -25,6 +26,10 @@ export class GrokProvider extends BaseProvider {
 
   async sendPromptAndWait(text, label) {
     return await sendPromptAndWait(this.page, text, label);
+  }
+
+  async sendPromptWithFile(text, label, sessionId, filePath) {
+    return await sendPromptWithFile(this.page, filePath, text, label, sessionId);
   }
 
   async sendPromptOnly(text) {

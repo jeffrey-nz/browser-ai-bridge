@@ -3,6 +3,7 @@ import {
   startNewChat,
   setResponseMode,
   sendPromptAndWait,
+  sendPromptWithFile,
 } from "./interaction.js";
 import { isCopilotUrl } from "./navigation.js";
 import { injectAndSubmit } from "./interaction/prompt/send/submitter.js";
@@ -28,6 +29,16 @@ export class CopilotProvider extends BaseProvider {
       "copilot",
       sessionId,
       pollTimeoutMs,
+    );
+  }
+
+  async sendPromptWithFile(text, label, sessionId, filePath) {
+    return await sendPromptWithFile(
+      this.page,
+      filePath,
+      text,
+      label,
+      sessionId,
     );
   }
 

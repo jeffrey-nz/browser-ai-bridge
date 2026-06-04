@@ -188,6 +188,24 @@ async function uploadViaPlusMenu(page, filePath) {
 }
 
 /**
+ * Attach an arbitrary file (e.g. a sheet-music PNG for an image-ask) to
+ * Copilot's composer and wait for the upload to settle. Reuses the same two
+ * strategies as the long-prompt path — direct setInputFiles on the hidden
+ * composer-file-input, then the "+" menu → file chooser. Returns true if a
+ * file was attached.
+ */
+export async function attachFileToCopilot(page, filePath) {
+  let attached = await uploadViaHiddenInput(page, filePath);
+  if (!attached) attached = await uploadViaPlusMenu(page, filePath);
+  if (!attached) {
+    log(colors.yellow("  [Copilot] Could not attach file for image-ask."));
+    return false;
+  }
+  await waitForUploadComplete(page);
+  return true;
+}
+
+/**
  * Returns true if the long-prompt-as-file path was submitted end to end.
  * Returns false on any failure so the caller can fall back.
  */
