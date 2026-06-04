@@ -16,11 +16,11 @@ export async function runLoginSequence(context) {
 
   const isNonInteractive = !process.stdout.isTTY || !process.stdin.isTTY;
 
-  // BROWSER_AI_ASSUME_LOGGED_IN=1 — trust that every provider is already signed
-  // in: skip the per-provider login detection and the Ready/Skip confirmation
-  // entirely, and don't prompt for setup scope. Tabs are still opened/reused so
-  // the providers are primed, just never verified.
-  const assumeLoggedIn = /^(1|true|yes|on)$/i.test(
+  // Trust that every provider is already signed in: skip the per-provider login
+  // detection and the Ready/Skip confirmation entirely. Tabs are still
+  // opened/reused so providers are primed, just never verified. Enabled either
+  // via BROWSER_AI_ASSUME_LOGGED_IN=1 or by choosing "Skip" in the setup menu.
+  let assumeLoggedIn = /^(1|true|yes|on)$/i.test(
     process.env.BROWSER_AI_ASSUME_LOGGED_IN || "",
   );
 
@@ -47,6 +47,12 @@ export async function runLoginSequence(context) {
         label: `Configure only ${colors.bold(p.name)}`,
         value: p.id,
       })),
+      {
+        label: colors.yellow(
+          "Skip setup — assume everything is already logged in",
+        ),
+        value: "SKIP_ALL",
+      },
     ];
 
     const scope = await promptChoice(
@@ -56,7 +62,14 @@ export async function runLoginSequence(context) {
       { defaultOption: 1 },
     );
 
-    if (scope !== "ALL") {
+    if (scope === "SKIP_ALL") {
+      assumeLoggedIn = true;
+      console.log(
+        colors.yellow(
+          "   ⚡ Skipping setup — assuming all providers are already logged in (no verification).",
+        ),
+      );
+    } else if (scope !== "ALL") {
       const chosen = PROVIDERS_TO_LOGIN.find((p) => p.id === scope);
       providersToRun = chosen ? [chosen] : PROVIDERS_TO_LOGIN;
       for (const p of PROVIDERS_TO_LOGIN) {

@@ -86,9 +86,12 @@ npm start
 ```
 
 1. Chrome opens automatically
-2. For each provider, the wizard navigates to its URL and waits for you to log in
-3. Press **Enter** to confirm a provider is ready, or **S** to skip it
-4. The API server starts once setup completes
+2. Pick a scope: configure **all** providers, just **one**, or **Skip setup — assume everything is already logged in** to bypass verification entirely
+3. For each provider, the wizard navigates to its URL and waits for you to log in
+4. Press **Enter** to confirm a provider is ready, or **S** to skip it
+5. The API server starts once setup completes
+
+> Tip: choose **Skip setup** (or set `BROWSER_AI_ASSUME_LOGGED_IN=1`) when your Chrome profile already has every provider logged in and you want an unattended start.
 
 After initial login, Chrome saves the session to a temp profile directory (`/tmp/chrome_ai_debug` by default). Subsequent starts don't require re-authentication unless sessions expire.
 
