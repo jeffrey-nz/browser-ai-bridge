@@ -155,6 +155,16 @@ export async function waitForGeminiCompletion(
         if (currentTextLength !== state.lastTextLength) {
           state.lastChangeMs = Date.now();
         } else if (Date.now() - state.lastChangeMs > NO_PROGRESS_STALL_MS) {
+          // Text frozen for the stall window. If a real answer is on screen
+          // this is a finished turn whose Stop button never cleared — accept
+          // it rather than discarding the response and forcing a retry.
+          if (currentTextLength > 0) {
+            logger.info(
+              "[Gemini Poll] Response settled but Stop button never cleared — accepting it",
+            );
+            await page.waitForTimeout(500);
+            return true;
+          }
           logger.warn("[Gemini Poll] No response progress — treating as stalled");
           throw new Error("TIMEOUT");
         }
@@ -170,6 +180,16 @@ export async function waitForGeminiCompletion(
               state.shotHash = hash;
               state.shotChangeMs = Date.now();
             } else if (Date.now() - state.shotChangeMs > SHOT_STALL_MS) {
+              // Frozen tab. If a response is already written, salvage it
+              // instead of throwing it away — a stuck Stop button shouldn't
+              // cost the user a completed answer.
+              if (currentTextLength > 0) {
+                logger.info(
+                  "[Gemini Poll] Page frozen but a response is present — accepting it",
+                );
+                await page.waitForTimeout(500);
+                return true;
+              }
               logger.warn(
                 "[Gemini Poll] Page visually frozen while generating — treating as stalled",
               );
