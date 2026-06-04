@@ -29,9 +29,21 @@ export async function uploadFileToGemini(page, filePath) {
         '[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]',
     )
     .first();
-  const menuVisible = await menuBtn
-    .isVisible({ timeout: 3000 })
-    .catch(() => false);
+  // Poll for the upload-menu button rather than giving up after one short
+  // check. After a fresh "new chat" the composer toolbar can take several
+  // seconds to mount; if we fall through too early the generic fallback
+  // (which has no Gemini-matching selector) fails and the prompt is silently
+  // sent TEXT-ONLY — fatal for image transcription. Up to ~3×(4s+1.5s).
+  let menuVisible = false;
+  for (let attempt = 0; attempt < 3 && !menuVisible; attempt++) {
+    menuVisible = await menuBtn.isVisible({ timeout: 4000 }).catch(() => false);
+    if (!menuVisible) {
+      logger.warn(
+        `[Gemini] Upload menu button not ready (attempt ${attempt + 1}/3) — waiting…`,
+      );
+      await page.waitForTimeout(1500);
+    }
+  }
 
   if (menuVisible) {
     await menuBtn.click({ force: true });
