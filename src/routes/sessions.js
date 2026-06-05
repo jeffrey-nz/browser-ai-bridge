@@ -181,77 +181,86 @@ router.post("/:id/new-chat", async (req, res) => {
   }
 });
 
-// Extract the first generated image from a session's page. Finds <img> elements
-// with substantial data-URLs or blob/https src values (skipping avatars/icons),
-// fetches the image data, and returns it as { imageBase64, mimeType, width, height }.
-// Used by the icon generator to grab AI-generated images without manual right-click.
+// Extract the AI-generated image from a session's page and return it as base64.
+// Reads the image data *inside* the page context (so blob: URLs and same-origin
+// images work), skipping UI chrome (sparkles, avatars, spinners). Optional query
+// param ?minSize=512 sets the minimum width/height to accept (default 512) — lets
+// the caller poll until the real generated image (not a placeholder) has rendered.
+// Used by the icon generator to auto-grab images without a manual right-click-save.
 router.get("/:id/extract-image", async (req, res) => {
   const { id } = req.params;
   const session = sessionManager.getSession?.(id);
   if (!session?.page) return sendError(res, 404, `Session not found: ${id}`);
 
+  const minSize = Math.max(0, parseInt(req.query.minSize, 10) || 512);
+
   try {
-    // Find the largest/most-likely-generated image on the page
-    const imgInfo = await session.page.evaluate(() => {
-      const imgs = Array.from(document.querySelectorAll('img'));
-      // Prefer images with data-src, blob URLs, or large HTTPS URLs (not tiny icons)
-      const candidates = imgs
-        .map(el => ({
-          src: el.currentSrc || el.src || '',
-          naturalW: el.naturalWidth,
-          naturalH: el.naturalHeight,
-          rect: el.getBoundingClientRect(),
+    const result = await session.page.evaluate(async (minSize) => {
+      // UI chrome to ignore: Gemini sparkle, Google avatars, SVG icons, gifs.
+      const isJunk = (src) =>
+        !src ||
+        /gstatic\.com/i.test(src) ||
+        /googleusercontent\.com\/a[/_]/i.test(src) || // profile avatars
+        /\.svg(\?|$)/i.test(src) ||
+        src.startsWith("data:image/gif");
+
+      const imgs = Array.from(document.querySelectorAll("img"))
+        .map((el) => ({
+          el,
+          src: el.currentSrc || el.src || "",
+          w: el.naturalWidth,
+          h: el.naturalHeight,
+          alt: el.alt || "",
         }))
-        .filter(i => i.naturalW >= 100 && i.naturalH >= 100)
-        .filter(i => i.src && !i.src.startsWith('data:image/gif')) // skip spinners
-        .sort((a, b) => (b.naturalW * b.naturalH) - (a.naturalW * a.naturalH));
+        .filter((i) => i.src && !isJunk(i.src) && i.w >= minSize && i.h >= minSize);
 
-      // Also check for canvas elements (some providers render to canvas)
-      const canvases = Array.from(document.querySelectorAll('canvas'))
-        .filter(c => c.width >= 100 && c.height >= 100)
-        .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+      if (imgs.length === 0) return { found: false };
 
-      const topCanvas = canvases[0];
-      const topImg = candidates[0];
+      // Prefer images explicitly marked as AI-generated, then largest.
+      imgs.sort((a, b) => {
+        const aAI = /ai[\s-]?generated/i.test(a.alt) ? 1 : 0;
+        const bAI = /ai[\s-]?generated/i.test(b.alt) ? 1 : 0;
+        if (aAI !== bAI) return bAI - aAI;
+        return b.w * b.h - a.w * a.h;
+      });
 
-      if (topCanvas && (!topImg || topCanvas.width * topCanvas.height >= topImg.naturalW * topImg.naturalH)) {
-        return { type: 'canvas', dataUrl: topCanvas.toDataURL('image/png'), width: topCanvas.width, height: topCanvas.height };
-      }
-      if (topImg) {
-        return { type: 'img', src: topImg.src, width: topImg.naturalW, height: topImg.naturalH };
-      }
-      return null;
-    });
+      const best = imgs[0];
+      // Fetch the image bytes in-page (works for blob: and same-origin https:).
+      const resp = await fetch(best.src);
+      const blob = await resp.blob();
+      const dataUrl = await new Promise((resolve) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => resolve(null);
+        fr.readAsDataURL(blob);
+      });
+      return {
+        found: true,
+        dataUrl,
+        width: best.w,
+        height: best.h,
+        alt: best.alt,
+        src: best.src.slice(0, 60),
+      };
+    }, minSize);
 
-    if (!imgInfo) {
-      return sendError(res, 404, 'No generated image found on page');
+    if (!result?.found) {
+      return sendError(res, 404, `No generated image (>= ${minSize}px) found on page`);
+    }
+    if (!result.dataUrl) {
+      return sendError(res, 500, "Found image but failed to read its data");
     }
 
-    let imageBase64, mimeType;
-
-    if (imgInfo.type === 'canvas') {
-      // Canvas already has the data URL
-      const [header, data] = imgInfo.dataUrl.split(',');
-      mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
-      imageBase64 = data;
-    } else if (imgInfo.src.startsWith('data:')) {
-      const [header, data] = imgInfo.src.split(',');
-      mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
-      imageBase64 = data;
-    } else {
-      // Fetch via Playwright (handles blob: and authenticated https: URLs)
-      const response = await session.page.request.get(imgInfo.src);
-      const buffer = await response.body();
-      mimeType = response.headers()['content-type']?.split(';')[0] || 'image/png';
-      imageBase64 = buffer.toString('base64');
-    }
+    const [header, data] = result.dataUrl.split(",");
+    const mimeType = header.match(/:(.*?);/)?.[1] || "image/png";
 
     return sendSuccess(res, {
-      imageBase64,
+      imageBase64: data,
       mimeType,
-      width: imgInfo.width,
-      height: imgInfo.height,
-      source: imgInfo.src?.slice(0, 80) || 'canvas',
+      width: result.width,
+      height: result.height,
+      alt: result.alt,
+      source: result.src,
     });
   } catch (err) {
     return sendError(res, 500, `Image extraction failed: ${err.message}`);
