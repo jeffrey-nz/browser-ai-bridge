@@ -181,6 +181,83 @@ router.post("/:id/new-chat", async (req, res) => {
   }
 });
 
+// Extract the first generated image from a session's page. Finds <img> elements
+// with substantial data-URLs or blob/https src values (skipping avatars/icons),
+// fetches the image data, and returns it as { imageBase64, mimeType, width, height }.
+// Used by the icon generator to grab AI-generated images without manual right-click.
+router.get("/:id/extract-image", async (req, res) => {
+  const { id } = req.params;
+  const session = sessionManager.getSession?.(id);
+  if (!session?.page) return sendError(res, 404, `Session not found: ${id}`);
+
+  try {
+    // Find the largest/most-likely-generated image on the page
+    const imgInfo = await session.page.evaluate(() => {
+      const imgs = Array.from(document.querySelectorAll('img'));
+      // Prefer images with data-src, blob URLs, or large HTTPS URLs (not tiny icons)
+      const candidates = imgs
+        .map(el => ({
+          src: el.currentSrc || el.src || '',
+          naturalW: el.naturalWidth,
+          naturalH: el.naturalHeight,
+          rect: el.getBoundingClientRect(),
+        }))
+        .filter(i => i.naturalW >= 100 && i.naturalH >= 100)
+        .filter(i => i.src && !i.src.startsWith('data:image/gif')) // skip spinners
+        .sort((a, b) => (b.naturalW * b.naturalH) - (a.naturalW * a.naturalH));
+
+      // Also check for canvas elements (some providers render to canvas)
+      const canvases = Array.from(document.querySelectorAll('canvas'))
+        .filter(c => c.width >= 100 && c.height >= 100)
+        .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+
+      const topCanvas = canvases[0];
+      const topImg = candidates[0];
+
+      if (topCanvas && (!topImg || topCanvas.width * topCanvas.height >= topImg.naturalW * topImg.naturalH)) {
+        return { type: 'canvas', dataUrl: topCanvas.toDataURL('image/png'), width: topCanvas.width, height: topCanvas.height };
+      }
+      if (topImg) {
+        return { type: 'img', src: topImg.src, width: topImg.naturalW, height: topImg.naturalH };
+      }
+      return null;
+    });
+
+    if (!imgInfo) {
+      return sendError(res, 404, 'No generated image found on page');
+    }
+
+    let imageBase64, mimeType;
+
+    if (imgInfo.type === 'canvas') {
+      // Canvas already has the data URL
+      const [header, data] = imgInfo.dataUrl.split(',');
+      mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+      imageBase64 = data;
+    } else if (imgInfo.src.startsWith('data:')) {
+      const [header, data] = imgInfo.src.split(',');
+      mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+      imageBase64 = data;
+    } else {
+      // Fetch via Playwright (handles blob: and authenticated https: URLs)
+      const response = await session.page.request.get(imgInfo.src);
+      const buffer = await response.body();
+      mimeType = response.headers()['content-type']?.split(';')[0] || 'image/png';
+      imageBase64 = buffer.toString('base64');
+    }
+
+    return sendSuccess(res, {
+      imageBase64,
+      mimeType,
+      width: imgInfo.width,
+      height: imgInfo.height,
+      source: imgInfo.src?.slice(0, 80) || 'canvas',
+    });
+  } catch (err) {
+    return sendError(res, 500, `Image extraction failed: ${err.message}`);
+  }
+});
+
 router.get("/:id/status", (req, res) => {
   const { id } = req.params;
   const session = sessionManager.getSession?.(id);
