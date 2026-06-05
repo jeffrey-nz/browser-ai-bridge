@@ -151,6 +151,36 @@ router.get("/:id/snapshot", async (req, res) => {
   }
 });
 
+// Evaluate arbitrary JS in a session's page context — useful for DOM inspection
+// and automated selector discovery. Returns { result } or { error }.
+router.post("/:id/evaluate", async (req, res) => {
+  const { id } = req.params;
+  const { script } = req.body ?? {};
+  const session = sessionManager.getSession?.(id);
+  if (!session?.page) return sendError(res, 404, `Session not found: ${id}`);
+  if (!script) return sendError(res, 400, "Missing body parameter: script");
+  try {
+    const wrapped = `(function(){${script}})()`;
+    const result = await session.page.evaluate(wrapped);
+    return sendSuccess(res, { result });
+  } catch (err) {
+    return sendError(res, 500, `Evaluate failed: ${err.message}`);
+  }
+});
+
+// Trigger startNewChat on a session (resets the conversation context)
+router.post("/:id/new-chat", async (req, res) => {
+  const { id } = req.params;
+  const session = sessionManager.getSession?.(id);
+  if (!session?.engine) return sendError(res, 404, `Session not found: ${id}`);
+  try {
+    await session.engine.startNewChat();
+    return sendSuccess(res, { ok: true });
+  } catch (err) {
+    return sendError(res, 500, `new-chat failed: ${err.message}`);
+  }
+});
+
 router.get("/:id/status", (req, res) => {
   const { id } = req.params;
   const session = sessionManager.getSession?.(id);

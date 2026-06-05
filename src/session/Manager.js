@@ -100,22 +100,26 @@ export class SessionManager {
           );
       }
 
-      // Default Gemini to 'fast' (Flash) when no mode is given. The automation
-      // workloads (translation, definitions) send structured JSON-batch prompts
-      // that don't need Pro's reasoning — and Pro's long "thinking" phase makes
-      // the response-completion poll time out, yielding truncated/partial JSON.
-      // Flash answers quickly and reliably. Callers can still request 'pro'.
-      if (providerId === "gemini" && !mode) {
-        mode = "fast";
-        if (typeof session.engine?.setMode === "function") {
-          await session.engine
-            .setMode(mode)
-            .catch((err) =>
-              logger.warn(
-                `[SessionManager] setMode(${mode}) failed: ${err.message}`,
-              ),
-            );
-        }
+      // Provider-specific mode defaults for automation workloads.
+      // Translation, definition, and alignment prompts are structured JSON-batch
+      // tasks — they don't need reasoning/thinking modes.  Reasoning modes make
+      // completion polls time out and yield truncated JSON ("6 of 25 keys").
+      // Callers can still override by passing an explicit mode.
+      const autoModeDefaults = {
+        gemini: "fast",    // Flash — not Pro (thinking times out on batches)
+        deepseek: "fast",  // Standard V3 — not DeepThink R1
+        grok: "fast",      // Standard — not Grok Reasoning
+      };
+      const defaultMode = autoModeDefaults[providerId];
+      if (defaultMode && !mode && typeof session.engine?.setMode === "function") {
+        mode = defaultMode;
+        await session.engine
+          .setMode(mode)
+          .catch((err) =>
+            logger.warn(
+              `[SessionManager] setMode(${mode}) failed for ${providerId}: ${err.message}`,
+            ),
+          );
       }
     } catch (err) {
       // startNewChat (or setMode) failed — close the tab so we don't leak the
