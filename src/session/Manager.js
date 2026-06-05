@@ -100,9 +100,13 @@ export class SessionManager {
           );
       }
 
-      // Default Gemini mode to 'pro' if none provided
+      // Default Gemini to 'fast' (Flash) when no mode is given. The automation
+      // workloads (translation, definitions) send structured JSON-batch prompts
+      // that don't need Pro's reasoning — and Pro's long "thinking" phase makes
+      // the response-completion poll time out, yielding truncated/partial JSON.
+      // Flash answers quickly and reliably. Callers can still request 'pro'.
       if (providerId === "gemini" && !mode) {
-        mode = "pro";
+        mode = "fast";
         if (typeof session.engine?.setMode === "function") {
           await session.engine
             .setMode(mode)
