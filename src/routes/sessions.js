@@ -204,51 +204,75 @@ router.get("/:id/extract-image", async (req, res) => {
         /\.svg(\?|$)/i.test(src) ||
         src.startsWith("data:image/gif");
 
-      const imgs = Array.from(document.querySelectorAll("img"))
-        .map((el) => ({
-          el,
-          src: el.currentSrc || el.src || "",
-          w: el.naturalWidth,
-          h: el.naturalHeight,
-          alt: el.alt || "",
-        }))
-        .filter((i) => i.src && !isJunk(i.src) && i.w >= minSize && i.h >= minSize);
+      const candidates = Array.from(document.querySelectorAll("img")).filter(
+        (el) => {
+          const src = el.currentSrc || el.src || "";
+          return (
+            src &&
+            !isJunk(src) &&
+            el.naturalWidth >= minSize &&
+            el.naturalHeight >= minSize
+          );
+        },
+      );
 
-      if (imgs.length === 0) return { found: false };
+      if (candidates.length === 0) return { found: false };
 
       // Prefer images explicitly marked as AI-generated, then largest.
-      imgs.sort((a, b) => {
-        const aAI = /ai[\s-]?generated/i.test(a.alt) ? 1 : 0;
-        const bAI = /ai[\s-]?generated/i.test(b.alt) ? 1 : 0;
+      candidates.sort((a, b) => {
+        const aAI = /ai[\s-]?generated/i.test(a.alt || "") ? 1 : 0;
+        const bAI = /ai[\s-]?generated/i.test(b.alt || "") ? 1 : 0;
         if (aAI !== bAI) return bAI - aAI;
-        return b.w * b.h - a.w * a.h;
+        return (
+          b.naturalWidth * b.naturalHeight - a.naturalWidth * a.naturalHeight
+        );
       });
 
-      const best = imgs[0];
-      // Fetch the image bytes in-page (works for blob: and same-origin https:).
-      const resp = await fetch(best.src);
-      const blob = await resp.blob();
-      const dataUrl = await new Promise((resolve) => {
-        const fr = new FileReader();
-        fr.onload = () => resolve(fr.result);
-        fr.onerror = () => resolve(null);
-        fr.readAsDataURL(blob);
-      });
-      return {
-        found: true,
-        dataUrl,
-        width: best.w,
-        height: best.h,
-        alt: best.alt,
-        src: best.src.slice(0, 60),
+      const best = candidates[0];
+      const meta = {
+        width: best.naturalWidth,
+        height: best.naturalHeight,
+        alt: best.alt || "",
+        src: (best.currentSrc || best.src || "").slice(0, 60),
       };
+
+      // Method 1 — canvas. Reads the already-decoded image with no network
+      // request, so it works for blob: URLs that CSP blocks fetch() on.
+      // Throws if the canvas is tainted (cross-origin without CORS).
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = best.naturalWidth;
+        canvas.height = best.naturalHeight;
+        canvas.getContext("2d").drawImage(best, 0, 0);
+        return { found: true, dataUrl: canvas.toDataURL("image/png"), method: "canvas", ...meta };
+      } catch (canvasErr) {
+        // Method 2 — fetch the URL (handles tainted-canvas cases on same-origin).
+        try {
+          const resp = await fetch(best.currentSrc || best.src);
+          const blob = await resp.blob();
+          const dataUrl = await new Promise((resolve) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => resolve(null);
+            fr.readAsDataURL(blob);
+          });
+          return { found: true, dataUrl, method: "fetch", ...meta };
+        } catch (fetchErr) {
+          return {
+            found: true,
+            dataUrl: null,
+            error: `canvas: ${canvasErr.message} | fetch: ${fetchErr.message}`,
+            ...meta,
+          };
+        }
+      }
     }, minSize);
 
     if (!result?.found) {
       return sendError(res, 404, `No generated image (>= ${minSize}px) found on page`);
     }
     if (!result.dataUrl) {
-      return sendError(res, 500, "Found image but failed to read its data");
+      return sendError(res, 500, `Found ${result.width}x${result.height} image but failed to read it: ${result.error || "unknown"}`);
     }
 
     const [header, data] = result.dataUrl.split(",");
@@ -261,6 +285,7 @@ router.get("/:id/extract-image", async (req, res) => {
       height: result.height,
       alt: result.alt,
       source: result.src,
+      method: result.method,
     });
   } catch (err) {
     return sendError(res, 500, `Image extraction failed: ${err.message}`);
