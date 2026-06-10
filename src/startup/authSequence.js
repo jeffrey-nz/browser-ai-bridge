@@ -130,7 +130,9 @@ export async function runLoginSequence(context) {
 
       if (assumeLoggedIn) {
         console.log(
-          colors.green(`   [Assumed] Skipping login check — treating as ready.`),
+          colors.green(
+            `   [Assumed] Skipping login check — treating as ready.`,
+          ),
         );
       } else if (isDetected) {
         console.log(colors.green(`   [Detected] Interface found.`));

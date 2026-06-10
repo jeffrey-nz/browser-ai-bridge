@@ -21,51 +21,71 @@ async function extractMarkdownPreservingCode(page, lastTurn) {
   // original markdown source. Pure innerText collapses leading whitespace on
   // every line of ChatGPT-rendered code; pure textContent drops paragraph
   // breaks. This hybrid keeps both.
-  const result = await lastTurn.locator(".markdown").evaluate((el) => {
-    if (!el) return "";
-    let out = "";
-    const blockTags = new Set(["p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "ol", "ul", "table", "tr", "br", "hr"]);
-    const walk = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        out += node.nodeValue || "";
-        return;
-      }
-      if (node.nodeType !== Node.ELEMENT_NODE) return;
-      const tag = node.tagName?.toLowerCase();
-      // <pre> → use innerText. CSS `white-space: pre` on <pre> tells the browser
-      // to preserve whitespace in the rendered text, so innerText (which respects
-      // CSS) returns the indented source — whereas textContent (which ignores CSS)
-      // returns whitespace-collapsed garbage for ChatGPT's syntax-highlighted code.
-      //
-      // We do NOT wrap with triple-backtick fences here. The downstream parser
-      // captures everything between <<<FILE:>>> and <<<END FILE>>> as raw file
-      // content; any inserted fences would end up written to disk and break the
-      // resulting source file.
-      if (tag === "pre") {
-        const codeEl = node.querySelector("code") || node;
-        const raw = (codeEl.innerText || codeEl.textContent || "");
-        if (out && !out.endsWith("\n")) out += "\n";
-        out += raw + (raw.endsWith("\n") ? "" : "\n");
-        return;
-      }
-      // <br> → explicit newline
-      if (tag === "br") {
-        out += "\n";
-        return;
-      }
-      // Inline <code> → preserve text without code-fence wrapping
-      if (tag === "code") {
-        out += node.textContent || "";
-        return;
-      }
-      const isBlock = blockTags.has(tag);
-      if (isBlock && out && !out.endsWith("\n")) out += "\n";
-      for (const child of node.childNodes) walk(child);
-      if (isBlock && !out.endsWith("\n")) out += "\n";
-    };
-    walk(el);
-    return out;
-  }).catch(() => "");
+  const result = await lastTurn
+    .locator(".markdown")
+    .evaluate((el) => {
+      if (!el) return "";
+      let out = "";
+      const blockTags = new Set([
+        "p",
+        "div",
+        "li",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "blockquote",
+        "ol",
+        "ul",
+        "table",
+        "tr",
+        "br",
+        "hr",
+      ]);
+      const walk = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          out += node.nodeValue || "";
+          return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        const tag = node.tagName?.toLowerCase();
+        // <pre> → use innerText. CSS `white-space: pre` on <pre> tells the browser
+        // to preserve whitespace in the rendered text, so innerText (which respects
+        // CSS) returns the indented source — whereas textContent (which ignores CSS)
+        // returns whitespace-collapsed garbage for ChatGPT's syntax-highlighted code.
+        //
+        // We do NOT wrap with triple-backtick fences here. The downstream parser
+        // captures everything between <<<FILE:>>> and <<<END FILE>>> as raw file
+        // content; any inserted fences would end up written to disk and break the
+        // resulting source file.
+        if (tag === "pre") {
+          const codeEl = node.querySelector("code") || node;
+          const raw = codeEl.innerText || codeEl.textContent || "";
+          if (out && !out.endsWith("\n")) out += "\n";
+          out += raw + (raw.endsWith("\n") ? "" : "\n");
+          return;
+        }
+        // <br> → explicit newline
+        if (tag === "br") {
+          out += "\n";
+          return;
+        }
+        // Inline <code> → preserve text without code-fence wrapping
+        if (tag === "code") {
+          out += node.textContent || "";
+          return;
+        }
+        const isBlock = blockTags.has(tag);
+        if (isBlock && out && !out.endsWith("\n")) out += "\n";
+        for (const child of node.childNodes) walk(child);
+        if (isBlock && !out.endsWith("\n")) out += "\n";
+      };
+      walk(el);
+      return out;
+    })
+    .catch(() => "");
   return (result || "").trim();
 }
 
@@ -75,13 +95,64 @@ async function extractMarkdownPreservingCode(page, lastTurn) {
 // for the known dunder set — narrow enough to never touch real ** operators
 // (exponent, *args/**kwargs) since those are not __word__ in the source.
 const PY_DUNDERS = [
-  "init", "name", "main", "str", "repr", "eq", "ne", "lt", "le", "gt", "ge",
-  "hash", "call", "iter", "next", "len", "getitem", "setitem", "delitem",
-  "contains", "enter", "exit", "dict", "doc", "file", "all", "module",
-  "class", "bool", "add", "sub", "mul", "truediv", "floordiv", "mod", "pow",
-  "new", "del", "format", "sizeof", "index", "slots", "abs", "neg", "pos",
-  "round", "int", "float", "bytes", "dir", "getattr", "setattr", "delattr",
-  "getattribute", "reversed", "post_init", "init_subclass", "set_name",
+  "init",
+  "name",
+  "main",
+  "str",
+  "repr",
+  "eq",
+  "ne",
+  "lt",
+  "le",
+  "gt",
+  "ge",
+  "hash",
+  "call",
+  "iter",
+  "next",
+  "len",
+  "getitem",
+  "setitem",
+  "delitem",
+  "contains",
+  "enter",
+  "exit",
+  "dict",
+  "doc",
+  "file",
+  "all",
+  "module",
+  "class",
+  "bool",
+  "add",
+  "sub",
+  "mul",
+  "truediv",
+  "floordiv",
+  "mod",
+  "pow",
+  "new",
+  "del",
+  "format",
+  "sizeof",
+  "index",
+  "slots",
+  "abs",
+  "neg",
+  "pos",
+  "round",
+  "int",
+  "float",
+  "bytes",
+  "dir",
+  "getattr",
+  "setattr",
+  "delattr",
+  "getattribute",
+  "reversed",
+  "post_init",
+  "init_subclass",
+  "set_name",
 ];
 const DUNDER_RE = new RegExp(`\\*\\*(${PY_DUNDERS.join("|")})\\*\\*`, "g");
 
@@ -123,7 +194,10 @@ async function extractViaCopyButton(page, lastTurn) {
       const btn = lastTurn.locator(sel).last();
       const n = await btn.count().catch(() => 0);
       if (n > 0) {
-        const ok = await btn.click({ timeout: 2500 }).then(() => true).catch(() => false);
+        const ok = await btn
+          .click({ timeout: 2500 })
+          .then(() => true)
+          .catch(() => false);
         if (ok) {
           clicked = true;
           console.log(`${tag} copy button clicked via "${sel}"`);
@@ -137,19 +211,28 @@ async function extractViaCopyButton(page, lastTurn) {
     }
     // Give ChatGPT's clipboard write a moment to land, then read it back.
     await page.waitForTimeout(250);
-    const text = await page.evaluate(async () => {
-      try { return await navigator.clipboard.readText(); }
-      catch (e) { return "__CLIP_ERR__" + (e?.message || "unknown"); }
-    }).catch(() => "");
+    const text = await page
+      .evaluate(async () => {
+        try {
+          return await navigator.clipboard.readText();
+        } catch (e) {
+          return "__CLIP_ERR__" + (e?.message || "unknown");
+        }
+      })
+      .catch(() => "");
     if (typeof text === "string" && text.startsWith("__CLIP_ERR__")) {
-      console.log(`${tag} clipboard read failed: ${text.slice(12)} — falling back to DOM walk`);
+      console.log(
+        `${tag} clipboard read failed: ${text.slice(12)} — falling back to DOM walk`,
+      );
       return "";
     }
     const trimmed = (text || "").trim();
     console.log(`${tag} clipboard extraction: ${trimmed.length} chars`);
     return trimmed;
   } catch (e) {
-    console.log(`${tag} copy-button extraction threw: ${e?.message || e} — falling back`);
+    console.log(
+      `${tag} copy-button extraction threw: ${e?.message || e} — falling back`,
+    );
     return "";
   }
 }
@@ -161,12 +244,14 @@ export async function extractChatGptResponse(page) {
   // immune to the markdown-renderer indentation loss that breaks DOM scraping.
   // restoreDunders undoes the __x__→**x** bold round-trip in the serializer.
   const copyText = await extractViaCopyButton(page, lastTurn);
-  if (copyText && copyText.length > 10) return restoreDunders(cleanAiResponse(copyText));
+  if (copyText && copyText.length > 10)
+    return restoreDunders(cleanAiResponse(copyText));
 
   // Secondary: .markdown DOM walk — use textContent/innerText hybrid so that
   // multi-space indentation is preserved as far as the rendered DOM allows.
   const codeAwareText = await extractMarkdownPreservingCode(page, lastTurn);
-  if (codeAwareText && codeAwareText.length > 10) return cleanAiResponse(codeAwareText);
+  if (codeAwareText && codeAwareText.length > 10)
+    return cleanAiResponse(codeAwareText);
 
   // Fallback: original innerText path
   const rawText = await extractText(

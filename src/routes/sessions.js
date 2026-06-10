@@ -1,11 +1,7 @@
 import express from "express";
 import { sessionManager } from "../session/index.js";
 import { PROVIDER_CONFIG } from "../config/providers.js";
-import {
-  resolveStall,
-  sendActiveControl,
-  getSessionState,
-} from "../stalls.js";
+import { resolveStall, sendActiveControl, getSessionState } from "../stalls.js";
 import { logger } from "#utils/logger.js";
 import { capturePageContext } from "../heal/index.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
@@ -243,7 +239,12 @@ router.get("/:id/extract-image", async (req, res) => {
         canvas.width = best.naturalWidth;
         canvas.height = best.naturalHeight;
         canvas.getContext("2d").drawImage(best, 0, 0);
-        return { found: true, dataUrl: canvas.toDataURL("image/png"), method: "canvas", ...meta };
+        return {
+          found: true,
+          dataUrl: canvas.toDataURL("image/png"),
+          method: "canvas",
+          ...meta,
+        };
       } catch (canvasErr) {
         // Method 2 — fetch the URL (handles tainted-canvas cases on same-origin).
         try {
@@ -268,10 +269,18 @@ router.get("/:id/extract-image", async (req, res) => {
     }, minSize);
 
     if (!result?.found) {
-      return sendError(res, 404, `No generated image (>= ${minSize}px) found on page`);
+      return sendError(
+        res,
+        404,
+        `No generated image (>= ${minSize}px) found on page`,
+      );
     }
     if (!result.dataUrl) {
-      return sendError(res, 500, `Found ${result.width}x${result.height} image but failed to read it: ${result.error || "unknown"}`);
+      return sendError(
+        res,
+        500,
+        `Found ${result.width}x${result.height} image but failed to read it: ${result.error || "unknown"}`,
+      );
     }
 
     const [header, data] = result.dataUrl.split(",");

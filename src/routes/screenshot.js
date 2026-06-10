@@ -50,10 +50,10 @@ async function captureSession(session) {
 router.get("/", async (req, res) => {
   const {
     url,
-    width    = "1280",
-    height   = "900",
+    width = "1280",
+    height = "900",
     fullPage = "false",
-    delay    = "0",
+    delay = "0",
     darkMode = "false",
   } = req.query;
 
@@ -64,11 +64,11 @@ router.get("/", async (req, res) => {
   const safety = checkUrlSafety(url);
   if (safety) return sendError(res, 400, safety);
 
-  const vpWidth    = Math.min(Math.max(parseInt(width,  10) || 1280, 320),  3840);
-  const vpHeight   = Math.min(Math.max(parseInt(height, 10) || 900,  200),  2160);
+  const vpWidth = Math.min(Math.max(parseInt(width, 10) || 1280, 320), 3840);
+  const vpHeight = Math.min(Math.max(parseInt(height, 10) || 900, 200), 2160);
   const isFullPage = fullPage === "true";
-  const delayMs    = Math.min(Math.max(parseInt(delay,  10) || 0,     0), 10_000);
-  const isDark     = darkMode === "true";
+  const delayMs = Math.min(Math.max(parseInt(delay, 10) || 0, 0), 10_000);
+  const isDark = darkMode === "true";
 
   let page = null;
   try {

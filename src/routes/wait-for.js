@@ -26,7 +26,13 @@ const router = express.Router();
 const VALID_STATES = new Set(["visible", "attached", "hidden", "detached"]);
 
 router.post("/", async (req, res) => {
-  const { url, selector, timeout_ms = 10000, state = "visible", session_id } = req.body ?? {};
+  const {
+    url,
+    selector,
+    timeout_ms = 10000,
+    state = "visible",
+    session_id,
+  } = req.body ?? {};
 
   if (!url || typeof url !== "string") {
     return sendError(res, 400, "Missing required body parameter: url");
@@ -35,13 +41,20 @@ router.post("/", async (req, res) => {
     return sendError(res, 400, "Missing required body parameter: selector");
   }
   if (!VALID_STATES.has(state)) {
-    return sendError(res, 400, `Invalid state "${state}". Must be one of: ${[...VALID_STATES].join(", ")}`);
+    return sendError(
+      res,
+      400,
+      `Invalid state "${state}". Must be one of: ${[...VALID_STATES].join(", ")}`,
+    );
   }
 
   const safety = checkUrlSafety(url);
   if (safety) return sendError(res, 400, safety);
 
-  const timeoutMs = Math.min(Math.max(Number(timeout_ms) || 10000, 500), 30_000);
+  const timeoutMs = Math.min(
+    Math.max(Number(timeout_ms) || 10000, 500),
+    30_000,
+  );
 
   let page = null;
   const t0 = Date.now();
@@ -62,7 +75,9 @@ router.post("/", async (req, res) => {
       // Grab visible text of the matched element
       text = await page.evaluate((sel) => {
         const el = document.querySelector(sel);
-        return el ? (el.textContent || el.innerText || "").trim().slice(0, 500) : null;
+        return el
+          ? (el.textContent || el.innerText || "").trim().slice(0, 500)
+          : null;
       }, selector);
     } catch {
       // Timed out — found stays false

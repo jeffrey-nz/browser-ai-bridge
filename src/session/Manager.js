@@ -114,12 +114,16 @@ export class SessionManager {
       // completion polls time out and yield truncated JSON ("6 of 25 keys").
       // Callers can still override by passing an explicit mode.
       const autoModeDefaults = {
-        gemini: "fast",    // Flash — not Pro (thinking times out on batches)
-        deepseek: "fast",  // Standard V3 — not DeepThink R1
-        grok: "fast",      // Standard — not Grok Reasoning
+        gemini: "fast", // Flash — not Pro (thinking times out on batches)
+        deepseek: "fast", // Standard V3 — not DeepThink R1
+        grok: "fast", // Standard — not Grok Reasoning
       };
       const defaultMode = autoModeDefaults[providerId];
-      if (defaultMode && !mode && typeof session.engine?.setMode === "function") {
+      if (
+        defaultMode &&
+        !mode &&
+        typeof session.engine?.setMode === "function"
+      ) {
         mode = defaultMode;
         await session.engine
           .setMode(mode)

@@ -75,7 +75,11 @@ router.post("/", async (req, res) => {
     }
   }
   if (!session) {
-    return sendError(res, 404, `No available session (provider: ${provider || "any"})`);
+    return sendError(
+      res,
+      404,
+      `No available session (provider: ${provider || "any"})`,
+    );
   }
   if (!session.engine?.sendPromptWithFile) {
     return sendError(

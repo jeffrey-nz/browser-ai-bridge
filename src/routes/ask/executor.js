@@ -52,7 +52,8 @@ export async function executeAskTurn(session, prompt, requestId) {
   }
 
   // Only inject the agent constraint for real agent turns (not plain API calls).
-  const isApiTurn = !label || label === "API Turn" || label.startsWith("API Turn");
+  const isApiTurn =
+    !label || label === "API Turn" || label.startsWith("API Turn");
   let activePrompt = prompt;
   if (!isApiTurn && session.providerId === "deepseek") {
     activePrompt = DEEPSEEK_BASE_CONSTRAINT + prompt;

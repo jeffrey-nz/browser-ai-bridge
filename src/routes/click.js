@@ -45,7 +45,9 @@ router.post("/", async (req, res) => {
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text().slice(0, 300));
     });
-    page.on("pageerror", (err) => consoleErrors.push(err.message.slice(0, 300)));
+    page.on("pageerror", (err) =>
+      consoleErrors.push(err.message.slice(0, 300)),
+    );
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
     await page.waitForTimeout(1000); // let React/Vue render
@@ -55,8 +57,11 @@ router.post("/", async (req, res) => {
       await page.waitForSelector(selector, { timeout: 8000, state: "visible" });
     } catch {
       const rootHtml = await page.evaluate(() => {
-        const el = document.getElementById("root") || document.getElementById("app");
-        return el ? el.innerHTML.slice(0, 800) : document.body.innerHTML.slice(0, 800);
+        const el =
+          document.getElementById("root") || document.getElementById("app");
+        return el
+          ? el.innerHTML.slice(0, 800)
+          : document.body.innerHTML.slice(0, 800);
       });
       return sendError(res, 404, `Selector "${selector}" not found within 8s`, {
         rootHtml,
@@ -72,13 +77,20 @@ router.post("/", async (req, res) => {
 
     // Capture DOM state after click
     const resultHtml = await page.evaluate(() => {
-      const el = document.getElementById("root") || document.getElementById("app");
-      return el ? el.innerHTML.slice(0, 2000) : document.body.innerHTML.slice(0, 2000);
+      const el =
+        document.getElementById("root") || document.getElementById("app");
+      return el
+        ? el.innerHTML.slice(0, 2000)
+        : document.body.innerHTML.slice(0, 2000);
     });
 
     const errorOverlay = await page.evaluate(() => {
-      const v = document.querySelector("vite-error-overlay, [class*='error-overlay']");
-      return v ? (v.shadowRoot?.textContent || v.textContent || "").slice(0, 300) : null;
+      const v = document.querySelector(
+        "vite-error-overlay, [class*='error-overlay']",
+      );
+      return v
+        ? (v.shadowRoot?.textContent || v.textContent || "").slice(0, 300)
+        : null;
     });
 
     logger.info(

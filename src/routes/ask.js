@@ -39,15 +39,18 @@ router.post("/", async (req, res, next) => {
     );
   }
 
-  const { session, autoCreated, error, status, retryAfter } = await resolveSession(
-    sessionId,
-    provider,
-    mode,
-  );
+  const { session, autoCreated, error, status, retryAfter } =
+    await resolveSession(sessionId, provider, mode);
   if (error) {
     if (autoCreated && session) await cleanupAutoSession(true, session);
     if (retryAfter) res.set("Retry-After", String(retryAfter));
-    return sendError(res, status, error, retryAfter ? { retryAfter } : {}, requestId);
+    return sendError(
+      res,
+      status,
+      error,
+      retryAfter ? { retryAfter } : {},
+      requestId,
+    );
   }
 
   // Re-check cooldown using the resolved session's providerId.
@@ -56,11 +59,22 @@ router.post("/", async (req, res, next) => {
   // even when the client only sends a sessionId.
   const sessionCd = cooldownManager.check(session.providerId);
   if (sessionCd.active) {
-    if (sessionCd.remainingSeconds) res.set("Retry-After", String(sessionCd.remainingSeconds));
+    if (sessionCd.remainingSeconds)
+      res.set("Retry-After", String(sessionCd.remainingSeconds));
     await cleanupAutoSession(autoCreated, session);
     // Return 503+stalled so the pipeline client treats this as a stall (consistent
     // with other stall responses) rather than triggering BatchErrorHandler backoff.
-    return sendError(res, 503, "STALLED", { stalled: true, rateLimited: false, retryAfter: sessionCd.remainingSeconds }, requestId);
+    return sendError(
+      res,
+      503,
+      "STALLED",
+      {
+        stalled: true,
+        rateLimited: false,
+        retryAfter: sessionCd.remainingSeconds,
+      },
+      requestId,
+    );
   }
 
   const pLimit = validatePromptLimit(session, prompt);

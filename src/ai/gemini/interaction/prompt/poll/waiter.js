@@ -178,7 +178,9 @@ export async function waitForGeminiCompletion(
             await page.waitForTimeout(500);
             return true;
           }
-          logger.warn("[Gemini Poll] No response progress — treating as stalled");
+          logger.warn(
+            "[Gemini Poll] No response progress — treating as stalled",
+          );
           throw new Error("TIMEOUT");
         }
 

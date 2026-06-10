@@ -14,7 +14,8 @@ export function buildInitialPrompt(
   // FORMAT REQUIREMENT (write_file tool-call format) into these prompts
   // confuses the model into echoing the constraint or producing wrong output.
   // Only inject provider constraints for real agent task labels.
-  const isApiTurn = !label || label === "API Turn" || label.startsWith("API Turn");
+  const isApiTurn =
+    !label || label === "API Turn" || label.startsWith("API Turn");
   if (isApiTurn) return prompt;
 
   return buildPromptConstraint(providerId, label, projectDir) + prompt;

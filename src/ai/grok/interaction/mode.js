@@ -7,5 +7,7 @@ import { colors } from "#app/ui/colors.js";
 // it no longer causes INVALID_JSON failures. setGrokMode is kept as a no-op
 // rather than removed so the session manager can call it unconditionally.
 export async function setGrokMode(_page, _rawModeKey) {
-  log(`\n⚙️  Grok 4 always reasons — mode select is a no-op (handled in extractor).`);
+  log(
+    `\n⚙️  Grok 4 always reasons — mode select is a no-op (handled in extractor).`,
+  );
 }

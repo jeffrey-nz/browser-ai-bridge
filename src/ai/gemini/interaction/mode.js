@@ -78,9 +78,7 @@ async function trySetGeminiMode(page, modeKey) {
 
         const { opt: option, txt: optText } = await findOption();
         if (!option) {
-          throw new Error(
-            `no mode option matching ${match} in the menu`,
-          );
+          throw new Error(`no mode option matching ${match} in the menu`);
         }
         await option.waitFor({ state: "visible", timeout: 6000 });
 
@@ -149,7 +147,9 @@ async function trySetGeminiMode(page, modeKey) {
         }
 
         if (verified) {
-          log(`  ${colors.green("✔")} Mode confirmed: ${config.label} (${optText})`);
+          log(
+            `  ${colors.green("✔")} Mode confirmed: ${config.label} (${optText})`,
+          );
           break;
         } else {
           const still = (await switcher.innerText().catch(() => "?")).trim();

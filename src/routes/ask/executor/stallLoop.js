@@ -23,7 +23,11 @@ export async function handleStalls(session, initialResponse, activePrompt) {
       // bouncing 503s back to the pipeline on every rate-limit hit.
       if (response.rateLimited) {
         const cd = cooldownManager.check(session.providerId);
-        if (cd.active && cd.remainingSeconds != null && cd.remainingSeconds <= 150) {
+        if (
+          cd.active &&
+          cd.remainingSeconds != null &&
+          cd.remainingSeconds <= 150
+        ) {
           const waitSecs = cd.remainingSeconds + 2;
           logger.info(
             `[Ask] Rate-limited — waiting ${waitSecs}s for ${session.providerId} cooldown before in-bridge retry (session ${session.id})...`,
@@ -32,7 +36,9 @@ export async function handleStalls(session, initialResponse, activePrompt) {
           try {
             await session.engine.startNewChat();
           } catch (chatErr) {
-            logger.warn(`[Ask] startNewChat failed during cooldown retry: ${chatErr.message}`);
+            logger.warn(
+              `[Ask] startNewChat failed during cooldown retry: ${chatErr.message}`,
+            );
           }
           response = await executeCoreTurn(
             session,

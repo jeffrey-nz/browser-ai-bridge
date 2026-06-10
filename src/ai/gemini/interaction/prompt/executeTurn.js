@@ -81,7 +81,12 @@ export async function resumePolling(page, sessionId = null) {
   const spinner = createSpinner(`Gemini is thinking... (Resumed)`).start();
 
   try {
-    const pollResult = await waitForGeminiCompletion(page, spinner, 0, sessionId);
+    const pollResult = await waitForGeminiCompletion(
+      page,
+      spinner,
+      0,
+      sessionId,
+    );
     return await handlePostPoll(page, spinner, pollResult);
   } catch (err) {
     err.spinner = spinner;

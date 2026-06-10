@@ -27,20 +27,25 @@ const registry = new Map();
 
 async function detectFramework(projectDir) {
   try {
-    const raw = await fs.readFile(path.join(projectDir, "package.json"), "utf8");
+    const raw = await fs.readFile(
+      path.join(projectDir, "package.json"),
+      "utf8",
+    );
     const pkg = JSON.parse(raw);
     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-    if (deps["vite"] || deps["@vitejs/plugin-react"] || deps["@vitejs/plugin-vue"])
+    if (
+      deps["vite"] ||
+      deps["@vitejs/plugin-react"] ||
+      deps["@vitejs/plugin-vue"]
+    )
       return "vite";
-    if (deps["next"])
-      return "next";
-    if (deps["react-scripts"])
-      return "cra";
-    if (deps["@remix-run/dev"] || deps["@remix-run/react"])
-      return "remix";
-    if (deps["nuxt"])
-      return "nuxt";
-  } catch { /* no package.json or malformed — use defaults */ }
+    if (deps["next"]) return "next";
+    if (deps["react-scripts"]) return "cra";
+    if (deps["@remix-run/dev"] || deps["@remix-run/react"]) return "remix";
+    if (deps["nuxt"]) return "nuxt";
+  } catch {
+    /* no package.json or malformed — use defaults */
+  }
   return "generic";
 }
 
@@ -121,8 +126,14 @@ router.post("/", async (req, res) => {
   }
 
   const framework = await detectFramework(projectDir);
-  const { env, command: resolvedCmd } = buildEnvAndCommand(framework, command, port);
-  logger.info(`[DevServer] framework=${framework} cmd=${resolvedCmd} port=${port}`);
+  const { env, command: resolvedCmd } = buildEnvAndCommand(
+    framework,
+    command,
+    port,
+  );
+  logger.info(
+    `[DevServer] framework=${framework} cmd=${resolvedCmd} port=${port}`,
+  );
 
   const logLines = [];
   // detached: true creates a new process group so we can kill the whole tree
@@ -180,7 +191,8 @@ router.get("/", (req, res) => {
 router.get("/logs/:pid", (req, res) => {
   const pid = Number(req.params.pid);
   const entry = registry.get(pid);
-  if (!entry) return sendError(res, 404, `No running dev server with pid ${pid}`);
+  if (!entry)
+    return sendError(res, 404, `No running dev server with pid ${pid}`);
 
   const lines = Number(req.query.lines) || 100;
   const allLogs = entry.logLines.join("");

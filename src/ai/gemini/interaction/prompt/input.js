@@ -61,9 +61,7 @@ export async function uploadFileToGemini(page, filePath) {
     await uploadItem.waitFor({ state: "visible", timeout: 5000 });
     // The menu panel animates in and can briefly sit partly off-screen, so
     // scroll the item into view before clicking.
-    await uploadItem
-      .scrollIntoViewIfNeeded({ timeout: 2000 })
-      .catch(() => {});
+    await uploadItem.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
     const [fileChooser] = await Promise.all([
       page.waitForEvent("filechooser", { timeout: 10000 }),
       uploadItem.click({ force: true }).catch(async () => {

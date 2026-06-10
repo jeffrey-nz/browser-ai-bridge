@@ -61,7 +61,11 @@ router.post("/", async (req, res) => {
       const wrapped = `(function() { ${script} })()`;
       result = await page.evaluate(wrapped);
       // JSON-serialize so complex objects survive the Playwright boundary
-      if (result !== null && result !== undefined && typeof result === "object") {
+      if (
+        result !== null &&
+        result !== undefined &&
+        typeof result === "object"
+      ) {
         result = JSON.parse(JSON.stringify(result));
       }
     } catch (evalErr) {

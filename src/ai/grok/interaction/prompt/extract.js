@@ -6,7 +6,9 @@ export async function extractGrokResponse(page) {
   // before the actual response. Extract only the non-thinking sibling; fall back
   // to the full bubble with the thinking block stripped.
   const bubble = page
-    .locator(".message-bubble, .response-content-markdown, div[id^='response-']")
+    .locator(
+      ".message-bubble, .response-content-markdown, div[id^='response-']",
+    )
     .last();
 
   // Prefer the div.relative that immediately follows the thinking-container
@@ -21,7 +23,9 @@ export async function extractGrokResponse(page) {
   }
 
   // Strip any residual thinking header ("Thought for 5s", "Thinking...", etc.)
-  text = (text || "").replace(/^(?:Thought(?:\s+for\s+[\d.]+s?)?|Thinking\.+)\s*\n?/i, "").trimStart();
+  text = (text || "")
+    .replace(/^(?:Thought(?:\s+for\s+[\d.]+s?)?|Thinking\.+)\s*\n?/i, "")
+    .trimStart();
 
   return cleanAiResponse(text);
 }
