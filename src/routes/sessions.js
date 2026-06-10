@@ -3,7 +3,6 @@ import { sessionManager } from "../session/index.js";
 import { PROVIDER_CONFIG } from "../config/providers.js";
 import {
   resolveStall,
-  isStalled,
   sendActiveControl,
   getSessionState,
 } from "../stalls.js";
