@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- DeepSeek: `setDeepSeekMode` now always disables the web **Search** toggle. When
+  Search was left on (it persists across sessions), DeepSeek augmented replies with
+  web results and conversational framing, corrupting strict-JSON responses and
+  wasting the turn. Search is now turned off proactively on every prompt.
+
 ## [1.0.0] - 2026-04-29
 
 ### Added
+
 - Initial public release
 - REST API server (`/api/ask`, `/api/sessions`, `/api/ping`, `/api/agent`, `/api/navigate`, `/api/screenshot`, `/api/prompt`)
 - Session pooling with per-provider browser tabs
@@ -30,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Port-in-use recovery: kills stale process and polls until port is released before retry
 
 ### Provider-specific notes
+
 - **ChatGPT**: Switched to ProseMirror contenteditable; input uses clipboard paste to avoid 30s timeout
 - **Copilot (Personal)**: Uses `Enter` key submission to trigger React's `onKeyDown` handler; doneSignal scoped to AI message element to avoid false positives from user-message copy button
 - **Gemini / Copilot 365**: Uses clipboard paste for Quill/Lexical contenteditable editors
