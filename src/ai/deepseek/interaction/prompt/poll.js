@@ -48,6 +48,11 @@ export async function waitForDeepSeekCompletion(
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   let lastTextLength = 0;
   let stableIterations = 0;
+  let sawMessage = false; // latch: a response has appeared at least once
+  // Settled + Stop gone → done quickly. Settled this long even with the Stop
+  // button lingering → done anyway (DeepSeek leaves it in the DOM, like the
+  // others), so we don't burn the full 300s timeout on a finished answer.
+  const STABLE_FORCE_DONE = 20;
 
   try {
     while (Date.now() < deadline) {
@@ -125,16 +130,21 @@ export async function waitForDeepSeekCompletion(
           (hasNewElement || textGrewSignificantly) &&
           currentText.trim().length > 0;
 
-        if (isNewMessage && !isGenerating) {
-          if (currentText.length > 0 && currentText.length === lastTextLength) {
-            stableIterations++;
-          } else {
-            stableIterations = 0;
-          }
-          if (stableIterations >= 4) return true;
-          lastTextLength = currentText.length;
-        } else if (isGenerating) {
+        if (isNewMessage) sawMessage = true;
+
+        // Track text stability every poll, regardless of the Stop button.
+        if (currentText.length > 0 && currentText.length === lastTextLength) {
+          stableIterations++;
+        } else {
           stableIterations = 0;
+        }
+        lastTextLength = currentText.length;
+
+        if (sawMessage) {
+          if (!isGenerating && stableIterations >= 4) return true;
+          // Stop button stuck after a fully-written turn → accept once the
+          // text has been byte-for-byte stable long enough.
+          if (stableIterations >= STABLE_FORCE_DONE) return true;
         }
       } catch (playwrightErr) {
         if (

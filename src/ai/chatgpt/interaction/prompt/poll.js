@@ -51,6 +51,10 @@ export async function waitForChatGptCompletion(
 
     let lastTextLength = 0;
     let stableIterations = 0;
+    // Settled + Stop button gone → done quickly. Settled this long even with
+    // the Stop button lingering → done anyway (see force-done note below).
+    const STABLE_DONE = 4;
+    const STABLE_FORCE_DONE = 20;
 
     const isComplete = await pollUntil(
       async () => {
@@ -96,19 +100,28 @@ export async function waitForChatGptCompletion(
         const isNewMessage =
           currentText !== prevText && currentText.trim().length > 0;
 
-        if (isNewMessage && !isGenerating) {
-          if (currentText.length > 0 && currentText.length === lastTextLength) {
-            stableIterations++;
-          } else {
-            stableIterations = 0;
-          }
+        // Track text stability every poll, regardless of the Stop button —
+        // so a finished-but-still-streaming-looking turn is still recognised.
+        if (currentText.length > 0 && currentText.length === lastTextLength) {
+          stableIterations++;
+        } else {
+          stableIterations = 0;
+        }
+        lastTextLength = currentText.length;
 
-          if (stableIterations >= 4) {
+        if (isNewMessage) {
+          // Normal completion: text settled and the Stop button is gone.
+          if (!isGenerating && stableIterations >= STABLE_DONE) {
             return true;
           }
-          lastTextLength = currentText.length;
-        } else if (isGenerating) {
-          stableIterations = 0;
+          // Robustness: ChatGPT regularly leaves the Stop button in the DOM
+          // after a turn is fully written, so !isGenerating never becomes true
+          // and the poll would otherwise hold the caller for the full 5-min
+          // timeout before "early-extracting" a response that was ready minutes
+          // ago. A response byte-for-byte stable this long is done regardless.
+          if (stableIterations >= STABLE_FORCE_DONE) {
+            return true;
+          }
         }
 
         return false;
