@@ -1,6 +1,7 @@
 // --- FILE START ---
 // Relative Path: src/browser/launcher/index.js
 import os from "node:os";
+import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import process from "node:process";
@@ -39,10 +40,23 @@ async function waitForPortBound(port, host, timeoutMs) {
 
 export async function autoLaunchChrome() {
   const port = Number(process.env.CDP_PORT ?? 9222);
-  const userDataDir = path.join(
-    os.tmpdir(),
-    process.env.CHROME_TMP ?? "chrome_ai_debug",
-  );
+  // Persist the Chrome profile across reboots so AI-provider logins survive.
+  // Previously this lived in os.tmpdir(), which macOS purges on restart —
+  // forcing a fresh login every time. Now defaults to a stable dir under the
+  // home folder; override with CHROME_USER_DATA_DIR (or just the leaf name via
+  // CHROME_TMP, kept for backwards compatibility).
+  const userDataDir = process.env.CHROME_USER_DATA_DIR
+    ? path.resolve(process.env.CHROME_USER_DATA_DIR)
+    : path.join(
+        os.homedir(),
+        ".browser-ai-bridge",
+        process.env.CHROME_TMP ?? "chrome-profile",
+      );
+  try {
+    fs.mkdirSync(userDataDir, { recursive: true });
+  } catch (e) {
+    logger.warn(`[Browser] Could not create profile dir ${userDataDir}: ${e.message}`);
+  }
 
   // We only kill at the very start of a fresh launch request
   await killBrowserProcess();
