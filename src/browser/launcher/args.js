@@ -24,6 +24,20 @@ export function getChromeArgs(port, userDataDir) {
     `--password-store=basic`,
     `--use-mock-keychain`,
     `--export-tagged-pdf`,
+    // --- Memory ceiling -------------------------------------------------
+    // The bridge keeps one long-lived tab per AI provider, so Chrome's default
+    // process-per-tab model spawned ~16 processes that sat resident for hours.
+    // On a small-RAM machine that competes with the pipeline's own dictionary
+    // load and pushes the whole box into swap (input freezes, forced reboots).
+    // Same-site tabs share a renderer, and the count is capped. GPU/canvas are
+    // deliberately left enabled — icon auto-extraction reads generated images
+    // off a canvas and breaks under --disable-gpu.
+    `--process-per-site`,
+    `--renderer-process-limit=${process.env.CHROME_RENDERER_LIMIT || 4}`,
+    `--disable-features=Translate,MediaRouter,OptimizationHints,CalculateNativeWinOcclusion`,
+    `--disable-component-update`,
+    `--disable-domain-reliability`,
+    `--disable-client-side-phishing-detection`,
   ];
 
   const headlessMode = process.env.HEADLESS;
