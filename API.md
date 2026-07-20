@@ -117,9 +117,26 @@ Send a prompt to an existing session.
 ```json
 {
   "sessionId": "uuid",
-  "prompt": "Your prompt text"
+  "prompt": "Your prompt text",
+  "images": ["data:image/png;base64,iVBORw0KGgo…"]
 }
 ```
+
+**Images (optional)**
+
+`images` accepts data URLs (`data:image/png;base64,…`) or bare base64. Each is written
+to a temp file and attached to the provider's composer, then cleaned up after the turn.
+PNG, JPEG, GIF and WebP are recognised; anything undecodable is skipped with a warning
+rather than failing the request.
+
+**Only the first attachment is sent** — the current providers accept one file per turn.
+Additional entries are logged and dropped, so send one image per `/api/ask` call.
+
+Useful for anything the caller cannot answer from text alone. It was added for image
+transcription, and reading a page of sheet music is a good example: asking Gemini which
+bars contain a dotted note found 11 of 11 on a page where the OMR engine found 2 of 15.
+A downscaled greyscale PNG (~70KB) was enough — there is no need to send a full-size
+scan, and sending less is worth preferring since the image leaves the machine.
 
 **Rules**
 
