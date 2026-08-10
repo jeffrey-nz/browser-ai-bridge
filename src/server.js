@@ -115,31 +115,47 @@ export function startServer(initialPort) {
         `Port ${initialPort} already in use - attempting to kill stale process...`,
       );
       try {
-        const lsofOut = execSync(`lsof -ti :${initialPort} 2>/dev/null || true`)
-          .toString()
-          .trim();
-        const pids = lsofOut.split("\n").filter(Boolean);
+        let pids = [];
+        if (process.platform === "win32") {
+          // Use PowerShell to find PIDs listening on the port (avoids PATH issues)
+          const psExe = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+          const psOut = execSync(
+            `"${psExe}" -NoProfile -Command "Get-NetTCPConnection -LocalPort ${initialPort} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"`,
+            { stdio: ["pipe", "pipe", "pipe"] },
+          ).toString();
+          pids = psOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        } else {
+          const lsofOut = execSync(`lsof -ti :${initialPort} 2>/dev/null || true`)
+            .toString()
+            .trim();
+          pids = lsofOut.split("\n").filter(Boolean);
+        }
         if (pids.length === 0) {
-          reject(
-            new Error(
-              `Port ${initialPort} already in use and no stale process found to kill.`,
-            ),
+          // No owning process found (port may be in kernel cleanup / TIME_WAIT).
+          // Fall through to waitForPortFree so we can retry binding once it clears.
+          logger.warn(
+            `[Server] No owning PID found for port ${initialPort}; waiting for OS to release it...`,
           );
-          return;
         }
         for (const pid of pids) {
           logger.warn(
             `  Killing stale process PID ${pid} on port ${initialPort}`,
           );
-          execSync(`kill -9 ${pid} 2>/dev/null || true`);
+          if (process.platform === "win32") {
+            try {
+              execSync(`C:\\Windows\\System32\\taskkill.exe /F /PID ${pid}`, { stdio: "pipe" });
+            } catch {
+              // Ignore if process already gone
+            }
+          } else {
+            execSync(`kill -9 ${pid} 2>/dev/null || true`);
+          }
         }
       } catch (killErr) {
-        reject(
-          new Error(
-            `Port ${initialPort} already in use; failed to kill stale process: ${killErr.message}`,
-          ),
+        // If the PID-lookup itself failed, still try waiting for the port to free.
+        logger.warn(
+          `[Server] PID lookup failed (${killErr.message}); waiting for port to free anyway...`,
         );
-        return;
       }
 
       // Poll until the OS actually releases the port (WSL2 can take 1-3 s).
