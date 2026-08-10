@@ -14,7 +14,13 @@ export async function executeAskTurn(
   requestId,
   label = "API Turn",
   pollTimeoutMs = 420000,
-  { skipConstraint = false, mode = null, images = [], projectDir = "" } = {},
+  {
+    skipConstraint = false,
+    mode = null,
+    images = [],
+    projectDir = "",
+    yieldOnRateLimit = false,
+  } = {},
 ) {
   const attachmentPaths = images.length
     ? await saveImagesToTempFiles(images)
@@ -25,6 +31,7 @@ export async function executeAskTurn(
       mode,
       attachmentPaths,
       projectDir,
+      yieldOnRateLimit,
     });
   } finally {
     if (attachmentPaths.length) await cleanupTempFiles(attachmentPaths);
@@ -37,7 +44,7 @@ async function runAskTurn(
   requestId,
   label,
   pollTimeoutMs,
-  { skipConstraint, mode, attachmentPaths, projectDir = "" },
+  { skipConstraint, mode, attachmentPaths, projectDir = "", yieldOnRateLimit = false },
 ) {
   sessionManager.logTranscript(session.id, "USER", prompt, { requestId });
 
@@ -153,6 +160,30 @@ async function runAskTurn(
   // response body. Retry with back-off. DeepSeek "Messages too frequent" typically
   // resets in 1-2 min; ChatGPT hourly. Use 4 retries: 90s, 90s, 120s, 300s.
   if (response.rateLimited) {
+    //[[ YIELD RATHER THAN SLEEP, when somebody else can answer.
+    //
+    //   The back-off below is 90s, 90s, 120s, 300s -- up to nine and a half
+    //   minutes of doing nothing, waiting for the SAME provider to forgive us.
+    //   That is the right behaviour when it is the only provider there is, and
+    //   the wrong behaviour by an order of magnitude when the caller named a
+    //   tier chain: a rate limit is a property of an account and a clock, and
+    //   says nothing about whether the next tier could answer right now.
+    //
+    //   So when the route has somewhere else to go, this returns immediately
+    //   and lets it. The cooldown the provider was just put on is what makes
+    //   the fallback temporary -- the chain prefers tier 0 again the moment it
+    //   clears, so nothing here has to remember to switch back. ]]
+    if (yieldOnRateLimit) {
+      logger.warn(
+        `[Ask] Rate-limited on ${session.providerId} — yielding to the next tier ` +
+          `instead of waiting ${Math.round(90)}s+ for the same one.`,
+      );
+      const err = new Error("RATE_LIMITED");
+      err.stalled = true;
+      err.rateLimited = true;
+      throw err;
+    }
+
     const waits = [90000, 90000, 120000, 300000].map((w) =>
       Math.floor(w * (0.75 + Math.random() * 0.5)),
     );

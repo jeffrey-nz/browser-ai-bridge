@@ -334,3 +334,47 @@ Force-reset the stored baseline for a session. Useful after deliberate UI action
   --remote-debugging-port=9222
 - Sessions correspond to real browser tabs.
 - No AI provider APIs are used — everything is UI‑driven.
+
+## Provider tiers — falling through a rate limit
+
+`POST /api/ask` takes an ordered chain instead of a single provider:
+
+```jsonc
+{
+  "providers": ["gemini", "chatgpt", "grok"],   // preference order
+  "prompt": "..."
+}
+```
+
+or, equivalently, `{"provider": "gemini", "fallback": ["chatgpt"]}`. With
+neither, `PROVIDER_TIERS` in `.env` supplies the fallbacks.
+
+**Why.** A rate limit is a property of an account and a clock, not of the
+question. Gemini going into a two-minute cooldown says nothing about whether
+ChatGPT could answer the same prompt right now — and the in-turn back-off is
+90s, 90s, 120s, 300s, so a single rate limit can cost nine and a half minutes of
+doing nothing. A batch that stalls like that has its wall-clock set by its
+unluckiest provider.
+
+**The chain is a preference, not a pool.** Tier 0 is asked whenever it is
+available, so a fallback lasts exactly as long as the cooldown that caused it
+and nothing has to remember to switch back. A tier is skipped without being
+asked when it is already cooling down, and dropped mid-turn when it rate-limits.
+
+**The response says who answered:**
+
+```json
+{ "success": true, "response": "...", "provider": "chatgpt" }
+```
+
+Read it. A caller comparing answers between turns — anything scoring or ranking
+— cannot otherwise tell two models apart, and different models are different
+scales.
+
+**A `sessionId` request gets no chain**, deliberately: continuing a conversation
+in a different provider's tab would be a different conversation wearing the same
+id. Fall back at whatever level owns the conversation, not inside one.
+
+When every tier is cooling down the reply is `503 STALLED` with `Retry-After`
+set to the **shortest** remaining wait — that is when the chain comes back, and
+reporting tier 0's would send you to sleep past a provider that was already free.
