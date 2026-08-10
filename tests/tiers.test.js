@@ -76,3 +76,63 @@ test("a garbage PROVIDER_TIERS cannot poison the chain", () => {
   if (saved === undefined) delete process.env.PROVIDER_TIERS;
   else process.env.PROVIDER_TIERS = saved;
 });
+
+/**
+ * The chain must not cost a request its provider.
+ *
+ * Regression: the route skipped the cooldown gate for a chained request by
+ * passing `null` as the provider, which tripped validateRequest's "you must
+ * name a provider or a session" guard instead. With PROVIDER_TIERS set in the
+ * environment EVERY request is chained, so the bridge answered every ask with
+ * "Missing provider or sessionId" — a total outage, from a change whose unit
+ * tests were all green. They tested the chain resolver and nothing tested the
+ * thing that consumes it.
+ */
+test("a chained request still has to name a provider", async () => {
+  const { validateRequest } = await import("../src/routes/ask/validation.js");
+  const req = { body: { prompt: "hello" } };
+
+  const named = validateRequest(req, null, "gemini", { skipCooldown: true });
+  assert.equal(named.valid, true, "naming a provider is enough, chain or not");
+
+  const anonymous = validateRequest(req, null, undefined, { skipCooldown: true });
+  assert.equal(anonymous.valid, false);
+  assert.match(anonymous.error, /Missing provider or sessionId/);
+});
+
+test("skipCooldown only relaxes the cooldown, not the rest of validation", async () => {
+  const { validateRequest } = await import("../src/routes/ask/validation.js");
+
+  const noPrompt = validateRequest({ body: {} }, null, "gemini", { skipCooldown: true });
+  assert.equal(noPrompt.valid, false);
+  assert.match(noPrompt.error, /Missing prompt/);
+
+  const unknown = validateRequest({ body: { prompt: "x" } }, null, "nope", {
+    skipCooldown: true,
+  });
+  assert.equal(unknown.valid, false);
+  assert.match(unknown.error, /Unknown provider/);
+});
+
+test("a request that names its chain as `providers` has named a provider", async () => {
+  // Second regression of the same shape: `{"providers":[...]}` carries no
+  // `provider` key, so validating the raw field called a perfectly well-formed
+  // request anonymous. The route validates the chain's head now.
+  const { validateRequest } = await import("../src/routes/ask/validation.js");
+  const chain = resolveTiers({ providers: ["gemini", "chatgpt"] });
+  assert.deepEqual(chain, ["gemini", "chatgpt"]);
+
+  const v = validateRequest({ body: { prompt: "hi" } }, null, chain[0], {
+    skipCooldown: true,
+  });
+  assert.equal(v.valid, true);
+});
+
+test("a tier on cooldown is skipped, and says for how long", async () => {
+  const { skipTier } = await import("../src/routes/ask/tiers.js");
+  const cooling = (p) =>
+    p === "gemini" ? { active: true, remainingSeconds: 47 } : { active: false };
+
+  assert.deepEqual(skipTier("gemini", cooling), { skip: true, remainingSeconds: 47 });
+  assert.deepEqual(skipTier("chatgpt", cooling), { skip: false });
+});

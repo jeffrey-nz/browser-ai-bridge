@@ -1,4 +1,5 @@
 import { PROVIDER_CONFIG } from "../../config/providers.js";
+import { cooldownManager } from "../../session/CooldownManager.js";
 import { logger } from "#utils/logger.js";
 
 /**
@@ -58,6 +59,23 @@ export function resolveTiers(body) {
     seen.add(id);
     return true;
   });
+}
+
+/**
+ * Should this tier be skipped without being asked, and for how long?
+ *
+ * Extracted from the route's loop so it can be tested. Both wiring bugs this
+ * change shipped were inline branches in that loop with green unit tests
+ * beside them -- the chain resolver was covered and the code CONSUMING it was
+ * not, so the bridge answered nothing while the suite stayed green. A decision
+ * worth making is a decision worth naming.
+ *
+ * `isCoolingDown` is injected so a test does not need a real rate limit.
+ */
+export function skipTier(id, isCoolingDown = null) {
+  const check = isCoolingDown ?? ((p) => cooldownManager.check(p));
+  const cd = check(id);
+  return cd.active ? { skip: true, remainingSeconds: cd.remainingSeconds } : { skip: false };
 }
 
 export function logFallback(from, to, why) {

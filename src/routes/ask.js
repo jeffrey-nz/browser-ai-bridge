@@ -3,10 +3,9 @@ import crypto from "node:crypto";
 import { sessionManager } from "../session/index.js";
 import { validateRequest, validatePromptLimit } from "./ask/validation.js";
 import { resolveSession, cleanupAutoSession } from "./ask/sessionHandler.js";
-import { cooldownManager } from "../session/CooldownManager.js";
 import { executeAskTurn } from "./ask/executor/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
-import { resolveTiers, logFallback } from "./ask/tiers.js";
+import { resolveTiers, skipTier, logFallback } from "./ask/tiers.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
 import { eventBus } from "#web/eventBus.js";
@@ -38,7 +37,15 @@ router.post("/", async (req, res, next) => {
   const tiers = resolveTiers(req.body);
   const chained = tiers.length > 1;
 
-  const v = validateRequest(req, sessionId, chained ? null : provider);
+  //[[ Validate against the chain's HEAD, not the bare `provider` field.
+  //
+  //   `{"providers": ["gemini", "chatgpt"]}` names a provider perfectly well
+  //   and has no `provider` key at all, so validating the raw field rejected it
+  //   as "Missing provider or sessionId". Second bug of this exact shape: the
+  //   chain resolver was unit-tested and the thing CONSUMING it was not, so
+  //   both times the tests were green and the bridge answered nothing. ]]
+  const head = provider ?? tiers[0];
+  const v = validateRequest(req, sessionId, head, { skipCooldown: chained });
   if (!v.valid) {
     if (v.retryAfter) res.set("Retry-After", String(v.retryAfter));
     return sendError(
@@ -65,12 +72,12 @@ router.post("/", async (req, res, next) => {
   let lastRetryAfter;
 
   for (let i = 0; i < Math.max(tiers.length, 1); i++) {
-    const candidate = chained ? tiers[i] : provider;
+    const candidate = chained ? tiers[i] : head;
     const remaining = chained ? tiers.slice(i + 1) : [];
 
     if (chained) {
-      const cd = cooldownManager.check(candidate);
-      if (cd.active) {
+      const cd = skipTier(candidate);
+      if (cd.skip) {
         lastRetryAfter = Math.min(lastRetryAfter ?? Infinity, cd.remainingSeconds);
         attempted.push({ provider: candidate, outcome: "cooldown" });
         continue;
