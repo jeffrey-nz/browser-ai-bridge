@@ -7,7 +7,12 @@ import { cooldownManager } from "../../session/CooldownManager.js";
  *   provider on cooldown is the condition the chain exists to answer rather
  *   than a reason to refuse. The route picks the first free tier itself.
  */
-export function validateRequest(req, sessionId, provider, { skipCooldown = false } = {}) {
+export function validateRequest(
+  req,
+  sessionId,
+  provider,
+  { skipCooldown = false } = {},
+) {
   // Required: prompt. Optional: mode, label, skipConstraint.
   if (!req.body.prompt) {
     return { valid: false, status: 400, error: "Missing prompt" };

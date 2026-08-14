@@ -78,7 +78,10 @@ router.post("/", async (req, res, next) => {
     if (chained) {
       const cd = skipTier(candidate);
       if (cd.skip) {
-        lastRetryAfter = Math.min(lastRetryAfter ?? Infinity, cd.remainingSeconds);
+        lastRetryAfter = Math.min(
+          lastRetryAfter ?? Infinity,
+          cd.remainingSeconds,
+        );
         attempted.push({ provider: candidate, outcome: "cooldown" });
         continue;
       }
@@ -94,13 +97,25 @@ router.post("/", async (req, res, next) => {
         continue;
       }
       if (retryAfter) res.set("Retry-After", String(retryAfter));
-      return sendError(res, status, error, retryAfter ? { retryAfter } : {}, requestId);
+      return sendError(
+        res,
+        status,
+        error,
+        retryAfter ? { retryAfter } : {},
+        requestId,
+      );
     }
 
     const pLimit = validatePromptLimit(session, prompt);
     if (!pLimit.valid) {
       await cleanupAutoSession(autoCreated, session);
-      return sendError(res, pLimit.status, pLimit.error, { max: pLimit.max }, requestId);
+      return sendError(
+        res,
+        pLimit.status,
+        pLimit.error,
+        { max: pLimit.max },
+        requestId,
+      );
     }
 
     // If the HTTP client disconnects before we finish writing the response
@@ -128,14 +143,21 @@ router.post("/", async (req, res, next) => {
     const outcome = await withSessionLock(session, autoCreated, async () => {
       try {
         const { response, data, messageCount, selfHealEscape, htmlSnapshot } =
-          await executeAskTurn(session, prompt, requestId, label, pollTimeoutMs, {
-            skipConstraint: !!skipConstraint,
-            mode,
-            images: Array.isArray(images) ? images : [],
-            projectDir: projectDir || "",
-            // Only yield when there is somewhere to yield TO.
-            yieldOnRateLimit: remaining.length > 0,
-          });
+          await executeAskTurn(
+            session,
+            prompt,
+            requestId,
+            label,
+            pollTimeoutMs,
+            {
+              skipConstraint: !!skipConstraint,
+              mode,
+              images: Array.isArray(images) ? images : [],
+              projectDir: projectDir || "",
+              // Only yield when there is somewhere to yield TO.
+              yieldOnRateLimit: remaining.length > 0,
+            },
+          );
 
         if (selfHealEscape) {
           return {
@@ -197,7 +219,10 @@ router.post("/", async (req, res, next) => {
               ),
           };
         }
-        return { done: true, send: () => sendError(res, 500, err.message, {}, requestId) };
+        return {
+          done: true,
+          send: () => sendError(res, 500, err.message, {}, requestId),
+        };
       }
     });
 

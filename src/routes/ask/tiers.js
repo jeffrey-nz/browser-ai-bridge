@@ -75,7 +75,9 @@ export function resolveTiers(body) {
 export function skipTier(id, isCoolingDown = null) {
   const check = isCoolingDown ?? ((p) => cooldownManager.check(p));
   const cd = check(id);
-  return cd.active ? { skip: true, remainingSeconds: cd.remainingSeconds } : { skip: false };
+  return cd.active
+    ? { skip: true, remainingSeconds: cd.remainingSeconds }
+    : { skip: false };
 }
 
 export function logFallback(from, to, why) {

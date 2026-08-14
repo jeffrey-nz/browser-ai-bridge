@@ -44,7 +44,13 @@ async function runAskTurn(
   requestId,
   label,
   pollTimeoutMs,
-  { skipConstraint, mode, attachmentPaths, projectDir = "", yieldOnRateLimit = false },
+  {
+    skipConstraint,
+    mode,
+    attachmentPaths,
+    projectDir = "",
+    yieldOnRateLimit = false,
+  },
 ) {
   sessionManager.logTranscript(session.id, "USER", prompt, { requestId });
 

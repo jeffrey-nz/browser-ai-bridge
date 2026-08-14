@@ -9,10 +9,11 @@ import { resolveTiers, defaultTiers } from "../src/routes/ask/tiers.js";
  */
 
 test("a named chain is kept in order", () => {
-  assert.deepEqual(
-    resolveTiers({ providers: ["gemini", "chatgpt", "grok"] }),
-    ["gemini", "chatgpt", "grok"],
-  );
+  assert.deepEqual(resolveTiers({ providers: ["gemini", "chatgpt", "grok"] }), [
+    "gemini",
+    "chatgpt",
+    "grok",
+  ]);
 });
 
 test("the requested provider leads a chain given as `fallback`", () => {
@@ -44,7 +45,10 @@ test("a provider named twice is asked once", () => {
   // Otherwise a chain of ["gemini","gemini"] would spend two attempts and two
   // cooldown checks discovering the same thing.
   assert.deepEqual(
-    resolveTiers({ provider: "gemini", providers: ["gemini", "gemini", "chatgpt"] }),
+    resolveTiers({
+      provider: "gemini",
+      providers: ["gemini", "gemini", "chatgpt"],
+    }),
     ["gemini", "chatgpt"],
   );
 });
@@ -95,7 +99,9 @@ test("a chained request still has to name a provider", async () => {
   const named = validateRequest(req, null, "gemini", { skipCooldown: true });
   assert.equal(named.valid, true, "naming a provider is enough, chain or not");
 
-  const anonymous = validateRequest(req, null, undefined, { skipCooldown: true });
+  const anonymous = validateRequest(req, null, undefined, {
+    skipCooldown: true,
+  });
   assert.equal(anonymous.valid, false);
   assert.match(anonymous.error, /Missing provider or sessionId/);
 });
@@ -103,7 +109,9 @@ test("a chained request still has to name a provider", async () => {
 test("skipCooldown only relaxes the cooldown, not the rest of validation", async () => {
   const { validateRequest } = await import("../src/routes/ask/validation.js");
 
-  const noPrompt = validateRequest({ body: {} }, null, "gemini", { skipCooldown: true });
+  const noPrompt = validateRequest({ body: {} }, null, "gemini", {
+    skipCooldown: true,
+  });
   assert.equal(noPrompt.valid, false);
   assert.match(noPrompt.error, /Missing prompt/);
 
@@ -133,6 +141,9 @@ test("a tier on cooldown is skipped, and says for how long", async () => {
   const cooling = (p) =>
     p === "gemini" ? { active: true, remainingSeconds: 47 } : { active: false };
 
-  assert.deepEqual(skipTier("gemini", cooling), { skip: true, remainingSeconds: 47 });
+  assert.deepEqual(skipTier("gemini", cooling), {
+    skip: true,
+    remainingSeconds: 47,
+  });
   assert.deepEqual(skipTier("chatgpt", cooling), { skip: false });
 });

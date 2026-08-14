@@ -55,7 +55,9 @@ export async function autoLaunchChrome() {
   try {
     fs.mkdirSync(userDataDir, { recursive: true });
   } catch (e) {
-    logger.warn(`[Browser] Could not create profile dir ${userDataDir}: ${e.message}`);
+    logger.warn(
+      `[Browser] Could not create profile dir ${userDataDir}: ${e.message}`,
+    );
   }
 
   // We only kill at the very start of a fresh launch request

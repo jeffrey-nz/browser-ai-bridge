@@ -118,14 +118,20 @@ export function startServer(initialPort) {
         let pids = [];
         if (process.platform === "win32") {
           // Use PowerShell to find PIDs listening on the port (avoids PATH issues)
-          const psExe = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+          const psExe =
+            "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
           const psOut = execSync(
             `"${psExe}" -NoProfile -Command "Get-NetTCPConnection -LocalPort ${initialPort} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"`,
             { stdio: ["pipe", "pipe", "pipe"] },
           ).toString();
-          pids = psOut.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+          pids = psOut
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter(Boolean);
         } else {
-          const lsofOut = execSync(`lsof -ti :${initialPort} 2>/dev/null || true`)
+          const lsofOut = execSync(
+            `lsof -ti :${initialPort} 2>/dev/null || true`,
+          )
             .toString()
             .trim();
           pids = lsofOut.split("\n").filter(Boolean);
@@ -143,7 +149,9 @@ export function startServer(initialPort) {
           );
           if (process.platform === "win32") {
             try {
-              execSync(`C:\\Windows\\System32\\taskkill.exe /F /PID ${pid}`, { stdio: "pipe" });
+              execSync(`C:\\Windows\\System32\\taskkill.exe /F /PID ${pid}`, {
+                stdio: "pipe",
+              });
             } catch {
               // Ignore if process already gone
             }
