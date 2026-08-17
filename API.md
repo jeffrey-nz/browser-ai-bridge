@@ -128,7 +128,15 @@ Send a prompt to an existing session.
 
 `provider` picks the tab to ask instead of an existing `sessionId` — one of
 `chatgpt`, `gemini`, `copilot`, `copilot365`, `deepseek`, `grok`. A session is
-created for it if none is open. Measured round trip for a one-word answer, warm:
+created for it if none is open.
+
+**It is tier 0 of a chain, not a pin.** If `PROVIDER_TIERS` is set, a request
+naming `gemini` can be answered by whatever is next in that chain the moment
+gemini is cooling down, and the reply will say so in its `provider` field. That
+is usually what you want and occasionally the opposite of it — see
+[Pinning to one provider](#pinning-to-one-provider).
+
+Measured round trip for a one-word answer, warm:
 
 | Provider   | Reply |
 | ---------- | ----- |
@@ -419,6 +427,39 @@ scales.
 **A `sessionId` request gets no chain**, deliberately: continuing a conversation
 in a different provider's tab would be a different conversation wearing the same
 id. Fall back at whatever level owns the conversation, not inside one.
+
+### Pinning to one provider
+
+Name a chain of one:
+
+```json
+{ "providers": ["gemini"], "prompt": "..." }
+```
+
+`{"provider": "gemini", "fallback": []}` is equivalent. Either way the request
+fails when gemini is unavailable instead of being answered by somebody else.
+
+**When you want this: any batch whose answers are compared with each other.**
+Measured on a real run — 24 score crops, one question, `provider: "gemini"` on
+every call, no chain named:
+
+| served by | n   | answered     | median |
+| --------- | --- | ------------ | ------ |
+| gemini    | 11  | 11 of 11     | 24.5s  |
+| chatgpt   | 12  | 2 of 12      | 49.8s  |
+| grok      | 1   | hung at 210s | —      |
+
+Asked for gemini on 24 of 24; served by something else on **13 (54%)**. One
+column labelled "the answer" held one model that answered 11 times out of 11 and
+another that returned `unsure` ten times out of twelve — and mid-run the chain
+fell through a second time, to grok, so a single batch contained three models.
+The reply carried the right `provider` every time; nothing was hidden. But a
+caller who writes `provider: "gemini"` and then treats the results as one
+population has silently mixed three scales.
+
+Pinning also surfaces a rate limit immediately instead of paying ~40s a call to
+discover it, which is the difference between a batch that stops and tells you and
+one that quietly gets slower and less consistent.
 
 When every tier is cooling down the reply is `503 STALLED` with `Retry-After`
 set to the **shortest** remaining wait — that is when the chain comes back, and
