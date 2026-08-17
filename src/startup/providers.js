@@ -1,3 +1,4 @@
+import { GENERIC_SPECS } from "#ai/generic/specs.js";
 const _enabled = process.env.BROWSER_AI_PROVIDERS
   ? new Set(
       process.env.BROWSER_AI_PROVIDERS.split(",").map((s) =>
@@ -6,7 +7,17 @@ const _enabled = process.env.BROWSER_AI_PROVIDERS
     )
   : null;
 
+//[[ Generated from the specs rather than restated, so a selector fix in one place
+//   cannot leave the startup readiness probe looking for the old one. ]]
+const GENERIC_STARTUP = Object.values(GENERIC_SPECS).map((s) => ({
+  id: s.id,
+  name: s.name,
+  url: s.url,
+  readySelector: s.locators.inputBox,
+}));
+
 const ALL_PROVIDERS = [
+  ...GENERIC_STARTUP,
   {
     id: "chatgpt",
     name: "ChatGPT",

@@ -7,8 +7,10 @@ import { GeminiProvider } from "#ai/gemini/session.js";
 import { DeepSeekProvider } from "#ai/deepseek/session.js";
 import { GrokProvider } from "#ai/grok/session.js";
 import { CopilotProvider } from "#ai/copilot/client/session.js";
+import { GENERIC_PROVIDERS } from "#ai/generic/session.js";
 
 const PROVIDER_MAP = {
+  ...GENERIC_PROVIDERS,
   chatgpt: ChatGPTProvider,
   gemini: GeminiProvider,
   deepseek: DeepSeekProvider,
