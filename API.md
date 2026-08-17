@@ -130,13 +130,13 @@ Send a prompt to an existing session.
 `chatgpt`, `gemini`, `copilot`, `copilot365`, `deepseek`, `grok`. A session is
 created for it if none is open. Measured round trip for a one-word answer, warm:
 
-| Provider | Reply |
-|---|---|
-| `gemini` | 13s |
-| `copilot` | 22s |
-| `grok` | 39s |
-| `chatgpt` | 44s |
-| `deepseek` | 46s |
+| Provider   | Reply |
+| ---------- | ----- |
+| `gemini`   | 13s   |
+| `copilot`  | 22s   |
+| `grok`     | 39s   |
+| `chatgpt`  | 44s   |
+| `deepseek` | 46s   |
 
 **Mode (optional)**
 
@@ -256,9 +256,9 @@ Navigates a fresh browser page to the given URL, captures a PNG screenshot, then
 
 **Query Parameters**
 
-| Param | Required | Description |
-|-------|----------|-------------|
-| `url` | Yes | HTTP/HTTPS URL to capture |
+| Param | Required | Description               |
+| ----- | -------- | ------------------------- |
+| `url` | Yes      | HTTP/HTTPS URL to capture |
 
 **Response**
 
@@ -386,8 +386,8 @@ Force-reset the stored baseline for a session. Useful after deliberate UI action
 
 ```jsonc
 {
-  "providers": ["gemini", "chatgpt", "grok"],   // preference order
-  "prompt": "..."
+  "providers": ["gemini", "chatgpt", "grok"], // preference order
+  "prompt": "...",
 }
 ```
 

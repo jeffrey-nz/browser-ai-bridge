@@ -4,14 +4,14 @@ A local REST API server that automates real browser sessions to interact with AI
 
 ## Supported providers
 
-| Provider | ID |
-|---|---|
-| ChatGPT | `chatgpt` |
-| Google Gemini | `gemini` |
-| Microsoft Copilot (Personal) | `copilot` |
+| Provider                     | ID           |
+| ---------------------------- | ------------ |
+| ChatGPT                      | `chatgpt`    |
+| Google Gemini                | `gemini`     |
+| Microsoft Copilot (Personal) | `copilot`    |
 | Microsoft 365 Copilot (Work) | `copilot365` |
-| DeepSeek | `deepseek` |
-| xAI Grok | `grok` |
+| DeepSeek                     | `deepseek`   |
+| xAI Grok                     | `grok`       |
 
 ## How it works
 
@@ -104,7 +104,12 @@ curl http://localhost:3333/api/ping
 ```
 
 ```json
-{ "status": "ready", "browser": { "connected": true }, "uptime": 42.1, "sessions": 2 }
+{
+  "status": "ready",
+  "browser": { "connected": true },
+  "uptime": 42.1,
+  "sessions": 2
+}
 ```
 
 ### Send a prompt
@@ -142,6 +147,7 @@ itself — see [API.md](API.md#mode-optional).
 ### Explicit session management
 
 Create a session:
+
 ```bash
 curl -X POST http://localhost:3333/api/sessions \
   -H "Content-Type: application/json" \
@@ -150,6 +156,7 @@ curl -X POST http://localhost:3333/api/sessions \
 ```
 
 Send to a specific session:
+
 ```bash
 curl -X POST http://localhost:3333/api/ask \
   -H "Content-Type: application/json" \
@@ -157,11 +164,13 @@ curl -X POST http://localhost:3333/api/ask \
 ```
 
 Close a session:
+
 ```bash
 curl -X DELETE http://localhost:3333/api/sessions/uuid
 ```
 
 List all active sessions:
+
 ```bash
 curl http://localhost:3333/api/sessions
 ```
@@ -206,10 +215,10 @@ npm run audit:fix
 
 ## Hotkeys (while server is running)
 
-| Key | Action |
-|-----|--------|
-| `R` | Re-run provider setup wizard |
-| `Q` / Ctrl+C | Graceful shutdown |
+| Key          | Action                       |
+| ------------ | ---------------------------- |
+| `R`          | Re-run provider setup wizard |
+| `Q` / Ctrl+C | Graceful shutdown            |
 
 ## Project structure
 
