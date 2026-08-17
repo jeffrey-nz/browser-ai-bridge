@@ -117,10 +117,55 @@ Send a prompt to an existing session.
 ```json
 {
   "sessionId": "uuid",
+  "provider": "gemini",
+  "mode": "pro",
   "prompt": "Your prompt text",
   "images": ["data:image/png;base64,iVBORw0KGgo…"]
 }
 ```
+
+**Provider (optional)**
+
+`provider` picks the tab to ask instead of an existing `sessionId` — one of
+`chatgpt`, `gemini`, `copilot`, `copilot365`, `deepseek`, `grok`. A session is
+created for it if none is open. Measured round trip for a one-word answer, warm:
+
+| Provider | Reply |
+|---|---|
+| `gemini` | 13s |
+| `copilot` | 22s |
+| `grok` | 39s |
+| `chatgpt` | 44s |
+| `deepseek` | 46s |
+
+**Mode (optional)**
+
+`mode` selects the model or reasoning depth inside the provider's own UI before
+the prompt is sent: `pro`, `thinking`, `fast`, or `auto` (default). Aliases are
+accepted, so `deepthink`, `r1`, `o3` and `thinkdeeper` all resolve to `thinking`,
+and `flash`, `quick` and `v3` resolve to `fast`.
+
+It applies on session creation **and** again before each turn, because a reused
+tab may be left on a different toggle by a previous call.
+
+Not every provider has every mode. Gemini falls back Pro → Thinking → Fast if a
+menu entry is missing; DeepSeek maps `fast` to Standard (V3); Grok 4 always
+reasons, so mode selection there is a no-op handled in the extractor. A mode that
+cannot be set is logged and the turn proceeds rather than failing.
+
+**Verify the mode from the server log, not from the model.** Asked which model
+was answering, Gemini replied "I am Gemini 3.7 Flash" in `pro`, `thinking` and
+`fast` alike — models are unreliable narrators of their own identity. The bridge
+reads the UI's own dropdown and says what it selected:
+
+```
+⚙️  Setting Gemini mode to: Pro...       ✔ Mode confirmed: Pro (3.1 Pro
+⚙️  Setting Gemini mode to: Thinking...  ✔ Mode confirmed: Thinking (3.6 Thinking
+⚙️  Setting Gemini mode to: Fast...      ✔ Mode confirmed: Fast (3.6 Flash
+```
+
+That line is the evidence the switch took effect. If you need to assert on it in a
+script, assert on `Mode confirmed`.
 
 **Images (optional)**
 

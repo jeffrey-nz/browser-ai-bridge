@@ -115,6 +115,21 @@ curl -X POST http://localhost:3333/api/ask \
   -d '{ "provider": "chatgpt", "prompt": "Explain recursion in one sentence." }'
 ```
 
+### Pick the model or reasoning depth
+
+`mode` selects inside the provider's own UI before the prompt is sent — `pro`,
+`thinking`, `fast`, or `auto` (default):
+
+```bash
+curl -X POST http://localhost:3333/api/ask \
+  -H "Content-Type: application/json" \
+  -d '{ "provider": "gemini", "mode": "pro", "prompt": "..." }'
+```
+
+Gemini falls back Pro → Thinking → Fast when a menu entry is missing. Confirm from
+the server log rather than by asking the model, which will cheerfully misreport
+itself — see [API.md](API.md#mode-optional).
+
 ```json
 {
   "success": true,
