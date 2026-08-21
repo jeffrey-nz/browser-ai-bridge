@@ -56,6 +56,28 @@ export function gradeReply(raw, truth) {
   };
 }
 
+// T-029: pulled out of the report-scanning block below, same reason as
+// gradeReply above — a check whose numerator can never read below its
+// denominator (T-026 gave reports/vision-probe a second tracked population,
+// PNGs, that an un-filtered `git ls-files` folded into a json-only count)
+// has to be provable against a shortfall, and that needs a temp git repo a
+// unit test can build (tests/iaGradeTracked.test.js), not the real corpus.
+// Returns null (not a throw) outside a git checkout / on any git failure —
+// callers show the "not a git checkout" fallback in that case.
+export function countTrackedFiles(pattern, cwd = process.cwd()) {
+  try {
+    return execSync(`git ls-files "${pattern}"`, {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .split("\n")
+      .filter(Boolean).length;
+  } catch {
+    return null;
+  }
+}
+
 // Guarded the same way vision-probe.mjs is (T-025): importing gradeReply for
 // a test must not also scan reports/vision-probe and print a report.
 if (
@@ -120,18 +142,25 @@ if (
   // ticket that wrote it tracked the corpus one commit later). Degrades
   // gracefully outside a git checkout — a tarball of this repo must not crash
   // the tool over a status line.
-  try {
-    const tracked = execSync("git ls-files reports/vision-probe", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    })
-      .split("\n")
-      .filter(Boolean).length;
-    console.log(
-      `        (tracked in git: ${tracked} of ${files.length} files)`,
-    );
-  } catch {
+  // T-029: T-026 gave this directory a SECOND tracked population (57 fixture
+  // PNGs) that this line's denominator (`files.length`, jsons only) never
+  // counted. The old un-filtered "git ls-files reports/vision-probe" picked
+  // up both, so the ratio compared 118 tracked files against 61 graded ones
+  // — a numerator that can never read below its denominator even when a
+  // json genuinely is untracked, because a PNG surplus masks any json
+  // shortfall. Scope the tracked-count to the SAME population (*.json) this
+  // banner is actually about, and report the png count separately rather
+  // than folding it into the ratio. Degrades gracefully outside a git
+  // checkout (T-019) — a tarball of this repo must not crash the tool over
+  // a status line.
+  const trackedJson = countTrackedFiles("reports/vision-probe/*.json");
+  if (trackedJson === null) {
     console.log(`        (not a git checkout — tracking status unknown)`);
+  } else {
+    const trackedPng = countTrackedFiles("reports/vision-probe/*.png") ?? 0;
+    console.log(
+      `        (tracked in git: ${trackedJson} of ${files.length} files + ${trackedPng} fixture pngs tracked)`,
+    );
   }
 
   console.log("\n1. PER-TURN MEASUREMENT, OR PER-PROVIDER CONSTANT?");
