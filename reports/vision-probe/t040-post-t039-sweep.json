@@ -1,0 +1,94 @@
+{
+  "probeSha256": "7ce007681bb619a3",
+  "bridgeCommit": "2ea2542c8fa1432286b4293ca93b3693431f45b2",
+  "gradedAt": "2026-08-21T17:04:21.367Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787331608749.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 39612,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=9 COLOR=teal"
+    },
+    {
+      "providerId": "gemini",
+      "elapsedMs": 21073,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=9 COLOR=teal"
+    },
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 53241,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "raw": "No text extracted\n[FORMAT REQUIREMENT — READ CAREFULLY]\nYou MUST wrap ALL JSON tool call arrays in a ```json code block. This is critical: the automation harness parses your response by looking for code blocks first. Raw JSON outside a code block will NOT be detected.\nCORRECT format:\n```json\n[{\"tool\": \"write_file\", \"path\": \"$YOUR_FILE_PATH\", \"content\": \"complete file content here\"}]\n```\n⚠️ The path in the example above is a placeholder — use the ACTUAL absolute path from your task instructions.\nIf you have completed your analysis and have no further tool calls to make, respond with an empty array:\n```json\n[]\n```\nDo NOT respond with prose when you have nothing more to do — always use the JSON format.\nIMPORTANT: When file content contains double-quote characters (\"), escape them as \\\" inside the JSON string.\n\nLook at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no"
+    },
+    {
+      "providerId": "grok",
+      "elapsedMs": 41215,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=9 COLOR=teal"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 28668,
+      "shape": "WRONG",
+      "countOk": false,
+      "colorOk": true,
+      "detail": "got COUNT=10 COLOR=teal, expected COUNT=9 COLOR=teal",
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=10 COLOR=teal\n\nEdit in a page"
+    },
+    {
+      "providerId": "kimi",
+      "elapsedMs": 22950,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=9 COLOR=teal"
+    },
+    {
+      "providerId": "qwen",
+      "elapsedMs": 22075,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "mistral",
+      "elapsedMs": 14060,
+      "shape": "WRONG",
+      "countOk": false,
+      "colorOk": true,
+      "detail": "got COUNT=10 COLOR=teal, expected COUNT=9 COLOR=teal",
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=10 COLOR=teal"
+    },
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 9656,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=9 COLOR=teal"
+    }
+  ]
+}

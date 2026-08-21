@@ -81,5 +81,5 @@
     "test": "NODE_ENV=test node --test: 81/81 pass, 0 fail",
     "prettier": "npx prettier --check scripts/t036-kimi-plateau-check.mjs: clean"
   },
-  "checkedAt": "2026-08-22T00:01:00Z"
+  "checkedAt": "2026-08-21T14:00:00Z"
 }
