@@ -2,18 +2,35 @@ import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 import { AI_MODES, resolveModeKey } from "#ai/modes.js";
 
-// T-048: deepseek's default text mode ("Instant") cannot read an attached
-// image at all — confirmed live: 5/5 pinned-fixture image turns in Instant
-// mode came back "SEES=no" in a suspiciously tight ~51.3s band (45ms
-// spread across 5 runs), and the page's own composer shows a
-// "No text found. Try Vision." banner during that same window. This is a
-// THIRD selector, separate from the DeepThink/Standard toggle setMode()
-// already handles — a `role="radiogroup"` of three `role="radio"` options
-// (Instant / Expert / Vision) sitting in the composer toolbar, found by
-// live DOM inspection (nothing in this repo had ever looked for it before
-// this ticket). Selecting "Vision" and resending the identical pinned
-// fixture turned every one of those failures into a genuine PASS
-// (SEES=yes COUNT=5 COLOR=crimson, live-verified).
+// T-048: deepseek's default text mode ("Instant") does not reliably read an
+// attached image — confirmed live: 5/5 pinned-fixture image turns in
+// Instant mode came back "SEES=no" in a suspiciously tight ~51.3s band
+// (45ms spread across 5 runs), and the page's own composer shows a
+// "No text found. Try Vision." banner during that same window. Selecting
+// "Vision" and resending the identical pinned fixture turned every one of
+// those failures into a genuine PASS (SEES=yes COUNT=5 COLOR=crimson,
+// live-verified) with 0/8 ERROR-timeouts across the two pinned samples
+// this and T-068 ran post-fix.
+//
+// T-068 SOFTENED THE CLAIM: "cannot read an attached image AT ALL" is too
+// strong. Instant mode does not consistently decline — driven directly via
+// a synthetic DataTransfer + click (bypassing this function entirely, so
+// Instant genuinely stayed selected), a truth.count=7 image got back
+// "SEES=yes COUNT=1 COLOR=goldenrod" — a fabricated, wrong COUNT (colour
+// happened to land right, 1-in-4 by chance) in ~8s, not the ~51s
+// SEES=no band. This is very likely what T-045's own "COUNT=1" row was:
+// Instant mode hallucinating a plausible answer rather than genuinely
+// reading the image, not a Vision-mode bug and not evidence that Instant
+// sometimes succeeds. selectDeepSeekVisionMode below is unconditional
+// specifically because "usually declines, sometimes invents a wrong
+// number" is a worse failure to leave unrouted than "always declines"
+// would have been.
+//
+// This is a THIRD selector, separate from the DeepThink/Standard toggle
+// setMode() already handles — a `role="radiogroup"` of three `role="radio"`
+// options (Instant / Expert / Vision) sitting in the composer toolbar,
+// found by live DOM inspection (nothing in this repo had ever looked for
+// it before T-048).
 export async function selectDeepSeekVisionMode(page) {
   const vision = page.locator('[role="radio"]:has-text("Vision")').first();
   try {
