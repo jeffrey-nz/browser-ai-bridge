@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { auditShapes, bandStats } from "../scripts/shape-audit.mjs";
+import {
+  auditShapes,
+  bandStats,
+  exclusionStats,
+  classifyAbsence,
+} from "../scripts/shape-audit.mjs";
 
 /**
  * T-027: `shape` stored in a run json is whatever classify() said at write
@@ -195,4 +200,97 @@ test("auditShapes skips rows with no raw (ERROR shapes, pre-field runs)", () => 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// T-065: the by-count exclusion spread T-063 clause 4 found (46.4 points)
+// is the provider-mix covariate again, not a count effect — by band it is
+// 2.6 points, by provider it is the full 0-100% range. exclusionByProviderBand
+// is the source both the band and provider tables are built from, gated the
+// SAME way shapeByCount is (raw + truth.count present) — deliberately not
+// gated on countOk, because an excluded row never gets one and would be
+// invisible to this table if it were.
+test("auditShapes tallies exclusionByProviderBand (excluded shapes count too, unlike providerBand)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }, // structured
+          { providerId: "b", raw: "SEES=no" }, // excluded (SEES_NO)
+        ],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=no" }], // excluded (SEES_NO)
+      },
+    });
+
+    const { exclusionByProviderBand } = auditShapes(dir);
+
+    assert.deepEqual(exclusionByProviderBand, {
+      a: {
+        easy: { total: 1, excluded: 0 },
+        hard: { total: 1, excluded: 1 },
+      },
+      b: { easy: { total: 1, excluded: 1 } },
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("exclusionStats: bands, providers and fully-excluded providers", () => {
+  const exclusionByProviderBand = {
+    a: { easy: { total: 10, excluded: 2 }, hard: { total: 5, excluded: 1 } },
+    b: { easy: { total: 3, excluded: 3 } }, // fully excluded, easy-only
+    c: { hard: { total: 4, excluded: 0 } }, // fully SURVIVING, hard-only
+  };
+
+  const { byBand, byProvider, fullyExcluded } = exclusionStats(
+    exclusionByProviderBand,
+  );
+
+  assert.deepEqual(byBand, {
+    easy: { total: 13, excluded: 5 },
+    hard: { total: 9, excluded: 1 },
+  });
+  assert.deepEqual(byProvider, {
+    a: { total: 15, excluded: 3 },
+    b: { total: 3, excluded: 3 },
+    c: { total: 4, excluded: 0 },
+  });
+  assert.deepEqual(fullyExcluded, ["b"]);
+});
+
+test("classifyAbsence: no rows is genuinely absent, rows all excluded is not", () => {
+  const exclusionByProviderBand = {
+    deepseek: { hard: { total: 1, excluded: 1 } },
+    perplexity: {},
+  };
+
+  assert.deepEqual(
+    classifyAbsence(exclusionByProviderBand, "deepseek", "hard"),
+    { kind: "all-excluded", total: 1, excluded: 1 },
+  );
+  assert.deepEqual(
+    classifyAbsence(exclusionByProviderBand, "perplexity", "easy"),
+    { kind: "absent", total: 0, excluded: 0 },
+  );
+  assert.deepEqual(
+    classifyAbsence(exclusionByProviderBand, "unknown-provider", "easy"),
+    { kind: "absent", total: 0, excluded: 0 },
+  );
+});
+
+test("classifyAbsence: some excluded, some not, is mixed", () => {
+  const exclusionByProviderBand = {
+    a: { easy: { total: 3, excluded: 1 } },
+  };
+
+  assert.deepEqual(classifyAbsence(exclusionByProviderBand, "a", "easy"), {
+    kind: "mixed",
+    total: 3,
+    excluded: 1,
+  });
 });

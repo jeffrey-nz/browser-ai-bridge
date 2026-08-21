@@ -72,6 +72,19 @@ export function auditShapes(dir) {
   // by truth.count, so the answer is read off the same pass, not assumed.
   const shapeByCount = {};
   const EXCLUDED_SHAPES = new Set(["SEES_NO", "ECHO", "NO_ANSWER"]);
+  // T-065: shapeByCount's 46.4-point spread across counts is the SAME
+  // provider-mix covariate T-063 already named, reappearing in a second
+  // table — by band (easy/hard) the exclusion rate barely moves (2.6
+  // points), by provider it moves the entire range (0% to 100%). Tracked
+  // per (provider, band) — not just per provider — so a provider named as
+  // "unpaired" in bandStats() can be told apart by WHICH KIND of absence it
+  // is: zero rows in that band at all, versus rows that exist and were all
+  // excluded (a measurement property of that provider, not a scheduling
+  // gap more sweeping would fix). Same gate as shapeByCount (raw present,
+  // truth.count present) — deliberately NOT gated on countOk, unlike
+  // providerBand above, because an excluded row by definition never gets a
+  // countOk verdict and would be invisible to this table if it were.
+  const exclusionByProviderBand = {};
 
   for (const f of files) {
     let j;
@@ -102,7 +115,14 @@ export function auditShapes(dir) {
           excluded: 0,
         });
         cell.total++;
-        if (EXCLUDED_SHAPES.has(recomputed.shape)) cell.excluded++;
+        const isExcluded = EXCLUDED_SHAPES.has(recomputed.shape);
+        if (isExcluded) cell.excluded++;
+
+        const band = j.truth.count <= 5 ? "easy" : "hard";
+        const pb = (exclusionByProviderBand[r.providerId] ??= {});
+        const pcell = (pb[band] ??= { total: 0, excluded: 0 });
+        pcell.total++;
+        if (isExcluded) pcell.excluded++;
       }
 
       // Same denominator vision-probe.mjs's own summary line uses: the
@@ -136,7 +156,56 @@ export function auditShapes(dir) {
     countStrata,
     providerBand,
     shapeByCount,
+    exclusionByProviderBand,
   };
+}
+
+// T-065: exclusionByProviderBand → the same "by band" and "by provider"
+// summaries clause 1 wants, plus (for a given set of provider ids — the
+// ones bandStats() found unpaired) which KIND of absence each one is.
+// Pulled out for the same reason bandStats() was: testable against
+// synthetic data, and the classification ("no rows" vs "rows, excluded")
+// is exactly the distinction the ticket's own goal draws between a
+// scheduling gap and a measurement property.
+export function exclusionStats(exclusionByProviderBand) {
+  const byBand = {
+    easy: { total: 0, excluded: 0 },
+    hard: { total: 0, excluded: 0 },
+  };
+  const byProvider = {};
+  const fullyExcluded = [];
+  for (const providerId of Object.keys(exclusionByProviderBand).sort()) {
+    const bands = exclusionByProviderBand[providerId];
+    const totals = { total: 0, excluded: 0 };
+    for (const band of ["easy", "hard"]) {
+      const cell = bands[band];
+      if (!cell) continue;
+      byBand[band].total += cell.total;
+      byBand[band].excluded += cell.excluded;
+      totals.total += cell.total;
+      totals.excluded += cell.excluded;
+    }
+    byProvider[providerId] = totals;
+    if (totals.total > 0 && totals.excluded === totals.total) {
+      fullyExcluded.push(providerId);
+    }
+  }
+  return { byBand, byProvider, fullyExcluded };
+}
+
+// T-065: classifies ONE unpaired provider (bandStats()'s own output) as
+// either genuinely absent from a band (0 rows) or present-but-fully-dropped
+// (rows exist, all excluded) — "unpaired because nobody swept it" versus
+// "unpaired because every row it produced got dropped" are different
+// findings and bandStats()'s unpaired list alone cannot tell them apart.
+export function classifyAbsence(exclusionByProviderBand, providerId, band) {
+  const cell = exclusionByProviderBand[providerId]?.[band];
+  if (!cell || cell.total === 0)
+    return { kind: "absent", total: 0, excluded: 0 };
+  if (cell.excluded === cell.total) {
+    return { kind: "all-excluded", total: cell.total, excluded: cell.excluded };
+  }
+  return { kind: "mixed", total: cell.total, excluded: cell.excluded };
 }
 
 // T-063: pulled out of main() so the pooled-vs-paired distinction is
@@ -184,6 +253,7 @@ function main() {
     countStrata,
     providerBand,
     shapeByCount,
+    exclusionByProviderBand,
   } = auditShapes(dir);
 
   console.log(
@@ -215,8 +285,11 @@ function main() {
   // (every row, the number this script always printed) alongside paired
   // (only providers with rows in BOTH bands, the only figure a same-provider
   // comparison actually supports), and name who got left out of paired.
+  let unpaired = [];
   if (counts.length > 0) {
-    const { pooled, paired, pairedCount, unpaired } = bandStats(providerBand);
+    const stats = bandStats(providerBand);
+    unpaired = stats.unpaired;
+    const { pooled, paired, pairedCount } = stats;
     const fmt = (b) =>
       `${b.ok}/${b.n} ${b.n > 0 ? ((b.ok / b.n) * 100).toFixed(1) : "0.0"}%`;
     console.log(
@@ -266,6 +339,77 @@ function main() {
       `  overall: ${excludedAll}/${totalAll} excluded   ${overall.toFixed(1)}%   ` +
         `spread across counts: ${spread.toFixed(1)} points`,
     );
+  }
+
+  // T-065: the by-count spread above is the provider-mix covariate T-063
+  // named, reappearing in a second table — by BAND the rate barely moves;
+  // by PROVIDER it is the whole 0-100% range. Printed side by side so a
+  // reader is pointed at the covariate that's actually doing the moving.
+  const { byBand, byProvider, fullyExcluded } = exclusionStats(
+    exclusionByProviderBand,
+  );
+  const providerIds = Object.keys(byProvider).sort();
+  if (providerIds.length > 0) {
+    const bandRate = (b) => (b.total > 0 ? (b.excluded / b.total) * 100 : 0);
+    const bandSpread = Math.abs(bandRate(byBand.hard) - bandRate(byBand.easy));
+    console.log(
+      "\nSame exclusion, by band vs by provider (T-065 — by-count spread",
+    );
+    console.log("above is the provider mix again, not a count effect):");
+    console.log(
+      `  by band:      easy 3-5 ${byBand.easy.excluded}/${byBand.easy.total} ` +
+        `${bandRate(byBand.easy).toFixed(1)}%   hard 6-9 ${byBand.hard.excluded}/${byBand.hard.total} ` +
+        `${bandRate(byBand.hard).toFixed(1)}%   spread: ${bandSpread.toFixed(1)} points`,
+    );
+    const providerRates = providerIds.map((p) => {
+      const { total, excluded } = byProvider[p];
+      return total > 0 ? (excluded / total) * 100 : 0;
+    });
+    const providerSpread =
+      Math.max(...providerRates) - Math.min(...providerRates);
+    console.log(
+      `  by provider:  ` +
+        providerIds
+          .map((p) => {
+            const { total, excluded } = byProvider[p];
+            const pct =
+              total > 0 ? ((excluded / total) * 100).toFixed(1) : "0.0";
+            return `${p} ${excluded}/${total} ${pct}%`;
+          })
+          .join("   "),
+    );
+    console.log(`  provider spread: ${providerSpread.toFixed(1)} points`);
+
+    // T-065 clause 3: a provider with rows in the corpus but ZERO surviving
+    // (COUNT-eligible) rows is invisible to every table above it — named
+    // here so it is invisible to none of them.
+    if (fullyExcluded.length > 0) {
+      console.log(
+        `  fully excluded (0 surviving rows, contribute nothing to any COUNT rate above): ` +
+          fullyExcluded.join(", "),
+      );
+    }
+
+    // T-065 clause 2: for each provider bandStats() found unpaired, say
+    // WHICH KIND of absence it is — "no rows in this band" (a scheduling
+    // gap) versus "rows exist, all excluded" (a property of that provider,
+    // not fixed by sweeping more) look identical in the unpaired list alone.
+    if (unpaired.length > 0) {
+      console.log(`  unpaired providers, classified:`);
+      for (const u of unpaired) {
+        const missingBand = u.band === "easy" ? "hard" : "easy";
+        const c = classifyAbsence(
+          exclusionByProviderBand,
+          u.providerId,
+          missingBand,
+        );
+        const desc =
+          c.kind === "absent"
+            ? "no rows — genuinely absent"
+            : `${c.total} row${c.total === 1 ? "" : "s"}, all excluded`;
+        console.log(`    ${u.providerId} (${missingBand}): ${desc}`);
+      }
+    }
   }
 }
 

@@ -1,0 +1,16 @@
+self-test vs shape-audit's own overall exclusion figure:
+  46/101 excluded  45.5%   (run `node scripts/shape-audit.mjs` and compare its "overall:" line -- they must match)
+
+per-provider (rows with raw, all counts pooled):
+  chatgpt     8/10 excluded  80.0%
+  copilot     0/15 excluded  0.0%
+  deepseek    7/12 excluded  58.3%
+  gemini      0/12 excluded  0.0%
+  grok        6/14 excluded  42.9%
+  kimi        4/7 excluded  57.1%
+  mistral     8/15 excluded  53.3%
+  perplexity  1/2 excluded  50.0%
+  qwen        7/7 excluded  100.0%
+  zai         5/7 excluded  71.4%
+
+providers with rows in the corpus that appear NOWHERE in `node scripts/shape-audit.mjs`'s own output: chatgpt

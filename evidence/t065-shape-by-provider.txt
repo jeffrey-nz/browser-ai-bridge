@@ -1,0 +1,18 @@
+T-065 clause 5: excluded-shape (SEES_NO/ECHO/NO_ANSWER) cross-tab by provider.
+Computed once from reports/vision-probe/*.json via the repo's own classify(),
+at the same commit as t065-shapeaudit-after.txt. Not added to shape-audit.mjs
+itself — a report, not a fix.
+
+chatgpt {"SEES_NO":8}
+deepseek {"ECHO":7}
+grok {"SEES_NO":2,"ECHO":4}
+kimi {"SEES_NO":4}
+mistral {"ECHO":1,"NO_ANSWER":4,"SEES_NO":3}
+perplexity {"SEES_NO":1}
+qwen {"SEES_NO":6,"ECHO":1}
+zai {"NO_ANSWER":5}
+
+qwen's 7/7 excluded rows are NOT one shape — 6 SEES_NO, 1 ECHO. Mostly "said
+it couldn't see the image", not "echoed the prompt back". copilot and gemini
+have zero excluded rows and don't appear in this table at all (0% exclusion,
+per the "by provider" table in t065-shapeaudit-after.txt).
