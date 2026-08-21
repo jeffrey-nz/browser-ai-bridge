@@ -1,0 +1,85 @@
+{
+  "providerId": "kimi",
+  "note": "T-036: T-035's own latency data showed kimi's persisted .image-thumbnail.success count climb 0..8 across two batches then hold at 8 for three consecutive fresh-navigation runs (batch2-run2/3/4 all read baseline 7 at a fresh nav). This measures what the ceiling actually is, separates 'nodes survive but lose the class' from 'the strip itself caps', and answers whether a real valid upload still returns true from uploadFileToPage() at the plateau.",
+  "scriptUsed": "scripts/t036-kimi-plateau-check.mjs",
+  "committed": "scripts/t036-kimi-plateau-check.mjs is committed as the reproducible probe. Two throwaway helpers used during this session -- an ad hoc DOM inspector to find the .image-delete-icon markup, and a cleanup script that hovered+clicked each thumbnail's delete icon to remove the 13 real thumbnails this session created before finishing -- were NOT committed; they added nothing beyond what this report already states (the delete-icon selector and the housekeeping outcome below).",
+  "startingState": "Fresh navigation at the start of this session read 0 for both bare (.image-thumbnail) and .success (.image-thumbnail.success) counts -- T-035's own housekeeping had already cleared the account back to empty, so this run built its own baseline >= 7 from scratch rather than reusing T-035's leftover state.",
+  "phaseA_buildup": {
+    "description": "Uploaded a real valid image (reports/vision-probe/probe-1787313682148.png, the same fixture used throughout T-030/T-034/T-035) one at a time via the real uploadFileToPage(), fresh navigation between each, until the fresh-nav count reached 7. All 7 uploads returned true and the count climbed 0->1->2->3->4->5->6->7 in lockstep with the upload count, matching T-035's batch1 climb.",
+    "countProgression": [1, 2, 3, 4, 5, 6, 7]
+  },
+  "clause1_plateauCheck": {
+    "method": "5 consecutive cycles of: fresh navigation -> count(.image-thumbnail.success) -> real upload via real uploadFileToPage() (requireGrowth:true, verifyTimeoutMs:30000 for THIS SCRIPT ONLY so a slow real upload is never cut short before it can be observed -- production keeps its own 15000ms; see clause3 below for the unmodified-options run) -> fresh navigation again -> count again.",
+    "rawCountsInOrder_allFreshNavReads": [7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+    "perCycle": [
+      {
+        "cycle": 1,
+        "preCount": 7,
+        "uploadResult": true,
+        "uploadElapsedMs": 7659,
+        "postCount_afterFreshNav": 7
+      },
+      {
+        "cycle": 2,
+        "preCount": 7,
+        "uploadResult": true,
+        "uploadElapsedMs": 5880,
+        "postCount_afterFreshNav": 7
+      },
+      {
+        "cycle": 3,
+        "preCount": 7,
+        "uploadResult": true,
+        "uploadElapsedMs": 7561,
+        "postCount_afterFreshNav": 7
+      },
+      {
+        "cycle": 4,
+        "preCount": 7,
+        "uploadResult": true,
+        "uploadElapsedMs": 5045,
+        "postCount_afterFreshNav": 7
+      },
+      {
+        "cycle": 5,
+        "preCount": 7,
+        "uploadResult": true,
+        "uploadElapsedMs": 5881,
+        "postCount_afterFreshNav": 7
+      }
+    ],
+    "everExceeds8": false,
+    "highestObservedOnAFreshNavRead": 7,
+    "conclusion": "Every one of the 5 real uploads returned true (uploadFileToPage's own internal, same-page poll DID see growth -- see clause3 for the direct measurement of that), but every SUBSEQUENT fresh navigation read the count back down to 7, not 8. The count never exceeded 8 in this sample, and on fresh-navigation reads specifically it never even reached 8 -- it held flat at 7 through all 5 cycles despite 5 more genuinely successful uploads landing in between. Read together with T-035's own data (whose baseline reads for batch2-run3 and run4 were ALSO 7, immediately following a run whose in-call finalCount had read 8) this is the same behaviour, not a contradiction: the number that persists across a fresh navigation is 7; 8 is only ever visible momentarily, within the same page load that produced it, before a reload reverts it."
+  },
+  "clause2_bareVsSuccess": {
+    "method": "At the plateau (after phaseA + the 5 clause1 cycles, i.e. 12 real uploads total), a fresh navigation, both counts read on the same loaded page.",
+    "bareCount_allThumbnails": 12,
+    "successCount_specSelector": 7,
+    "verdict": "nodes survive, they are losing the class",
+    "explanation": "bare (12) exactly equals the total number of uploads issued in this session (7 buildup + 5 cycle uploads). Every .image-thumbnail node this session created persisted across every fresh navigation -- none were dropped. Only 7 of those 12 persisted nodes still carry .success after a reload; the other 5 do not. This rules out 'the strip itself caps' (which would show bare capping at the same number as success) and confirms the other candidate the ticket named: a node's DOM element survives a reload but something drops (or never re-applies) its .success class server-side/on-rehydrate for everything past the 7th."
+  },
+  "clause3_productionCall": {
+    "method": "One call through the REAL uploadFileToPage() with kimi's REAL, UNMODIFIED production spec options -- attachmentBtnSelector/verifySelector/secondClickSelector/requireGrowth/verifyTimeoutMs all read directly off GENERIC_SPECS.kimi (verifyTimeoutMs:15000, the constant T-035 just set -- not overridden here), starting from the plateau (fresh-nav count of 7), uploading the same confirmed-landing image.",
+    "optionsUsed": {
+      "attachmentBtnSelector": ".icon-button.toolkit-trigger-btn, input[type='file']",
+      "verifySelector": ".image-thumbnail.success",
+      "secondClickSelector": "label.toolkit-item:has-text('Add files & photos')",
+      "requireGrowth": true,
+      "verifyTimeoutMs": 15000
+    },
+    "returned": true,
+    "elapsedMs": 5881,
+    "countBeforeCall": 7,
+    "countImmediatelyAfterCall_sameLoad_noReload": 8,
+    "answer": "TRUE. At the plateau, on a genuinely landed, visually-confirmed valid image, the real uploadFileToPage() with kimi's real unmodified spec correctly returned true in 5881ms -- well inside the 15000ms budget. The persisted-count plateau found in clause1/clause2 does not cause a false negative in production: requireGrowth's poll runs within a single page load and compares against the baseline it captured at THAT call's own start, so it sees the real, immediate count growth (7->8) regardless of whether a later, unrelated page reload would eventually revert the persisted count back to 7. Nothing in /api/ask's turn flow navigates away between an upload's baseline capture and its own verify() poll, so this defect (real, and worth naming) has no path to reach a production turn."
+  },
+  "conclusionForTicket": "Benign for requireGrowth's purposes -- clause 3 returned true, so no fix task is filed per the ticket's own clause 4 (that clause only triggers on a false). The plateau is real and has a mechanism now: kimi's account-level attachment strip persists .image-thumbnail nodes indefinitely across reloads (12/12 survived) but only re-applies/retains the .success class on the FIRST 7 of them after a reload -- a genuine kimi-side bug, but one that only affects code that reads .success AFTER a page reload, which requireGrowth never does (it always measures growth within the same page load that started the upload).",
+  "housekeeping": "This session created 13 real .image-thumbnail nodes (12 during the phaseA/clause1 measurement + 1 more from clause3's own upload). All 13 removed via each thumbnail's own hover-revealed .image-delete-icon (same technique as T-031/T-034/T-035), confirmed via node count dropping 13->0 one delete at a time, then confirmed 0/0 (bare/success) on a subsequent fresh reload before finishing.",
+  "whatWasNotDone": "Did not modify requireGrowth, the poll loop, or verifyTimeoutMs (scope guard). Did not investigate WHY kimi drops .success from nodes past the 7th on reload (server-side rehydration behaviour on a third-party site, out of this ticket's scope and not something our code can fix or needs to work around, per clause3's finding that it never reaches production). Did not determine whether the true persisted cap is exactly 7 in general or happened to be 7 in this particular account/session -- clause1's 5 cycles all held at 7, which is sufficient to answer the ticket's actual question (does the plateau break requireGrowth) without needing to pin down the cap's generality.",
+  "gates": {
+    "test": "NODE_ENV=test node --test: 81/81 pass, 0 fail",
+    "prettier": "npx prettier --check scripts/t036-kimi-plateau-check.mjs: clean"
+  },
+  "checkedAt": "2026-08-22T00:01:00Z"
+}
