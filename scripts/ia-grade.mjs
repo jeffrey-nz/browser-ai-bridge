@@ -31,6 +31,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { execSync } from "node:child_process";
 const dir = "reports/vision-probe";
 const BESPOKE = new Set(["chatgpt", "gemini", "deepseek", "grok", "copilot"]);
 const files = fs
@@ -71,9 +72,21 @@ for (const f of files) {
 console.log(
   `corpus  ${files.length} files, sha256-16 ${h.digest("hex").slice(0, 16)}   graded rows ${rows.length}`,
 );
-console.log(
-  `        (reports/ is gitignored: 'git ls-files reports/' returns 0 - working tree only)`,
-);
+// Computed, not asserted (T-019: this line used to hardcode "reports/ is
+// gitignored ... returns 0", true when written and false since the same
+// ticket that wrote it tracked the corpus one commit later). Degrades
+// gracefully outside a git checkout — a tarball of this repo must not crash
+// the tool over a status line.
+try {
+  const tracked = execSync("git ls-files reports/vision-probe", {
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean).length;
+  console.log(`        (tracked in git: ${tracked} of ${files.length} files)`);
+} catch {
+  console.log(`        (not a git checkout — tracking status unknown)`);
+}
 
 console.log("\n1. PER-TURN MEASUREMENT, OR PER-PROVIDER CONSTANT?");
 const byp = {};
