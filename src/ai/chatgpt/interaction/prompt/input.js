@@ -46,6 +46,19 @@ export async function uploadFileToChatGpt(page, filePath) {
   return uploadFileToPage(page, filePath, {
     attachmentBtnSelector: chatgptAttachSelector,
     verifySelector: chatgptEvidenceSelector,
+    // T-047: T-042's evidence (the img/button pair above) matches a durable
+    // https://.../backend-api/... URL, not a composer-scoped blob: one — it
+    // does not die with its draft, and stays visible above the composer
+    // once a turn is sent. requireGrowth:false (uploadFileToPage's default)
+    // makes verify() pure presence: the first visible match anywhere on the
+    // page. On a second image turn in the same conversation (a session this
+    // bridge's own reuse model makes ordinary — nothing calls startNewChat
+    // between normal turns), a PRIOR turn's own thumbnail would satisfy
+    // THIS turn's evidence check instantly, whether or not this turn's own
+    // upload did anything at all. Same shape T-031 found on kimi, same fix
+    // T-034 shipped for it: require the count to grow past whatever was
+    // already on the page when THIS call started, not merely be present.
+    requireGrowth: true,
   });
 }
 
