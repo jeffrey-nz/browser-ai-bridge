@@ -1,0 +1,23 @@
+{
+  "probeSha256": "34fc6f779bbbc5a8",
+  "bridgeCommit": "b79247f4bd79243024c2b056555758e1fba0d958",
+  "treeDirty": false,
+  "gradedAt": "2026-08-21T18:23:25.943Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 3,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787336572826.png",
+  "results": [
+    {
+      "providerId": "copilot",
+      "elapsedMs": 32979,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=3 COLOR=crimson\n\nEdit in a page"
+    }
+  ]
+}
