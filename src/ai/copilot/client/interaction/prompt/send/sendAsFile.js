@@ -199,12 +199,28 @@ async function uploadViaPlusMenu(page, filePath) {
  * sendPromptAsFile below — which already prefers the menu, precisely
  * because of the decoy waitForUploadComplete's own comment describes:
  * setInputFiles renders a real attachment chip without the server ever
- * registering the file. T-067 measured this live on the image-ask path
- * this function serves: 6/6 interleaved turns (a known-good control
- * fixture included, so not a fixture or model effect) came back SEES=no,
- * every one with evidenceOut.strategy "hidden_input". Swapped to match
- * sendPromptAsFile's order; live-reverified (see this ticket's own
- * evidence) that the SAME turns pass once the menu path is what lands.
+ * registering the file. Swapped to match sendPromptAsFile's order — that
+ * decoy is real and this is the more correct order regardless of what
+ * follows below.
+ *
+ * WHAT THE SWAP DID NOT DO. T-067 found copilot's image-ask path failing
+ * 6/6 (SEES=no, count=9/teal and count=4/crimson interleaved) at 21:02Z,
+ * a fixture that had PASSed for the same provider 29 minutes earlier
+ * (T-043, 20:33Z). Live-reverifying the SAME 6-turn pattern after this
+ * swap, on a bridge restarted onto this exact commit, still came back
+ * SEES=no 6/6 — evidenceOut.strategy read "plus_menu" every time (the
+ * swap took effect; the real, server-verified path is what landed), and
+ * the model still answered as if it saw nothing. The decoy is not what
+ * caused that 20:33Z→21:02Z failure: cause unidentified, tracked in
+ * T-071. The two strategies were never run against each other in the SAME
+ * session, so nothing here says which path a WORKING copilot session
+ * prefers, only that swapping the order did not fix a broken one.
+ *
+ * The hidden_input fallback stays: nine earlier image-ask turns today
+ * (reports/vision-probe/t011-sweep{1..4}, t041-guard-fix, t046-redo-clean,
+ * t049-stale-verify, t050-count4-run{1,2}) got a correct COUNT and COLOUR
+ * through it, so it is a real, working path on this site, not dead code —
+ * just not preferred first any more.
  */
 export async function attachFileToCopilot(page, filePath, evidenceOut = null) {
   let attached = await uploadViaPlusMenu(page, filePath);
