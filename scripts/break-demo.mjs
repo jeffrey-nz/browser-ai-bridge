@@ -95,7 +95,12 @@ async function main() {
   );
   await workingPage.close();
 
-  await browser.close();
+  // Deliberately NOT calling browser.close() here: on a connectOverCDP()
+  // connection, close() sends Browser.close over the wire and kills the
+  // whole shared Chrome instance the live bridge (and any other session
+  // using it) depends on, not just this script's client connection. Learned
+  // this the hard way running this exact script — the fix is to just stop
+  // talking to it. Playwright disconnects on process exit regardless.
 
   console.log(
     `\n${brokenResult === false && workingResult === true ? "DEMONSTRATED" : "UNEXPECTED"}: ` +
