@@ -56,7 +56,7 @@ copilot  count=9/indigo   constraint-ON   shape=PASS    countOk=true  colorOk=tr
 copilot  count=9/teal     constraint-OFF  shape=SEES_NO --            --            elapsedMs=28820
 copilot  count=9/teal     constraint-ON   shape=SEES_NO --            --            elapsedMs=28895
 
-All 7 pairs (8 turns): identical shape/countOk/colorOk/imageAttached
+All 4 pairs (8 turns): identical shape/countOk/colorOk/imageAttached
 between constraint-OFF and constraint-ON at every pinned fixture,
 INCLUDING the redo pair — the one genuine failure in the set (SEES_NO,
 not T-050's WRONG/COUNT=10; the failure mode itself has apparently shifted
