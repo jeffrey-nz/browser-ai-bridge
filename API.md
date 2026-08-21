@@ -202,23 +202,36 @@ carries that verdict:
   included an image never gets a bare `success: true` with this field absent — one of
   the two states above always applies instead (crew board T-004).
 
-As of the T-001 measurement, `chatgpt`, `gemini`, `deepseek`, `grok` and `copilot` can be
-verified as receiving an image on a given turn. `kimi` and `zai` could not complete a
-turn at all in repeated runs; `kimi`'s cause was found and fixed (crew board T-006): its
-`responseBlock` selector (`.message-list`) no longer existed on the current site, so
-every completion poll ran out its full timeout regardless of whether the model had
-already answered — verified with a real answer ("PONG") sitting complete on the page
-while the bridge was still waiting. Fixed selector, live-verified three consecutive
-completions in 28-38s each (was a 300s timeout on every prior sweep). `zai` is NOT fixed
-and is deliberately excluded from `scripts/vision-probe.mjs`'s default provider list
-(T-006): 8 attempts across two sessions completed only 3, with three distinct,
-unexplained failure shapes (a submission click that intermittently doesn't register, a
-generation that gets stuck showing "Thinking...", and a reply truncated by exactly one
-character) rather than one identifiable cause. Still callable by naming it explicitly;
-just not part of a sweep nobody asked about it by name. Removing it takes T-002's
-n-way-ask consensus design from a nominal 10-provider roster to 9 that have been SEEN to
-complete a text turn, and (separately, per this section) the smaller set above that has
-been seen to complete an IMAGE turn.
+Per `reports/vision-probe/after-ask.json` (the T-001 measurement), only `gemini`,
+`deepseek`, `grok` and `copilot` — 4 providers — can be verified as receiving an image on
+a given turn. `chatgpt` is NOT in that set: the same run recorded it as `SEES_NO` with
+`imageAttached: false`, i.e. it answered fluently without ever having seen the picture —
+exactly the failure mode this section exists to catch, not an exception to it. `kimi` and
+`zai` could not complete a turn at all in that same measurement; `kimi`'s cause was found
+and fixed (crew board T-006): its `responseBlock` selector (`.message-list`) no longer
+existed on the current site, so every completion poll ran out its full timeout regardless
+of whether the model had already answered — verified with a real answer ("PONG") sitting
+complete on the page while the bridge was still waiting. Selector fix confirmed correct,
+but `kimi` still does not complete every turn: 4 runs post-fix, 3 completed in 28-38s
+each, 1 ran the full 300s timeout with no answer (confirmed via server-log timestamps to
+be after the fix, not a leftover pre-fix result) — call it 3 of 4, not "fixed" outright.
+`zai` is not fixed at all and is deliberately excluded from `scripts/vision-probe.mjs`'s
+default provider list (T-006): 8 attempts across two sessions completed only 3, with
+three distinct, unexplained failure shapes (a submission click that intermittently
+doesn't register, a generation that gets stuck showing "Thinking...", and a reply
+truncated by exactly one character) rather than one identifiable cause. Still callable by
+naming it explicitly; just not part of a sweep nobody asked about it by name.
+
+Two numbers worth keeping separate, named rather than counted by subtraction:
+
+- **Seen to complete a TEXT turn** (n=8, roughly reliable): `chatgpt`, `gemini`,
+  `deepseek`, `grok`, `copilot`, `qwen`, `mistral`, `kimi` (kimi ~75%, see above — the
+  other 7 have had no observed non-rate-limit failures across this board's sweeps). Below
+  roughly even odds but has completed at least once, named with its measured rate: `zai`
+  (~3 of 8, ~38%), `perplexity` (~1 of 10, ~10% — see below). All 10 roster providers are
+  accounted for above; none are inferred by subtracting a "known-broken" count from 10.
+- **Seen to complete a turn AND read an image** (n=4): `gemini`, `deepseek`, `grok`,
+  `copilot` — see the `chatgpt` correction above for why it is not a 5th.
 
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before

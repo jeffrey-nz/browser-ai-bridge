@@ -51,7 +51,17 @@ export const GENERIC_SPECS = {
   //   "Think" reasoning toggle renders as a SIBLING `.markdown-container`
   //   that additionally carries `.toolcall-content-text` — excluding that
   //   class is what keeps the reasoning block from being mistaken for the
-  //   answer, the same shape as T-005's exclusions for mistral and qwen. ]]
+  //   answer, the same shape as T-005's exclusions for mistral and qwen.
+  //
+  //   NOT FULLY RELIABLE EVEN WITH THE FIX (2026-08-21): the selector above
+  //   is verified correct — it reads the right element when Kimi answers —
+  //   but Kimi still does not complete every turn. 4 runs post-fix: 3
+  //   completed in 28-38s each, 1 (run1, t006-kimi-run1.json) ran out the
+  //   full 300s poll timeout with no answer, confirmed via bridge-server
+  //   log timestamps to have happened AFTER this fix was already loaded,
+  //   not before it. So: 3 of 4 (~75%), not "fixed" in the sense of
+  //   reliably completing — the responseBlock bug is gone, but some other,
+  //   undiagnosed cause still occasionally stalls the turn entirely. ]]
   kimi: {
     id: "kimi",
     name: "Kimi",
