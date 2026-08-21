@@ -1,0 +1,38 @@
+{
+  "probeSha256": "b97b1723cee3624b",
+  "bridgeCommit": "65b381d462b0b8c4b0e92ac283fa4b4979c18629",
+  "gradedAt": "2026-08-21T17:26:56.098Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787333112451.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 53288,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "raw": "No text extracted\nLook at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no"
+    },
+    {
+      "providerId": "gemini",
+      "elapsedMs": 19468,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=4 COLOR=teal"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 30823,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=4 COLOR=teal\n\nEdit in a page"
+    }
+  ]
+}

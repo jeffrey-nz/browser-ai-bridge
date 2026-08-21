@@ -294,7 +294,12 @@ function parseArgs(argv) {
     baseUrl: process.env.VISION_PROBE_BASE_URL || "http://localhost:3333",
     providers: null,
     timeoutMs: 300000,
-    label: "vision-probe",
+    // T-041: MUST start with "API Turn" (src/routes/ask/executor/prompts.js's
+    // isApiTurn guard) — a label that doesn't was slipping every deepseek/
+    // gemini/copilot probe turn a provider-constraint string (the tool-call
+    // FORMAT REQUIREMENT block) that this probe never wanted, and deepseek
+    // was echoing it back as its whole reply.
+    label: "API Turn: vision-probe",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
