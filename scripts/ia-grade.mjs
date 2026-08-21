@@ -42,6 +42,7 @@ const h = crypto.createHash("sha256");
 for (const f of files) h.update(fs.readFileSync(path.join(dir, f)));
 const ECHO = /FORMAT REQUIREMENT|No text extracted/i;
 const rows = [];
+let skipped = 0;
 for (const f of files) {
   let j;
   try {
@@ -50,7 +51,15 @@ for (const f of files) {
     continue;
   }
   for (const r of j.results || []) {
-    if (r.imageAttached !== true && r.imageAttached !== false) continue; // 29 rows predate 6c46b4f
+    // Skips any result with no boolean imageAttached — not only rows that
+    // predate the field being added, but ERROR-shape turns from CURRENT code
+    // that never got far enough to set it (measured, not assumed: T-019
+    // found 11 of a prior count's 40 skips were 05e5a13-era zai timeouts,
+    // recorded the same session this comment was first written).
+    if (r.imageAttached !== true && r.imageAttached !== false) {
+      skipped++;
+      continue;
+    }
     const raw = (r.raw || "").replace(/\s+/g, " ").trim();
     const echo = ECHO.test(raw);
     const m = echo ? null : raw.match(/COUNT\s*=\s*(\d+)/i);
@@ -70,7 +79,7 @@ for (const f of files) {
   }
 }
 console.log(
-  `corpus  ${files.length} files, sha256-16 ${h.digest("hex").slice(0, 16)}   graded rows ${rows.length}`,
+  `corpus  ${files.length} files, sha256-16 ${h.digest("hex").slice(0, 16)}   graded rows ${rows.length}  (${skipped} skipped, no imageAttached)`,
 );
 // Computed, not asserted (T-019: this line used to hardcode "reports/ is
 // gitignored ... returns 0", true when written and false since the same
@@ -80,6 +89,7 @@ console.log(
 try {
   const tracked = execSync("git ls-files reports/vision-probe", {
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
   })
     .split("\n")
     .filter(Boolean).length;
