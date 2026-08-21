@@ -329,7 +329,10 @@ never reached a composer at all — the same paywall interstitial T-008 already 
 `qwen` is now confirmed rather than unconfirmed (crew board T-022, re-run 2026-08-21 with
 the improved instrument T-020/T-021 gave it — a before-AND-after count on every selector,
 UNUSABLE decided by visibility rather than count): `setInputFiles` against its real,
-present `input[type="file"]#filesUpload` does not throw, but 10 selectors — the shared
+present `input[type="file"]#filesUpload` does not throw — confirmed via a
+`LOG_LEVEL=debug` re-run, which logged `src/ai/shared/uploadFile.js`'s own
+"setInputFiles ... did not throw, but no attachment evidence appeared" line, not
+inferred from the generic top-level error message alone — but 10 selectors — the shared
 default, plus a widened sweep including the `chip` pattern that caught `zai`'s card — all
 read `0,false` before the upload and `0,false` after it. Nothing in the composer changes at
 all; the input accepts the file and the page shows no acknowledgment of it whatsoever, not
