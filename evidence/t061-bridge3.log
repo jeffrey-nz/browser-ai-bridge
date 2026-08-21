@@ -1,0 +1,60 @@
+
+╔════════════════════════════════════════╗
+║     AI Browser Automation API          ║
+╚════════════════════════════════════════╝
+[2026-08-22 06:06:23.452 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9226...[39m
+[2026-08-22 06:06:24.521 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3339 (requestTimeout disabled)[39m
+[2026-08-22 06:06:24.523 +1000] [32mINFO[39m: [36m[Config] Bound port 3339 written to config files[39m
+[2026-08-22 06:06:24.534 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
+[2026-08-22 06:06:24.535 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9226...[39m
+[2026-08-22 06:06:25.591 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9226...[39m
+[2026-08-22 06:06:25.598 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
+[2026-08-22 06:06:26.116 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
+[2026-08-22 06:06:26.116 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
+
+=============================================
+   AI Provider Authentication & Tab Setup
+=============================================
+
+-> Configuring [1mChatGPT[0m...
+   [New Tab] Opening dedicated tab for ChatGPT...
+[2026-08-22 06:06:26.401 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[2026-08-22 06:06:26.401 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[93m   [Pending] Manual login or navigation may be required in Chrome.[0m
+   [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
+
+=============================================
+   Setup Complete. Active providers ready.
+=============================================
+
+[2026-08-22 06:06:26.874 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
+  [92m✔[0m Already on fresh context — reusing tab.
+[2026-08-22 06:06:40.001 +1000] [32mINFO[39m: [36m[Session] Starting advanced context for chatgpt...[39m
+[2026-08-22 06:06:40.009 +1000] [32mINFO[39m: [36m[ChatGPT] Reusing existing tab: https://chatgpt.com/[39m
+[2026-08-22 06:06:40.010 +1000] [32mINFO[39m: [36m🌿 Ready to start AI loop (ChatGPT)[39m
+[2026-08-22 06:06:40.025 +1000] [32mINFO[39m: [36m[SessionManager] Session f30920e3-9054-4d23-a7a8-0b7d53314865 created for provider chatgpt with mode none[39m
+[2026-08-22 06:06:40.026 +1000] [32mINFO[39m: [36m[Sessions] Created session f30920e3-9054-4d23-a7a8-0b7d53314865 for provider chatgpt with mode default[39m
+[2m  [Send] Attempt 1/5: visible=true disabled=false forceKeyboard=false[0m
+[2026-08-22 06:07:10.048 +1000] [32mINFO[39m: [36m🚀 Injecting API Turn: T-061 seed (ChatGPT)...[39m
+[Spinner Start] ChatGPT is thinking...
+[Spinner OK] Response received.
+[chatgpt-extract] copy button clicked via "[data-testid="copy-turn-action-button"]"
+[chatgpt-extract] clipboard extraction: 16 chars
+
+🧼 Starting a new chat context...
+[2026-08-22 06:07:19.669 +1000] [32mINFO[39m: [36m[SessionManager] ♻️ Recycled chatgpt tab back to pool.[39m
+[2026-08-22 06:07:19.672 +1000] [32mINFO[39m: [36m[Pool] 🚀 Fast-booting chatgpt session from warm pool.[39m
+[2026-08-22 06:07:19.672 +1000] [32mINFO[39m: [36m[Session] Starting advanced context for chatgpt...[39m
+[2026-08-22 06:07:20.107 +1000] [32mINFO[39m: [36m🌿 Ready to start AI loop (ChatGPT)[39m
+  [92m✔[0m Already on fresh context — reusing tab.
+[2026-08-22 06:07:20.289 +1000] [32mINFO[39m: [36m[Pool] ✨ chatgpt standby tab is warm and ready.[39m
+  [92m✔[0m Clean context established.
+[2026-08-22 06:07:22.176 +1000] [32mINFO[39m: [36m[SessionManager] Session f30920e3-9054-4d23-a7a8-0b7d53314865 created for provider chatgpt with mode none[39m
+[2026-08-22 06:07:22.176 +1000] [32mINFO[39m: [36m[Sessions] Created session f30920e3-9054-4d23-a7a8-0b7d53314865 for provider chatgpt with mode default[39m
+[2026-08-22 06:07:52.218 +1000] [32mINFO[39m: [36m🚀 Injecting API Turn: T-061 turn2 (ChatGPT)...[39m
+[2m  [Send] Attempt 1/5: visible=true disabled=false forceKeyboard=false[0m
+[Spinner Start] ChatGPT is thinking...
+[Spinner OK] Response received.
+[chatgpt-extract] copy button clicked via "[data-testid="copy-turn-action-button"]"
+[chatgpt-extract] clipboard extraction: 17 chars
+[2026-08-22 06:08:05.517 +1000] [32mINFO[39m: [36m[SessionManager] ♻️ Recycled chatgpt tab back to pool.[39m

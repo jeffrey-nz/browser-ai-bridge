@@ -1,0 +1,19 @@
+=== create session 1 ===
+{"status":200,"json":{"success":true,"sessionId":"922dc311-2273-44db-911b-7a0ce4158ea6","maxPromptChars":150000}}
+
+=== seed turn on session 1 ===
+{"status":500,"json":{"success":false,"error":"locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#prompt-textarea, [data-testid=\"composer-input\"], div[contenteditable=\"true\"]').last() to be visible\u001b[22m\n","requestId":"30fc3bda-cd1a-4aab-af75-af785630048f"}}
+
+=== DELETE session 1 ===
+delete status 200
+
+=== create session 2 ===
+{"status":200,"json":{"success":true,"sessionId":"922dc311-2273-44db-911b-7a0ce4158ea6","maxPromptChars":150000}}
+
+=== same id as session 1? ===
+id1 922dc311-2273-44db-911b-7a0ce4158ea6 id2 922dc311-2273-44db-911b-7a0ce4158ea6 SAME: true
+
+=== DOM turn count on session 2, BEFORE sending anything ===
+{"status":200,"json":{"success":true,"result":{"turnCount":0,"url":"https://chatgpt.com/"}}}
+
+=== one turn on session 2 ===

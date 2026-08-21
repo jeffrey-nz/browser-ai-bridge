@@ -1,0 +1,23 @@
+=== create session 1 ===
+{"status":200,"json":{"success":true,"sessionId":"02a5eaa1-377d-43fb-8ca8-e2aac35e464a","maxPromptChars":150000}}
+
+=== seed turn on session 1 ===
+{"status":200,"json":{"success":true,"response":"T061-SEED-MARKER","data":null,"turnIndex":1,"sessionAgeMs":14,"provider":"chatgpt","requestId":"43f41061-8fc8-4617-a44f-0adf6ee34e40"}}
+
+=== DELETE session 1 ===
+delete status 200
+
+=== create session 2 ===
+{"status":200,"json":{"success":true,"sessionId":"02a5eaa1-377d-43fb-8ca8-e2aac35e464a","maxPromptChars":150000}}
+
+=== same id as session 1? ===
+id1 02a5eaa1-377d-43fb-8ca8-e2aac35e464a id2 02a5eaa1-377d-43fb-8ca8-e2aac35e464a SAME: true
+
+=== DOM turn count on session 2, BEFORE sending anything ===
+{"status":200,"json":{"success":true,"result":{"turnCount":0,"url":"https://chatgpt.com/"}}}
+
+=== one turn on session 2 ===
+{"status":200,"json":{"success":true,"response":"T061-TURN2-MARKER","data":null,"turnIndex":1,"sessionAgeMs":15,"provider":"chatgpt","requestId":"7cc44a13-295a-4276-80e8-af35650e9b44"}}
+
+=== cleanup ===
+delete2 status 200

@@ -1,0 +1,33 @@
+rows with raw: 101   disagreements: 6
+   after-ask.json  mistral  SEES_NO -> ECHO
+   result-ask-qwen.json  qwen  SEES_NO -> ECHO
+   run-1787282393215.json  zai  WRONG -> COUNT_ONLY
+   run-1787282676781.json  gemini  WRONG -> COUNT_ONLY
+   run-1787282676781.json  grok  WRONG -> COUNT_ONLY
+   run-1787282676781.json  copilot  WRONG -> COUNT_ONLY
+stored histogram:     {"SEES_NO":26,"PASS":42,"NO_ANSWER":9,"WRONG":13,"ECHO":11}
+recomputed histogram: {"SEES_NO":24,"PASS":42,"ECHO":13,"NO_ANSWER":9,"COUNT_ONLY":4,"WRONG":9}
+
+COUNT right, by truth.count (T-050 — a rate on the
+stimulus, not on the provider — see the file header):
+  truth.count=3   5/6   83.3%   (5 providers)
+  truth.count=4   15/15   100.0%   (6 providers)
+  truth.count=5   13/15   86.7%   (5 providers)
+  truth.count=6   2/2   100.0%   (2 providers)
+  truth.count=7   4/4   100.0%   (3 providers)
+  truth.count=8   2/2   100.0%   (2 providers)
+  truth.count=9   5/11   45.5%   (7 providers)
+  count 3-5 (pooled, all providers): 33/36 91.7%   count 6-9 (pooled): 13/19 68.4%
+  count 3-5 (paired providers only, N=6): 31/31 100.0%   count 6-9 (paired): 9/15 60.0%
+  unpaired (rows in one band only, excluded from the paired line): deepseek (easy only), kimi (hard only), perplexity (hard only)
+
+Excluded from COUNT (SEES_NO/ECHO/NO_ANSWER), by truth.count —
+checking whether the exclusion itself tracks count:
+  truth.count=3   2/8 excluded   25.0%
+  truth.count=4   12/27 excluded   44.4%
+  truth.count=5   15/30 excluded   50.0%
+  truth.count=6   3/5 excluded   60.0%
+  truth.count=7   2/6 excluded   33.3%
+  truth.count=8   5/7 excluded   71.4%
+  truth.count=9   7/18 excluded   38.9%
+  overall: 46/101 excluded   45.5%   spread across counts: 46.4 points

@@ -1,0 +1,31 @@
+
+╔════════════════════════════════════════╗
+║     AI Browser Automation API          ║
+╚════════════════════════════════════════╝
+[2026-08-22 05:47:05.090 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9224...[39m
+[2026-08-22 05:47:06.169 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3336 (requestTimeout disabled)[39m
+[2026-08-22 05:47:06.171 +1000] [32mINFO[39m: [36m[Config] Bound port 3336 written to config files[39m
+[2026-08-22 05:47:06.184 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
+[2026-08-22 05:47:06.185 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9224...[39m
+[2026-08-22 05:47:07.232 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9224...[39m
+[2026-08-22 05:47:07.242 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
+
+=============================================
+   AI Provider Authentication & Tab Setup
+=============================================
+
+-> Configuring [1mChatGPT[0m...
+   [New Tab] Opening dedicated tab for ChatGPT...
+[2026-08-22 05:47:08.266 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
+[2026-08-22 05:47:08.266 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
+[2026-08-22 05:47:08.326 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[2026-08-22 05:47:08.326 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[93m   [Pending] Manual login or navigation may be required in Chrome.[0m
+   [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
+
+=============================================
+   Setup Complete. Active providers ready.
+=============================================
+
+[2026-08-22 05:47:15.216 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
+[2026-08-22 05:47:24.901 +1000] [33mWARN[39m: [36m[Browser] CDP disconnected.[39m

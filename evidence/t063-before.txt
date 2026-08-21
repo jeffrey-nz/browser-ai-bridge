@@ -1,0 +1,20 @@
+rows with raw: 101   disagreements: 6
+   after-ask.json  mistral  SEES_NO -> ECHO
+   result-ask-qwen.json  qwen  SEES_NO -> ECHO
+   run-1787282393215.json  zai  WRONG -> COUNT_ONLY
+   run-1787282676781.json  gemini  WRONG -> COUNT_ONLY
+   run-1787282676781.json  grok  WRONG -> COUNT_ONLY
+   run-1787282676781.json  copilot  WRONG -> COUNT_ONLY
+stored histogram:     {"SEES_NO":26,"PASS":42,"NO_ANSWER":9,"WRONG":13,"ECHO":11}
+recomputed histogram: {"SEES_NO":24,"PASS":42,"ECHO":13,"NO_ANSWER":9,"COUNT_ONLY":4,"WRONG":9}
+
+COUNT right, by truth.count (T-050 — a rate on the
+stimulus, not on the provider — see the file header):
+  truth.count=3   5/6   83.3%
+  truth.count=4   15/15   100.0%
+  truth.count=5   13/15   86.7%
+  truth.count=6   2/2   100.0%
+  truth.count=7   4/4   100.0%
+  truth.count=8   2/2   100.0%
+  truth.count=9   5/11   45.5%
+  count 3-5: 33/36 91.7%   count 6-9: 13/19 68.4%

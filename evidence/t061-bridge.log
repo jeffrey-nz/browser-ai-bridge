@@ -1,0 +1,49 @@
+
+╔════════════════════════════════════════╗
+║     AI Browser Automation API          ║
+╚════════════════════════════════════════╝
+[2026-08-22 05:59:59.434 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9225...[39m
+[2026-08-22 06:00:00.502 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3337 (requestTimeout disabled)[39m
+[2026-08-22 06:00:00.503 +1000] [32mINFO[39m: [36m[Config] Bound port 3337 written to config files[39m
+[2026-08-22 06:00:00.517 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
+[2026-08-22 06:00:00.517 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9225...[39m
+[2026-08-22 06:00:01.573 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9225...[39m
+[2026-08-22 06:00:01.579 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
+[2026-08-22 06:00:02.087 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
+[2026-08-22 06:00:02.087 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
+
+=============================================
+   AI Provider Authentication & Tab Setup
+=============================================
+
+-> Configuring [1mChatGPT[0m...
+   [New Tab] Opening dedicated tab for ChatGPT...
+[2026-08-22 06:00:02.141 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[2026-08-22 06:00:02.142 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[93m   [Pending] Manual login or navigation may be required in Chrome.[0m
+   [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
+
+=============================================
+   Setup Complete. Active providers ready.
+=============================================
+
+[2026-08-22 06:00:02.477 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
+  [92m✔[0m Already on fresh context — reusing tab.
+[2026-08-22 06:00:14.880 +1000] [32mINFO[39m: [36m[Session] Starting advanced context for chatgpt...[39m
+[2026-08-22 06:00:14.886 +1000] [32mINFO[39m: [36m[ChatGPT] Reusing existing tab: https://chatgpt.com/[39m
+[2026-08-22 06:00:14.888 +1000] [32mINFO[39m: [36m🌿 Ready to start AI loop (ChatGPT)[39m
+[2026-08-22 06:00:14.897 +1000] [32mINFO[39m: [36m[SessionManager] Session 922dc311-2273-44db-911b-7a0ce4158ea6 created for provider chatgpt with mode none[39m
+[2026-08-22 06:00:14.897 +1000] [32mINFO[39m: [36m[Sessions] Created session 922dc311-2273-44db-911b-7a0ce4158ea6 for provider chatgpt with mode default[39m
+[2026-08-22 06:00:44.920 +1000] [32mINFO[39m: [36m🚀 Injecting API Turn: T-061 seed (ChatGPT)...[39m
+[2026-08-22 06:00:59.927 +1000] [33mWARN[39m: [36m[Prompt Workflow] ChatGPT submission failed (locator.waitFor: Timeout 15000ms exceeded.) — reloading page and retrying once.[39m
+  [92m✔[0m Already on fresh context — reusing tab.
+[2026-08-22 06:01:17.574 +1000] [32mINFO[39m: [36m[SessionManager] ♻️ Recycled chatgpt tab back to pool.[39m
+[2026-08-22 06:01:17.577 +1000] [32mINFO[39m: [36m[Pool] 🚀 Fast-booting chatgpt session from warm pool.[39m
+[2026-08-22 06:01:17.577 +1000] [32mINFO[39m: [36m[Session] Starting advanced context for chatgpt...[39m
+[2026-08-22 06:01:17.604 +1000] [32mINFO[39m: [36m[SessionManager] Session 922dc311-2273-44db-911b-7a0ce4158ea6 created for provider chatgpt with mode none[39m
+[2026-08-22 06:01:17.604 +1000] [32mINFO[39m: [36m[Sessions] Created session 922dc311-2273-44db-911b-7a0ce4158ea6 for provider chatgpt with mode default[39m
+  [92m✔[0m Already on fresh context — reusing tab.
+[2026-08-22 06:01:24.003 +1000] [32mINFO[39m: [36m🌿 Ready to start AI loop (ChatGPT)[39m
+[2026-08-22 06:01:24.060 +1000] [32mINFO[39m: [36m[Pool] ✨ chatgpt standby tab is warm and ready.[39m
+[2026-08-22 06:01:47.629 +1000] [32mINFO[39m: [36m🚀 Injecting API Turn: T-061 turn2 (ChatGPT)...[39m
+[2026-08-22 06:02:02.632 +1000] [33mWARN[39m: [36m[Prompt Workflow] ChatGPT submission failed (locator.waitFor: Timeout 15000ms exceeded.) — reloading page and retrying once.[39m

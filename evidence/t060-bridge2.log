@@ -1,0 +1,30 @@
+
+╔════════════════════════════════════════╗
+║     AI Browser Automation API          ║
+╚════════════════════════════════════════╝
+[2026-08-22 05:35:21.968 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9223...[39m
+[2026-08-22 05:35:23.019 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3334 (requestTimeout disabled)[39m
+[2026-08-22 05:35:23.021 +1000] [32mINFO[39m: [36m[Config] Bound port 3334 written to config files[39m
+[2026-08-22 05:35:23.034 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
+[2026-08-22 05:35:23.035 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9223...[39m
+[2026-08-22 05:35:24.081 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9223...[39m
+[2026-08-22 05:35:24.087 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
+[2026-08-22 05:35:24.600 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
+[2026-08-22 05:35:24.600 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
+
+=============================================
+   AI Provider Authentication & Tab Setup
+=============================================
+
+-> Configuring [1mChatGPT[0m...
+   [New Tab] Opening dedicated tab for ChatGPT...
+[2026-08-22 05:35:24.659 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[2026-08-22 05:35:24.659 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[93m   [Pending] Manual login or navigation may be required in Chrome.[0m
+   [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
+
+=============================================
+   Setup Complete. Active providers ready.
+=============================================
+
+[2026-08-22 05:35:32.858 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
