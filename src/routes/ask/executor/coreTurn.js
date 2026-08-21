@@ -1,5 +1,6 @@
 import { logger } from "#utils/logger.js";
 import { markActive, markInactive } from "../../../stalls.js";
+import { UPLOAD_CAUSES } from "#ai/shared/uploadOutcome.js";
 
 export async function executeCoreTurn(
   session,
@@ -52,7 +53,13 @@ export async function executeCoreTurn(
         session.id,
         pollTimeoutMs,
       );
-      return result ? { ...result, imageAttached: false } : result;
+      return result
+        ? {
+            ...result,
+            imageAttached: false,
+            imageAttachedCause: UPLOAD_CAUSES.NO_UPLOAD_PATH,
+          }
+        : result;
     }
     return await session.engine.sendPromptAndWait(
       promptText,

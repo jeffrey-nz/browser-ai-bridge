@@ -7,6 +7,7 @@ import { capturePageContext } from "../../../heal/index.js";
 import { executeCoreTurn } from "./coreTurn.js";
 import { isWebMode } from "#web/mode.js";
 import { cooldownManager } from "../../../session/CooldownManager.js";
+import { UPLOAD_CAUSES } from "#ai/shared/uploadOutcome.js";
 
 export async function handleStalls(session, initialResponse, activePrompt) {
   let response = initialResponse;
@@ -57,6 +58,9 @@ export async function handleStalls(session, initialResponse, activePrompt) {
             return {
               response: response.text,
               imageAttached: hadImage ? false : undefined,
+              imageAttachedCause: hadImage
+                ? UPLOAD_CAUSES.TEXT_ONLY_RETRY
+                : undefined,
             };
           logger.warn(
             `[Ask] Post-cooldown retry still failed — falling through to auto-skip.`,
@@ -131,6 +135,9 @@ export async function handleStalls(session, initialResponse, activePrompt) {
       return {
         response: control.text,
         imageAttached: hadImage ? false : undefined,
+        imageAttachedCause: hadImage
+          ? UPLOAD_CAUSES.TEXT_ONLY_RETRY
+          : undefined,
       };
     }
 
@@ -151,5 +158,11 @@ export async function handleStalls(session, initialResponse, activePrompt) {
           ? false
           : undefined
         : response.imageAttached,
+    imageAttachedCause:
+      stallAttempt > 0
+        ? hadImage
+          ? UPLOAD_CAUSES.TEXT_ONLY_RETRY
+          : undefined
+        : response.imageAttachedCause,
   };
 }

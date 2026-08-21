@@ -6,6 +6,7 @@ import {
   uploadFileToPage,
   waitForAttachmentEvidence,
 } from "#ai/shared/uploadFile.js";
+import { UPLOAD_CAUSES, UploadOutcomeError } from "#ai/shared/uploadOutcome.js";
 import { logger } from "#utils/logger.js";
 import fs from "node:fs/promises";
 
@@ -17,10 +18,17 @@ const GEMINI_ATTACHMENT_EVIDENCE =
   '[class*="uploaded-file" i], [class*="attachment-chip" i]';
 
 export async function uploadFileToGemini(page, filePath) {
+  // T-038: mirrors uploadFile.js's own file-existence throw — this is a
+  // second, previously-unlisted site for the exact same NOT_OFFERED cause
+  // (the shared uploadFileToPage() below is only reached when the menu
+  // branch isn't visible, so this check can't be deleted in favour of its).
   try {
     await fs.access(filePath);
   } catch {
-    throw new Error(`Upload file not found: ${filePath}`);
+    throw new UploadOutcomeError(
+      `Upload file not found: ${filePath}`,
+      UPLOAD_CAUSES.NOT_OFFERED,
+    );
   }
 
   // Gemini's composer button opens a sub-menu; the OS file chooser only
@@ -98,12 +106,20 @@ export async function uploadFileToGemini(page, filePath) {
       logger.info(
         `[Gemini] Uploaded file via sub-menu file chooser (${filePath}) — attachment confirmed`,
       );
-    } else {
-      logger.warn(
-        `[Gemini] Sub-menu file chooser accepted the file but no thumbnail/chip appeared for ${filePath}`,
-      );
+      return true;
     }
-    return attached;
+    // T-038: this branch used to `return false` here — a second,
+    // previously-unlisted OFFERED-shaped site alongside uploadFile.js:193's
+    // (the chooser DID accept the file; only the confirming evidence did
+    // not appear). Throw the same UNCONFIRMED cause instead of returning a
+    // bare false the wrapper's catch can never see.
+    logger.warn(
+      `[Gemini] Sub-menu file chooser accepted the file but no thumbnail/chip appeared for ${filePath}`,
+    );
+    throw new UploadOutcomeError(
+      `Sub-menu file chooser accepted the file but no thumbnail/chip appeared for ${filePath}`,
+      UPLOAD_CAUSES.UNCONFIRMED,
+    );
   }
 
   return uploadFileToPage(page, filePath, {

@@ -271,15 +271,45 @@ the page — an attachment thumbnail or chip — before calling itself done, and
 carries that verdict:
 
 - `imageAttached: true` — evidence of the attachment appeared on the page.
-- `imageAttached: false`, plus a `warning` field — no evidence appeared, a retry inside
-  the turn (a stall retry, a rate-limit retry, a chat rotation) re-sent the prompt as text
-  only and the original attachment did not survive it, or the provider has no
-  file-upload path at all and the image could not be sent by any means. **Treat the
-  response as text-only in this case** — the model may answer fluently about an image
-  it never received.
+- `imageAttached: false`, plus `imageAttachedCause` and `warning` fields — something
+  about attaching the image did not go as planned, for one of five distinct reasons
+  (`imageAttachedCause`, below). **Treat the response as text-only in this case** — the
+  model may answer fluently about an image it never received.
 - Field absent — the turn carried no image at all (nothing to confirm). A request that
   included an image never gets a bare `success: true` with this field absent — one of
   the two states above always applies instead (crew board T-004).
+
+**`imageAttachedCause` used to not exist, and `imageAttached: false` used to mean less
+than it looked like it meant (crew board T-038).** Thirteen different sites across this
+codebase could produce it, for reasons as different as "this provider has no upload path
+at all" and "a file was handed to the provider's composer and may well have landed, but
+nothing confirmed it before the bridge gave up waiting" — one boolean plus one constant
+warning string could not tell those apart, and every `imageAttached: false` row recorded
+before T-038 (including the one turn that ever refuted this flag — `zai`, a correct COUNT
+and COLOR on a turn recorded `imageAttached: false`) is unattributable as a result and
+always will be; the cause was never computed for it. `imageAttachedCause` is present
+exactly when `imageAttached` is `false`, and is one of:
+
+- `unconfirmed` — a file WAS handed to the provider's composer (an input accepted it, or
+  a real OS file-chooser did) but no visible evidence confirmed it landed within the
+  verification window. **This is the one worth treating differently from the rest**: it
+  is the only value consistent with an image that actually arrived — everything else
+  below means the image was never offered to the provider by any means this turn tried.
+- `not_offered` — nothing on the provider's page accepted the file: no matching input, no
+  attachment button.
+- `no_upload_path` — this provider/engine has no image-upload path at all; the image was
+  never even attempted.
+- `text_only_retry` — a retry inside the turn (a stall retry, a rate-limit retry, a chat
+  rotation, a post-cooldown retry, an operator-typed manual answer) re-sent the prompt as
+  text only; any image from the original turn does not survive that resend.
+- `upload_error` — something threw that isn't one of the classified outcomes above (an
+  unexpected page/automation failure).
+
+`warning` is now a function of `imageAttachedCause` (`src/ai/shared/uploadOutcome.js`,
+`describeUploadFailure`) instead of one constant sentence — the old sentence ("could not
+be confirmed as attached to the provider's composer") was true for `unconfirmed` and
+false for `no_upload_path` / `text_only_retry`, where nothing was ever offered to a
+composer to begin with.
 
 Per `reports/vision-probe/after-ask.json` (the T-001 measurement), only `gemini`,
 `deepseek`, `grok` and `copilot` — 4 providers — can be verified as receiving an image on
@@ -535,8 +565,8 @@ the caller adjudicates.
 ```
 
 Every entry names its provider. `answered: true` entries carry `response` /
-`data` / `turnIndex` / `sessionAgeMs` (and `imageAttached` / `warning` when
-the request included an image — same honesty contract as `/api/ask`, see
+`data` / `turnIndex` / `sessionAgeMs` (and `imageAttached` / `imageAttachedCause` /
+`warning` when the request included an image — same honesty contract as `/api/ask`, see
 above). `turnIndex` is the session's own turn counter (1 on a fresh
 session, incrementing on repeat turns against the same `sessionId`) and
 `sessionAgeMs` is how long the session had existed when the turn finished —

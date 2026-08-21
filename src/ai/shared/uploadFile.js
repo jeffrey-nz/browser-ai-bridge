@@ -35,6 +35,7 @@
 
 import { logger } from "#utils/logger.js";
 import fs from "node:fs/promises";
+import { UPLOAD_CAUSES, UploadOutcomeError } from "./uploadOutcome.js";
 
 /**
  * Default evidence that a file was actually attached to the composer, not
@@ -94,7 +95,10 @@ export async function uploadFileToPage(page, filePath, options = {}) {
   try {
     await fs.access(filePath);
   } catch {
-    throw new Error(`Upload file not found: ${filePath}`);
+    throw new UploadOutcomeError(
+      `Upload file not found: ${filePath}`,
+      UPLOAD_CAUSES.NOT_OFFERED,
+    );
   }
 
   const evidenceSelector = verifySelector || DEFAULT_ATTACHMENT_EVIDENCE;
@@ -125,11 +129,19 @@ export async function uploadFileToPage(page, filePath, options = {}) {
   };
 
   // Strategy 1: Direct setInputFiles on existing hidden file input
+  //
+  // T-038: tracked separately from the strategy's own success/failure so the
+  // FINAL throw below (once strategy 2 has also been tried) can tell "a file
+  // really was set on an input on this page" apart from "nothing here ever
+  // took the file" — collapsing those two was itself the bug this ticket
+  // exists to fix (fence 2, world B).
+  let landedOnInput = false;
   try {
     const fileInputs = page.locator('input[type="file"]');
     const count = await fileInputs.count();
     if (count > 0) {
       await fileInputs.first().setInputFiles(filePath);
+      landedOnInput = true;
       await page.waitForTimeout(500);
       if (await verify()) {
         logger.info(
@@ -192,13 +204,31 @@ export async function uploadFileToPage(page, filePath, options = {}) {
       logger.warn(
         `[UploadFile] File chooser accepted the file but no attachment evidence appeared on the page.`,
       );
-      return false;
+      throw new UploadOutcomeError(
+        `File chooser accepted the file but no attachment evidence appeared within ${verifyTimeoutMs}ms`,
+        UPLOAD_CAUSES.UNCONFIRMED,
+      );
     }
   } catch (err) {
+    if (err instanceof UploadOutcomeError) throw err;
     logger.debug(`[UploadFile] File chooser strategy failed: ${err.message}`);
   }
 
-  throw new Error(
-    `Could not upload file: no file input or attachment button found on page`,
+  // T-038: the message here used to say "no file input ... found" even when
+  // strategy 1 (above) DID find one and successfully set the file on it —
+  // the condition below tests whether a BUTTON was visible, not whether an
+  // input was found, and world B of fence 2 caught the two conflated (a
+  // page with a working input and no button was told "no file input"). Say
+  // what actually happened: a file already on the page with no confirming
+  // evidence and no button fallback is UNCONFIRMED, not NOT_OFFERED.
+  if (landedOnInput) {
+    throw new UploadOutcomeError(
+      `A file was set on input[type="file"] but no attachment evidence appeared, and no attachment button was available as a fallback`,
+      UPLOAD_CAUSES.UNCONFIRMED,
+    );
+  }
+  throw new UploadOutcomeError(
+    `Could not upload file: no file input and no attachment button were found on page`,
+    UPLOAD_CAUSES.NOT_OFFERED,
   );
 }

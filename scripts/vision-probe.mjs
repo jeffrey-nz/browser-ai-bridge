@@ -451,6 +451,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
         shape: "ERROR",
         detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
         imageAttached: json?.imageAttached,
+        imageAttachedCause: json?.imageAttachedCause,
       };
     }
     // T-027: `shape` (via ...cls below) is a MEASUREMENT TAKEN ONCE, BY
@@ -469,6 +470,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
       elapsedMs,
       ...cls,
       imageAttached: json.imageAttached,
+      imageAttachedCause: json.imageAttachedCause,
       warning: json.warning,
       raw: json.response,
     };
@@ -544,7 +546,7 @@ async function main() {
         ? "?"
         : r.imageAttached
           ? "attached"
-          : "NOT attached";
+          : `NOT attached (${r.imageAttachedCause || "cause absent"})`;
     const halves =
       r.countOk !== undefined
         ? `COUNT=${r.countOk ? "ok" : "NO"} COLOR=${r.colorOk ? "ok" : "NO"}  `

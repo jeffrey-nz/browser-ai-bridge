@@ -11,6 +11,7 @@ import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { resolveSelector } from "#ai/shared/locatorEngine.js";
 import { DEEPSEEK_LOCATORS } from "../../locators.js";
 import { logger } from "#utils/logger.js";
+import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 
 export async function sendPromptWithFile(
   page,
@@ -21,11 +22,13 @@ export async function sendPromptWithFile(
 ) {
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
+  let imageAttachedCause;
   try {
     imageAttached = await uploadFileToDeepSeek(page, filePath);
   } catch (err) {
+    imageAttachedCause = classifyUploadError(err);
     logger.warn(
-      `[DeepSeek] File upload failed: ${err.message} — sending text-only`,
+      `[DeepSeek] File upload failed (${imageAttachedCause}): ${err.message} — sending text-only`,
     );
   }
   if (!imageAttached) {
@@ -34,7 +37,11 @@ export async function sendPromptWithFile(
     );
   }
   const result = await sendPromptAndWait(page, text, label, sessionId);
-  return { ...result, imageAttached };
+  return {
+    ...result,
+    imageAttached,
+    ...(imageAttached ? {} : { imageAttachedCause }),
+  };
 }
 
 export async function sendPromptAndWait(

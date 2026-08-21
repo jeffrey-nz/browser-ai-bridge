@@ -9,6 +9,7 @@ import {
   extractText,
 } from "#ai/shared/domInteraction.js";
 import { uploadFileToPage } from "#ai/shared/uploadFile.js";
+import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 import { cleanAiResponse } from "#ai/shared/markdownCleaner.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { DEFAULT_STABLE_POLLS } from "./specs.js";
@@ -211,6 +212,7 @@ export function makeInteraction(spec) {
   async function sendPromptWithFile(page, filePath, text, label = "Visual QA") {
     logger.info(`[${spec.name}] Uploading ${filePath}`);
     let imageAttached = false;
+    let imageAttachedCause;
     try {
       imageAttached = await uploadFileToPage(page, filePath, {
         attachmentBtnSelector: spec.attachBtn,
@@ -224,8 +226,9 @@ export function makeInteraction(spec) {
           : {}),
       });
     } catch (err) {
+      imageAttachedCause = classifyUploadError(err);
       logger.warn(
-        `[${spec.name}] File upload failed: ${err.message} — sending text-only`,
+        `[${spec.name}] File upload failed (${imageAttachedCause}): ${err.message} — sending text-only`,
       );
     }
     if (!imageAttached) {
@@ -234,7 +237,11 @@ export function makeInteraction(spec) {
       );
     }
     const result = await sendPromptAndWait(page, text, label);
-    return { ...result, imageAttached };
+    return {
+      ...result,
+      imageAttached,
+      ...(imageAttached ? {} : { imageAttachedCause }),
+    };
   }
 
   return {

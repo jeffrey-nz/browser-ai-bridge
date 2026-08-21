@@ -3,6 +3,7 @@ import { executePromptTurn, resumePolling } from "./executeTurn.js";
 import { handleGeminiError } from "./errorHandler.js";
 import { uploadFileToGemini } from "./input.js";
 import { logger } from "#utils/logger.js";
+import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 
 export async function sendPromptWithFile(
   page,
@@ -13,11 +14,13 @@ export async function sendPromptWithFile(
 ) {
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
+  let imageAttachedCause;
   try {
     imageAttached = await uploadFileToGemini(page, filePath);
   } catch (err) {
+    imageAttachedCause = classifyUploadError(err);
     logger.warn(
-      `[Gemini] File upload failed: ${err.message} — sending text-only`,
+      `[Gemini] File upload failed (${imageAttachedCause}): ${err.message} — sending text-only`,
     );
   }
   if (!imageAttached) {
@@ -26,7 +29,11 @@ export async function sendPromptWithFile(
     );
   }
   const result = await sendPromptAndWait(page, text, label, sessionId);
-  return { ...result, imageAttached };
+  return {
+    ...result,
+    imageAttached,
+    ...(imageAttached ? {} : { imageAttachedCause }),
+  };
 }
 
 export async function sendPromptAndWait(

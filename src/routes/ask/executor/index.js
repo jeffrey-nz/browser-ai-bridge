@@ -285,5 +285,6 @@ async function runAskTurn(
     turnIndex,
     sessionAgeMs,
     imageAttached: stallResult.imageAttached,
+    imageAttachedCause: stallResult.imageAttachedCause,
   };
 }

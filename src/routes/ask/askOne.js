@@ -22,10 +22,11 @@ import { executeAskTurn } from "./executor/index.js";
 import { withSessionLock } from "./withSessionLock.js";
 import { cooldownManager } from "../../session/CooldownManager.js";
 import { logger } from "#utils/logger.js";
+import { describeUploadFailure } from "#ai/shared/uploadOutcome.js";
 
 /**
  * @returns {Promise<object>} always one of:
- *   { provider, answered: true, response, data, turnIndex, sessionAgeMs, imageAttached?, warning? }
+ *   { provider, answered: true, response, data, turnIndex, sessionAgeMs, imageAttached?, imageAttachedCause?, warning? }
  *   { provider, answered: false, reason, retryAfter? }
  */
 export async function askOne(providerId, prompt, requestId, opts = {}) {
@@ -72,6 +73,7 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         turnIndex,
         sessionAgeMs,
         imageAttached,
+        imageAttachedCause,
         selfHealEscape,
       } = await executeAskTurn(
         session,
@@ -113,8 +115,8 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
       if (imageAttached !== undefined) {
         result.imageAttached = imageAttached;
         if (!imageAttached) {
-          result.warning =
-            "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+          result.imageAttachedCause = imageAttachedCause;
+          result.warning = describeUploadFailure(imageAttachedCause);
         }
       }
       return result;

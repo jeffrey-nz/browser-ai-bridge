@@ -7,6 +7,7 @@ import { waitForChatGptCompletion } from "./poll.js";
 import { extractChatGptResponse } from "./extract.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { logger } from "#utils/logger.js";
+import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 
 export async function sendPromptWithFile(
   page,
@@ -16,11 +17,13 @@ export async function sendPromptWithFile(
 ) {
   logger.info(`[ChatGPT] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
+  let imageAttachedCause;
   try {
     imageAttached = await uploadFileToChatGpt(page, filePath);
   } catch (err) {
+    imageAttachedCause = classifyUploadError(err);
     logger.warn(
-      `[ChatGPT] File upload failed: ${err.message} — sending text-only`,
+      `[ChatGPT] File upload failed (${imageAttachedCause}): ${err.message} — sending text-only`,
     );
   }
   if (!imageAttached) {
@@ -29,7 +32,11 @@ export async function sendPromptWithFile(
     );
   }
   const result = await sendPromptAndWait(page, text, label);
-  return { ...result, imageAttached };
+  return {
+    ...result,
+    imageAttached,
+    ...(imageAttached ? {} : { imageAttachedCause }),
+  };
 }
 
 export async function sendPromptAndWait(

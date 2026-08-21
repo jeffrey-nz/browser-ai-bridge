@@ -9,6 +9,7 @@ import { resolveTiers, skipTier, logFallback } from "./ask/tiers.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
 import { eventBus } from "#web/eventBus.js";
+import { describeUploadFailure } from "#ai/shared/uploadOutcome.js";
 
 const router = express.Router();
 
@@ -150,6 +151,7 @@ router.post("/", async (req, res, next) => {
           selfHealEscape,
           htmlSnapshot,
           imageAttached,
+          imageAttachedCause,
         } = await executeAskTurn(
           session,
           prompt,
@@ -195,6 +197,20 @@ router.post("/", async (req, res, next) => {
         //   a picture and gets imageAttached:false is looking at a text-only
         //   answer wearing a confident face (T-001 on the crew board).
         //
+        //   imageAttached:false used to mean less than it looked like it
+        //   meant: thirteen different sites could produce it, for reasons as
+        //   different as "this provider has no upload path at all" and "a
+        //   file was handed to the composer and might well have landed, but
+        //   nothing confirmed it in time" — one boolean plus one constant
+        //   warning string could not tell those apart, and 30 of 30 recorded
+        //   false rows (including the flag's one known refutation) were
+        //   unattributable as a result (T-038). imageAttachedCause is the
+        //   split: present exactly when imageAttached is false, one of
+        //   not_offered / unconfirmed / no_upload_path / text_only_retry /
+        //   upload_error (src/ai/shared/uploadOutcome.js). `unconfirmed` is
+        //   the one worth treating differently from the rest — it is the
+        //   only value consistent with an image that actually arrived.
+        //
         //   turnIndex/sessionAgeMs replace the old messageCount field
         //   (T-011): messageCount was computed for one provider (copilot) of
         //   ten and hardcoded 0 for the rest, and nothing read it, but it
@@ -214,8 +230,8 @@ router.post("/", async (req, res, next) => {
         if (imageAttached !== undefined) {
           payload.imageAttached = imageAttached;
           if (!imageAttached) {
-            payload.warning =
-              "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+            payload.imageAttachedCause = imageAttachedCause;
+            payload.warning = describeUploadFailure(imageAttachedCause);
           }
         }
         return {

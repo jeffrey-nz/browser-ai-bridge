@@ -3,6 +3,7 @@
 
 import { logger } from "#utils/logger.js";
 import { markActivePreserving, markInactive } from "../../../stalls.js";
+import { UPLOAD_CAUSES } from "#ai/shared/uploadOutcome.js";
 
 export async function handleRotationIfNeeded(
   session,
@@ -79,6 +80,7 @@ export async function handleRotationIfNeeded(
 
   if (hadImage && newResponse && newResponse.imageAttached === undefined) {
     newResponse.imageAttached = false;
+    newResponse.imageAttachedCause = UPLOAD_CAUSES.TEXT_ONLY_RETRY;
   }
   return newResponse;
 }

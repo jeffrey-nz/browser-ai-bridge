@@ -22,6 +22,7 @@ import crypto from "node:crypto";
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 import { truncateBlocks } from "../compactor/truncators/blocks.js";
+import { UPLOAD_CAUSES, UploadOutcomeError } from "#ai/shared/uploadOutcome.js";
 
 // Copilot's file reader caps each attachment at roughly 25k characters — beyond
 // that it reports the file as truncated ("IsTruncated=true") and the model only
@@ -199,7 +200,20 @@ export async function attachFileToCopilot(page, filePath) {
   if (!attached) attached = await uploadViaPlusMenu(page, filePath);
   if (!attached) {
     log(colors.yellow("  [Copilot] Could not attach file for image-ask."));
-    return false;
+    // T-038: UNCONFIRMED rather than NOT_OFFERED. sendPromptAsFile's own
+    // comment two functions up says the hidden-input path routinely accepts
+    // a file the server never registers — a failure here reads much closer
+    // to "the file may have reached the page; confirmation is missing" than
+    // "nothing was ever offered". Not split further into which of the two
+    // strategies got how far: that needs uploadViaHiddenInput/
+    // uploadViaPlusMenu to report landed-vs-not, and sendPromptAsFile above
+    // also calls both of them for the unrelated long-prompt-as-file
+    // fallback — changing their return shape for this ticket would touch
+    // that feature too, out of scope here.
+    throw new UploadOutcomeError(
+      "Copilot: neither the hidden file input nor the '+' menu chooser produced a confirmed attachment chip",
+      UPLOAD_CAUSES.UNCONFIRMED,
+    );
   }
   await waitForUploadComplete(page);
   return true;

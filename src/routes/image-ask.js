@@ -26,6 +26,7 @@ import { sessionManager } from "../session/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
+import { describeUploadFailure } from "#ai/shared/uploadOutcome.js";
 
 const router = Router();
 
@@ -150,8 +151,8 @@ router.post("/", async (req, res) => {
       if (result && result.imageAttached !== undefined) {
         payload.imageAttached = result.imageAttached;
         if (!result.imageAttached) {
-          payload.warning =
-            "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+          payload.imageAttachedCause = result.imageAttachedCause;
+          payload.warning = describeUploadFailure(result.imageAttachedCause);
         }
       }
       return sendSuccess(res, payload);

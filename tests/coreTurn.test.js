@@ -33,6 +33,11 @@ test("an image sent to an engine with no sendPromptWithFile comes back imageAtta
     false,
     "an image the engine cannot take must be reported as not attached, not omitted",
   );
+  assert.equal(
+    result.imageAttachedCause,
+    "no_upload_path",
+    "T-038: this is the no_upload_path cause, not the generic collapse — the engine never even attempted an upload",
+  );
 });
 
 test("a text-only turn on the same file-less engine gains no spurious imageAttached", async () => {

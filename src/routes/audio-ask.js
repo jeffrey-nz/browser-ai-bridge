@@ -27,6 +27,7 @@ import { sessionManager } from "../session/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
+import { describeUploadFailure } from "#ai/shared/uploadOutcome.js";
 
 const router = Router();
 
@@ -171,8 +172,11 @@ router.post("/", async (req, res) => {
       if (result && result.imageAttached !== undefined) {
         payload.audioAttached = result.imageAttached;
         if (!result.imageAttached) {
-          payload.warning =
-            "The audio file could not be confirmed as attached to the provider's composer — this response may not reflect the audio at all.";
+          payload.audioAttachedCause = result.imageAttachedCause;
+          payload.warning = describeUploadFailure(
+            result.imageAttachedCause,
+            "audio file",
+          );
         }
       }
       return sendSuccess(res, payload);

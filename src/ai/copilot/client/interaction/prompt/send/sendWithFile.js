@@ -11,6 +11,7 @@ import { injectAndSubmit } from "./submitter.js";
 import { waitForResponseAndExtract } from "./waitAndExtract.js";
 import { printResponseSummary } from "../summary.js";
 import { logger } from "#utils/logger.js";
+import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 
 // Keep Copilot answering inline (it otherwise loves to spin up Pages/Designer
 // widgets); deliberately avoids naming M365 products, which trip its filter.
@@ -28,14 +29,13 @@ export async function sendPromptWithFile(
 ) {
   logger.info(`[Copilot] Uploading image for visual analysis: ${filePath}`);
   let imageAttached = false;
+  let imageAttachedCause;
   try {
     imageAttached = await attachFileToCopilot(page, filePath);
-    if (!imageAttached) {
-      logger.warn("[Copilot] Image attach failed — sending text-only");
-    }
   } catch (err) {
+    imageAttachedCause = classifyUploadError(err);
     logger.warn(
-      `[Copilot] Image upload failed: ${err.message} — sending text-only`,
+      `[Copilot] Image upload failed (${imageAttachedCause}): ${err.message} — sending text-only`,
     );
   }
 
@@ -47,5 +47,9 @@ export async function sendPromptWithFile(
     pollTimeoutMs,
   );
   if (result?.ok) printResponseSummary(result.text);
-  return { ...result, imageAttached };
+  return {
+    ...result,
+    imageAttached,
+    ...(imageAttached ? {} : { imageAttachedCause }),
+  };
 }

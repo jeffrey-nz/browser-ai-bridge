@@ -123,6 +123,10 @@ if (
         p: r.providerId,
         cls: BESPOKE.has(r.providerId) ? "bespoke" : "generic",
         ia: r.imageAttached,
+        // T-038: added after every row currently on disk was written — see
+        // section 4 below for why an absent value here is not "unknown
+        // cause", it's "cause was never computed for this row".
+        cause: r.imageAttachedCause,
         // T-027: stored `shape` (r.shape) deliberately NOT carried here — it
         // can be stale (whatever classify() said at write time; see the
         // comment in vision-probe.mjs), and this row already computes its
@@ -246,4 +250,26 @@ if (
   console.log(
     `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length}`,
   );
+
+  // T-038: WHICH cause a false row carries, where one was ever computed.
+  // Every row on the shelf when this section was added predates the
+  // classifier (uploadFile.js throwing UploadOutcomeError instead of a bare
+  // false/Error) — clause 7 of T-038 forbids backfilling them with today's
+  // classifier, so they print as "cause absent (pre-T-038)" rather than a
+  // guess dressed as a reading. The number worth re-checking over time is
+  // how many DISTINCT labels appear here on a corpus recorded AFTER T-038 —
+  // 1 distinct label (all "cause absent") means nothing has moved yet.
+  console.log(`\n4. WHEN imageAttached=false, WHY? (T-038's cause field)`);
+  const falseRows = rows.filter((r) => r.ia === false);
+  const causeCounts = new Map();
+  for (const r of falseRows) {
+    const label = r.cause || "cause absent (pre-T-038)";
+    causeCounts.set(label, (causeCounts.get(label) || 0) + 1);
+  }
+  console.log(
+    `   ${falseRows.length} imageAttached=false rows, ${causeCounts.size} distinct cause label(s):`,
+  );
+  for (const [label, n] of causeCounts) {
+    console.log(`     ${String(n).padStart(3)} x  ${label}`);
+  }
 }
