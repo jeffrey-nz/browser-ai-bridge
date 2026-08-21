@@ -1,0 +1,23 @@
+{
+  "probeSha256": "b97b1723cee3624b",
+  "bridgeCommit": "d5454c8f6e21ad801cc2abb89bc39cd841dbe571",
+  "gradedAt": "2026-08-21T17:54:06.737Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787334805383.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 41289,
+      "shape": "WRONG",
+      "countOk": false,
+      "colorOk": true,
+      "detail": "got COUNT=1 COLOR=indigo, expected COUNT=5 COLOR=indigo",
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=1 COLOR=indigo"
+    }
+  ]
+}
