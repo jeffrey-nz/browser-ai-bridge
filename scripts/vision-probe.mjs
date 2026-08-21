@@ -453,6 +453,16 @@ async function askProvider(opts, providerId, imagePath, truth) {
         imageAttached: json?.imageAttached,
       };
     }
+    // T-027: `shape` (via ...cls below) is a MEASUREMENT TAKEN ONCE, BY
+    // WHATEVER classify() SAYS TODAY — same reasoning as gradingProvenance()
+    // above for why old runs are never backfilled with a new grading: a
+    // classifier fix (T-012, T-025) does not reach back and correct labels
+    // already written, so `shape` on disk can disagree with what HEAD's own
+    // classify() would say about the same `raw` right now. `raw` is the
+    // evidence and never changes; `shape` is this run's opinion of it at the
+    // time. A reader who wants the CURRENT classification recomputes it from
+    // `raw` — ia-grade.mjs already does exactly that for its own grading,
+    // and scripts/shape-audit.mjs reports every row where the two disagree.
     const cls = classify(json.response, truth);
     return {
       providerId,

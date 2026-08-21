@@ -95,7 +95,11 @@ if (
         p: r.providerId,
         cls: BESPOKE.has(r.providerId) ? "bespoke" : "generic",
         ia: r.imageAttached,
-        shape: r.shape,
+        // T-027: stored `shape` (r.shape) deliberately NOT carried here — it
+        // can be stale (whatever classify() said at write time; see the
+        // comment in vision-probe.mjs), and this row already computes its
+        // own current echo/said/seesNo via gradeReply() below. Carrying the
+        // stale field forward unread was exactly the shape of the next bug.
         raw: graded.raw,
         echo: graded.echo,
         said: graded.said,
