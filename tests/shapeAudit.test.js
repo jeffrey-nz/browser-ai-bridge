@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { auditShapes } from "../scripts/shape-audit.mjs";
+import { auditShapes, bandStats } from "../scripts/shape-audit.mjs";
 
 /**
  * T-027: `shape` stored in a run json is whatever classify() said at write
@@ -99,13 +99,83 @@ test("auditShapes buckets COUNT-right by truth.count (T-050 — a rate on the st
 
     const { countStrata } = auditShapes(dir);
 
-    assert.deepEqual(countStrata, {
-      4: { n: 2, ok: 2 },
-      9: { n: 1, ok: 0 },
+    assert.equal(countStrata[4].n, 2);
+    assert.equal(countStrata[4].ok, 2);
+    assert.deepEqual(countStrata[4].providers, new Set(["a", "b"]));
+    assert.equal(countStrata[9].n, 1);
+    assert.equal(countStrata[9].ok, 0);
+    assert.deepEqual(countStrata[9].providers, new Set(["a"]));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-063: pooling COUNT-right across a 3-5/6-9 band comparison over whatever
+// provider set happened to have rows in each band hid a 17-point effect in
+// the reassuring direction on the real corpus — 3 of 9 providers had rows in
+// only one band, and all three pushed the pooled gap smaller. providerBand
+// (auditShapes' own per-provider-per-band tally) and bandStats() (the pooled/
+// paired split) are pinned separately from countStrata's per-count numbers
+// because the bug lived in a SECOND covariate (which providers were swept),
+// not in the count bucketing itself.
+test("auditShapes tallies providerBand (easy 3-5 / hard 6-9) per provider", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" },
+          { providerId: "b", raw: "SEES=yes COUNT=4 COLOR=teal" },
+        ],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" }],
+      },
+    });
+
+    const { providerBand } = auditShapes(dir);
+
+    assert.deepEqual(providerBand, {
+      a: { easy: { n: 1, ok: 1 }, hard: { n: 1, ok: 0 } },
+      b: { easy: { n: 1, ok: 1 } },
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("bandStats: a provider with rows in only one band is named, not pooled into paired", () => {
+  const providerBand = {
+    a: { easy: { n: 10, ok: 10 }, hard: { n: 5, ok: 3 } }, // paired
+    b: { easy: { n: 5, ok: 5 } }, // easy-only — inflates pooled easy
+    c: { hard: { n: 5, ok: 5 } }, // hard-only — inflates pooled hard
+  };
+
+  const { pooled, paired, pairedCount, unpaired } = bandStats(providerBand);
+
+  // Pooled mixes all three, same as the old behaviour.
+  assert.deepEqual(pooled, { easy: { n: 15, ok: 15 }, hard: { n: 10, ok: 8 } });
+  // Paired is provider `a` alone.
+  assert.deepEqual(paired, { easy: { n: 10, ok: 10 }, hard: { n: 5, ok: 3 } });
+  assert.equal(pairedCount, 1);
+  assert.deepEqual(unpaired, [
+    { providerId: "b", band: "easy" },
+    { providerId: "c", band: "hard" },
+  ]);
+});
+
+test("bandStats: every provider paired means no unpaired entries", () => {
+  const providerBand = {
+    a: { easy: { n: 3, ok: 3 }, hard: { n: 3, ok: 3 } },
+    b: { easy: { n: 2, ok: 1 }, hard: { n: 2, ok: 2 } },
+  };
+
+  const { pairedCount, unpaired } = bandStats(providerBand);
+
+  assert.equal(pairedCount, 2);
+  assert.deepEqual(unpaired, []);
 });
 
 test("auditShapes skips rows with no raw (ERROR shapes, pre-field runs)", () => {
