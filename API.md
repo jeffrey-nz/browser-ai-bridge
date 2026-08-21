@@ -214,10 +214,22 @@ row — could render, and stabilize, before the model's own text did). Both fixe
 `src/ai/generic/interaction.js`'s completion poll now judges stability on text with the
 same chrome stripped, not the raw block). Live-verified three consecutive sweeps each:
 neither provider echoes or leaks chrome anymore — both now report an honest `SEES=no`
-(a real, upload-related limitation, not this extractor bug). This is a
-snapshot of flaky, provider-controlled UIs, not a permanent scorecard — re-run
-`node scripts/vision-probe.mjs` for a current reading
-before depending on a specific provider's image path.
+(a real, upload-related limitation, not this extractor bug).
+
+`perplexity` cannot complete an image turn reliably (crew board T-008): its composer
+locator (`div#ask-input`) times out waiting to become visible on most image turns — a
+DOM swap (route change / paywall interstitial) that a page reload does not consistently
+undo. Measured across ~10 attempts in one session, roughly one in ten completed. An
+attempted fix (extending the existing one-retry recovery to two) made no measurable
+difference and was reverted rather than shipped for no gain — this is not a "selector
+needs updating" fault the way T-005's was. **Do not pick `perplexity` as a second
+independent reader** — a caller that does gets what score-reader's default pool got
+before T-008: a "pool" that is really one vendor, silently. See T-008 for the located
+failure if picking this back up.
+
+This is a snapshot of flaky, provider-controlled UIs, not a permanent scorecard — re-run
+`node scripts/vision-probe.mjs` for a current reading before depending on a specific
+provider's image path.
 
 **Only the first attachment is sent** — the current providers accept one file per turn.
 Additional entries are logged and dropped, so send one image per `/api/ask` call.
