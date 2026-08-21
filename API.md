@@ -248,7 +248,74 @@ scan, and sending less is worth preferring since the image leaves the machine.
 
 ---
 
-## Self‑Healing Automation
+## Ask All Providers (Consensus Input)
+
+### POST `/api/ask-all`
+
+The same prompt, N independent providers, N answers — for callers that need a
+second and third opinion to catch a single model's hallucination, not a faster
+way to ask one question (crew board T-002).
+
+**Request**
+
+```json
+{
+  "providers": ["gemini", "chatgpt", "deepseek", "grok"],
+  "prompt": "Your prompt text",
+  "images": ["data:image/png;base64,iVBORw0KGgo…"]
+}
+```
+
+`providers` is required — a non-empty array of provider ids, de-duplicated
+automatically (asking the same provider twice would be the same opinion
+counted twice, not a second one). `mode`, `label`, `skipConstraint`,
+`images` and `projectDir` behave exactly as they do on `/api/ask` and apply
+identically to every named provider.
+
+**This endpoint does NOT merge, vote, or pick a winner.** Two models agreeing
+is weak evidence on its own — they can share a training bias — and the moment
+a consensus endpoint collapses N answers into one, a caller can no longer see
+the disagreement, which is usually the actual signal. It returns the raw set;
+the caller adjudicates.
+
+**Response**
+
+```json
+{
+  "success": true,
+  "answers": [
+    { "provider": "gemini", "answered": true, "response": "PONG", "data": null, "messageCount": 0 },
+    { "provider": "chatgpt", "answered": true, "response": "PONG", "data": null, "messageCount": 0 },
+    { "provider": "zai", "answered": false, "reason": "Polling timed out (Timeout after 300000ms)" }
+  ],
+  "elapsedMs": 43828
+}
+```
+
+Every entry names its provider. `answered: true` entries carry `response` /
+`data` / `messageCount` (and `imageAttached` / `warning` when the request
+included an image — same honesty contract as `/api/ask`, see above).
+`answered: false` entries carry a `reason` instead — `"cooldown"`,
+`"rate_limited"`, `"stalled"`, or the underlying error — and are how a
+provider that timed out or never started is distinguished from one that
+disagreed: an absence is not a vote against, and nothing about the shape of
+the response lets a caller confuse the two.
+
+**Runs in parallel**, not in series: each provider is its own already-open
+browser tab, so N requests cost close to what the slowest single one costs,
+not the sum. Measured: 4 providers (gemini/chatgpt/deepseek/grok) answered in
+44s as a batch, against a solo call to the slowest member of that same batch
+(chatgpt) taking 42.5s alone — the ~1.5s difference is fixed per-request
+overhead, not serialization.
+
+**The whole response waits for the slowest named provider**, including one
+that hangs all the way to its poll timeout. Asking `zai` (currently unable to
+complete a turn reliably — see the images section above) alongside two
+providers that each answered in under 20s still took just over 5 minutes,
+because the response is one JSON object covering every named provider, not a
+stream — there is no partial-results path today. Keep that in mind before
+naming a provider known to be unreliable in a batch a caller is waiting on
+synchronously.
 
 ### POST `/api/heal`
 
