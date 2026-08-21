@@ -1,0 +1,29 @@
+=== create deepseek session ===
+{"success":true,"sessionId":"7d716465-5a16-4e69-91ab-9e95fabbd92c","maxPromptChars":150000}
+
+=== confirm mode is Instant (untouched) ===
+{"success":true,"result":[{"text":"InstantInstant","checked":"true"},{"text":"ExpertExpert","checked":"false"},{"text":"VisionVision","checked":"false"}]}
+
+=== attach image via synthetic DataTransfer ===
+{"success":true,"result":{"found":true}}
+
+=== check for attachment evidence ===
+{"success":true,"result":1}
+
+=== type prompt into textarea ===
+{"success":true,"result":{"found":true,"value":"Look at the attached image ONLY — do not guess. Re"}}
+
+=== click send ===
+{"success":true,"result":{"found":true}}
+
+=== diagnostic: did the message actually submit? ===
+{"success":true,"result":{"taValue":"","markdownBlocks":1,"anyMessageEls":3}}
+
+=== polling for response (up to 90s) ===
+....
+final text: "SEES=yes COUNT=1 COLOR=goldenrod"
+truth: {"count":7,"color":"goldenrod"}
+classify: {"shape":"WRONG","countOk":false,"colorOk":true,"detail":"got COUNT=1 COLOR=goldenrod, expected COUNT=7 COLOR=goldenrod"}
+
+=== NOT cleaning up — session left open for inspection ===
+sessionId: 7d716465-5a16-4e69-91ab-9e95fabbd92c
