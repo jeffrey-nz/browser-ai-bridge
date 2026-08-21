@@ -585,6 +585,36 @@ export function validateStimulusArgs({ image, count, color } = {}) {
         "through to a silent random draw (T-055).",
     );
   }
+  // T-057: hasCount above only checks PRESENCE — `--count nine` parses to
+  // NaN (parseArgs' `Number(argv[++i])`) and `--count 0`/`--count 99` parse
+  // fine but are outside the range generateTestImage() actually draws from.
+  // All three are `!== undefined`, so they used to pass this function, then
+  // fail the `opts.count &&` truthiness check in main()'s pinned branch
+  // (NaN and 0 are falsy; 99 is not) and fall through to the SAME silent
+  // random draw T-055 closed for a lone flag — a malformed VALUE reopening
+  // the hole T-055 closed for a missing one. Bounds come from MIN_COUNT/
+  // MAX_COUNT, not a second "3 to 9" typed here.
+  if (
+    hasCount &&
+    (!Number.isInteger(count) || count < MIN_COUNT || count > MAX_COUNT)
+  ) {
+    throw new Error(
+      `--count must be an integer from ${MIN_COUNT} to ${MAX_COUNT} — got ` +
+        `${count}, which used to fall through to a silent random draw ` +
+        `instead of being rejected (T-057).`,
+    );
+  }
+  // T-057 clause 2/3: was already a check for this in main()'s pinned
+  // branch, but only reachable once hasCount is truthy — moved here so a
+  // caller gets the SAME rejection whichever way it fails, at the same
+  // point (before generateTestImage's console output starts), and so this
+  // is the one place that knows "valid colour" instead of two. COLORS is
+  // the same object the prompt itself lists its palette from (buildPrompt).
+  if (hasColor && !COLORS[color]) {
+    throw new Error(
+      `--color ${color} is not one of: ${Object.keys(COLORS).join(", ")}`,
+    );
+  }
 }
 
 /** Fresh PNG fixture: `count` (3-9) solid squares in a row, colour named. */
@@ -821,11 +851,9 @@ async function main() {
     // fresh, no --image required.
     count = opts.count;
     color = opts.color;
-    if (!COLORS[color]) {
-      throw new Error(
-        `--color ${color} is not one of: ${Object.keys(COLORS).join(", ")}`,
-      );
-    }
+    // T-057: count and color are both already validated by
+    // validateStimulusArgs (called earlier in main(), before any of this
+    // branching) — no second check needed here.
     const png = renderPng(CANVAS_WIDTH, CANVAS_HEIGHT, count, COLORS[color]);
     const outDir = join(REPO_ROOT, "reports", "vision-probe");
     await mkdir(outDir, { recursive: true });
