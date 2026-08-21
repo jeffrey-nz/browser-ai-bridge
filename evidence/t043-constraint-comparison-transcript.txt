@@ -1,0 +1,46 @@
+T-043: gemini/copilot, pinned fixtures, constraint-OFF vs constraint-ON
+Bridge: http://127.0.0.1:3333, loadedCommit 35cc4630c1ff0a19472ad2ca39d47ee6c7853a1c
+(src/config/providerConstraints.js, src/routes/ask/executor/prompts.js and
+scripts/vision-probe.mjs's classify/renderPng/COLORS are unchanged between
+that commit and the HEAD this ticket is filed against — `git diff
+--name-only 35cc4630 HEAD` names only src/session/Manager.js, shape-audit
+and evidence/doc files, none of them touching the constraint-injection
+path or the grading logic this test relies on.)
+
+constraint-OFF = label "API Turn: T-043 control" (skips buildPromptConstraint,
+  same shape as T-041's fix)
+constraint-ON  = label "vision-probe" (bare, pre-T-041 shape — every
+  historical sweep before T-041 landed used exactly this label)
+
+=== gemini truth={"count":4,"color":"crimson"} constraint-OFF ===
+{"providerId":"gemini","label":"API Turn: T-043 control","truth":{"count":4,"color":"crimson"},"httpStatus":200,"elapsedMs":18950,"imageAttached":true,"raw":"SEES=yes COUNT=4 COLOR=crimson","shape":"PASS","countOk":true,"colorOk":true}
+
+=== gemini truth={"count":4,"color":"crimson"} constraint-ON ===
+{"providerId":"gemini","label":"vision-probe","truth":{"count":4,"color":"crimson"},"httpStatus":200,"elapsedMs":17742,"imageAttached":true,"raw":"SEES=yes COUNT=4 COLOR=crimson","shape":"PASS","countOk":true,"colorOk":true}
+
+=== copilot truth={"count":4,"color":"crimson"} constraint-OFF ===
+{"providerId":"copilot","label":"API Turn: T-043 control","truth":{"count":4,"color":"crimson"},"httpStatus":200,"elapsedMs":28652,"imageAttached":true,"raw":"SEES=yes COUNT=4 COLOR=crimson\n\nEdit in a page","shape":"PASS","countOk":true,"colorOk":true}
+
+=== copilot truth={"count":4,"color":"crimson"} constraint-ON ===
+{"providerId":"copilot","label":"vision-probe","truth":{"count":4,"color":"crimson"},"httpStatus":200,"elapsedMs":28841,"imageAttached":true,"raw":"SEES=yes COUNT=4 COLOR=crimson\n\nEdit in a page","shape":"PASS","countOk":true,"colorOk":true}
+
+=== copilot truth={"count":9,"color":"indigo"} constraint-OFF ===
+{"providerId":"copilot","label":"API Turn: T-043 control","truth":{"count":9,"color":"indigo"},"httpStatus":200,"elapsedMs":28830,"imageAttached":true,"raw":"SEES=yes COUNT=9 COLOR=indigo\n\nEdit in a page","shape":"PASS","countOk":true,"colorOk":true}
+
+=== copilot truth={"count":9,"color":"indigo"} constraint-ON ===
+{"providerId":"copilot","label":"vision-probe","truth":{"count":9,"color":"indigo"},"httpStatus":200,"elapsedMs":28779,"imageAttached":true,"raw":"SEES=yes COUNT=9 COLOR=indigo\n\nEdit in a page","shape":"PASS","countOk":true,"colorOk":true}
+
+=== SUMMARY ===
+gemini   count=4 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=18950
+gemini   count=4 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=17742
+copilot  count=4 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=28652
+copilot  count=4 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=28841
+copilot  count=9 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=28830
+copilot  count=9 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=28779
+
+All 6 pairs: identical shape/countOk/colorOk/imageAttached between
+constraint-OFF and constraint-ON at every pinned fixture. Elapsed-time
+deltas within each pair: gemini -1208ms, copilot(4) +189ms, copilot(9)
+-51ms — no consistent direction, all inside ordinary turn-to-turn noise
+(compare to the ~10s spread already visible between gemini's ~18s turns
+and copilot's ~29s turns).
