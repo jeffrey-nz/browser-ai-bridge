@@ -1,0 +1,166 @@
+=== create copilot session ===
+{"success":true,"sessionId":"764db378-06b0-4ca7-b6d3-3d64a005b46d","maxPromptChars":9500}
+
+=== turn1-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn1-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 27951,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 1,
+    "sessionAgeMs": 30,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "05da2737-c082-4e69-96cc-810d08120584"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn2-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn2-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 26429,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 2,
+    "sessionAgeMs": 27975,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "eb656968-3b5b-4511-89f5-7aa59a41be69"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn3-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn3-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 26344,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 3,
+    "sessionAgeMs": 54400,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "b5057103-ecf9-4811-b05f-59c9b0eb8e5d"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn4-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn4-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25897,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 4,
+    "sessionAgeMs": 80745,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "c9d0f030-9e69-49fa-a577-375a9fb3b020"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn5-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn5-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25793,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 5,
+    "sessionAgeMs": 106642,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "0c30c7e5-0932-4e14-89a8-c14f865ca740"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn6-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn6-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25760,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 6,
+    "sessionAgeMs": 132436,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "plus_menu"
+    },
+    "requestId": "fa54e554-7f74-40de-b813-b7763910cc9d"
+  },
+  "shape": "SEES_NO"
+}
+
+
+=== SUMMARY ===
+turn1-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+turn2-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+turn3-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+turn4-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+turn5-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+turn6-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"plus_menu"}
+9/teal: SEES_NO 3/3
+4/crimson: SEES_NO 3/3
+
+=== cleanup ===
+delete status 200
