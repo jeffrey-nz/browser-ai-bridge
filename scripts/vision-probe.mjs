@@ -109,11 +109,31 @@ async function gradingProvenance() {
     .digest("hex")
     .slice(0, 16);
   let bridgeCommit = null;
+  // T-046: bridgeCommit alone reads as "this is the code that produced this
+  // run", but a plain `git rev-parse HEAD` says nothing about whether the
+  // working tree matched HEAD at run time — the normal state of a tree
+  // while a fix is being measured (committed after, not before) is exactly
+  // the state this used to get silently wrong. `git diff --name-only HEAD`
+  // (not `git status --porcelain`) is deliberate: it reports only TRACKED
+  // files that differ from HEAD, so it never flags this run's OWN new
+  // report/fixture files (untracked until a later commit) as tree dirt —
+  // the question this field answers is "does HEAD's checked-in code match
+  // what ran", not "is the working directory clean of any new file".
+  let treeDirty = false;
+  let dirtyPaths = [];
   try {
     bridgeCommit = execSync("git rev-parse HEAD", {
       cwd: REPO_ROOT,
       encoding: "utf8",
     }).trim();
+    dirtyPaths = execSync("git diff --name-only HEAD", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    })
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    treeDirty = dirtyPaths.length > 0;
   } catch {
     // Not fatal — a caller running this outside a git checkout still gets
     // the probe's own sha and a timestamp, just not the bridge commit.
@@ -121,6 +141,8 @@ async function gradingProvenance() {
   return {
     probeSha256,
     bridgeCommit,
+    treeDirty,
+    ...(treeDirty ? { dirtyPaths } : {}),
     gradedAt: new Date().toISOString(),
   };
 }
