@@ -139,6 +139,26 @@ async function runAskTurn(
     projectDir,
   );
 
+  // T-044: the USER entry logged at the top of this function (line 55,
+  // unconditional and unmoved — the [PARSE ERROR] short-circuit above can
+  // return before this point is ever reached, and that path must still get
+  // a transcript entry) logs the CALLER's raw prompt, before
+  // buildInitialPrompt() had a chance to prepend a provider constraint. If
+  // one was injected, log what ACTUALLY reached the provider as a second
+  // entry — this is the "log both" option named in T-044's acceptance,
+  // chosen over reordering the original call specifically because of the
+  // short-circuit paths above, which have no activePrompt to log at all.
+  if (activePrompt !== prompt) {
+    sessionManager.logTranscript(
+      session.id,
+      "USER (with constraint)",
+      activePrompt,
+      {
+        requestId,
+      },
+    );
+  }
+
   const isReviewerTurn = /reviewer/i.test(label);
 
   let response = await executeCoreTurn(
