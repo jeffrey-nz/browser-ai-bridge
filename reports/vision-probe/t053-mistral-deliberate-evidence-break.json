@@ -1,28 +1,35 @@
 {
-  "probeSha256": "d8bf984be284ca10",
-  "bridgeCommit": "a0c94f9da7e8df6ac29dd13d2213bdd42db38707",
+  "probeSha256": "00aa23ddc1eb1f77",
+  "bridgeCommit": "7604417c2e7eb8f35dcce05600629477d707b1c4",
   "treeDirty": true,
   "dirtyPaths": [
+    "reports/vision-probe/t053-evidence-verify.json",
+    "reports/vision-probe/t053-evidence-verify2.json",
+    "reports/vision-probe/t053-mistral-deliberate-evidence-break.json",
     "src/ai/generic/specs.js"
   ],
-  "serverLoadedCommit": "75e8346d8d747cdb451dd93f050f7a7734176ba3",
-  "serverStale": true,
-  "gradedAt": "2026-08-21T18:58:31.555Z",
+  "serverLoadedCommit": "7604417c2e7eb8f35dcce05600629477d707b1c4",
+  "serverStale": false,
+  "gradedAt": "2026-08-21T19:12:20.573Z",
+  "plantedBreak": "mistral attachEvidence deliberately broken to append an impossible fragment (src/ai/generic/specs.js) — upload strategy left working, evidence check made to fail on purpose, to test whether a genuinely-arrived image gets flagged imageAttached:false while the model still answers correctly (T-053 clause 2)",
   "endpoint": "ask",
   "truth": {
     "count": 5,
     "color": "teal"
   },
-  "imagePath": "reports\\vision-probe\\probe-1787338696921.png",
+  "imagePath": "reports\\vision-probe\\probe-1787339526035.png",
   "results": [
     {
       "providerId": "mistral",
-      "elapsedMs": 14512,
+      "elapsedMs": 14425,
       "shape": "PASS",
       "countOk": true,
       "colorOk": true,
       "imageAttached": false,
       "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "[class*='zoomable-image' i].T053-DELIBERATE-BREAK-DO-NOT-COMMIT"
+      },
       "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
       "raw": "SEES=yes COUNT=5 COLOR=teal"
     }

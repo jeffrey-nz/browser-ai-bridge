@@ -1,31 +1,38 @@
 {
-  "probeSha256": "d8bf984be284ca10",
-  "bridgeCommit": "75e8346d8d747cdb451dd93f050f7a7734176ba3",
+  "probeSha256": "00aa23ddc1eb1f77",
+  "bridgeCommit": "7604417c2e7eb8f35dcce05600629477d707b1c4",
   "treeDirty": true,
   "dirtyPaths": [
-    "scripts/vision-probe.mjs"
+    "reports/vision-probe/t053-evidence-verify.json",
+    "reports/vision-probe/t053-evidence-verify2.json",
+    "reports/vision-probe/t053-mistral-deliberate-evidence-break.json"
   ],
-  "serverLoadedCommit": "75e8346d8d747cdb451dd93f050f7a7734176ba3",
+  "serverLoadedCommit": "7604417c2e7eb8f35dcce05600629477d707b1c4",
   "serverStale": false,
-  "gradedAt": "2026-08-21T18:56:05.697Z",
+  "gradedAt": "2026-08-21T19:11:12.276Z",
   "endpoint": "ask",
   "truth": {
     "count": 4,
     "color": "teal"
   },
-  "imagePath": "reports\\vision-probe\\probe-1787338544651.png",
+  "imagePath": "reports\\vision-probe\\probe-1787339459503.png",
   "results": [
     {
-      "providerId": "gemini",
-      "elapsedMs": 20914,
+      "providerId": "mistral",
+      "elapsedMs": 12648,
       "shape": "PASS",
       "countOk": true,
       "colorOk": true,
       "imageAttached": true,
       "imageAttachedEvidence": {
-        "strategy": "gemini_submenu",
+        "evidenceSelectorUsed": "[class*='zoomable-image' i]",
+        "matchedAlternatives": [
+          "[class*='zoomable-image' i]"
+        ],
         "requireGrowth": false,
-        "grew": null
+        "grew": true,
+        "elapsedMs": 10,
+        "strategy": "file_chooser"
       },
       "raw": "SEES=yes COUNT=4 COLOR=teal"
     }
