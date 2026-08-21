@@ -42,6 +42,14 @@ export function auditShapes(dir) {
   const disagreements = [];
   const storedHistogram = {};
   const recomputedHistogram = {};
+  // T-050: COUNT right/wrong is a rate ON THE STIMULUS a row was measured
+  // against, not a provider-general accuracy figure — a live paired test
+  // (this ticket) found one provider go 0/3 at truth.count=9 and 3/3 at
+  // truth.count=4 with no code change between them. A single histogram
+  // collapsing every count together hides exactly that swing; bucket by
+  // truth.count instead, computed fresh from the JSON on disk each run —
+  // never hand-typed, so it cannot go stale the way a sentence would.
+  const countStrata = {};
 
   for (const f of files) {
     let j;
@@ -54,27 +62,47 @@ export function auditShapes(dir) {
       if (r.raw == null) continue;
       rowsWithRaw++;
       storedHistogram[r.shape] = (storedHistogram[r.shape] || 0) + 1;
-      const recomputedShape = classify(r.raw, j.truth).shape;
-      recomputedHistogram[recomputedShape] =
-        (recomputedHistogram[recomputedShape] || 0) + 1;
-      if (recomputedShape !== r.shape) {
+      const recomputed = classify(r.raw, j.truth);
+      recomputedHistogram[recomputed.shape] =
+        (recomputedHistogram[recomputed.shape] || 0) + 1;
+      if (recomputed.shape !== r.shape) {
         disagreements.push({
           file: f,
           providerId: r.providerId,
           storedShape: r.shape,
-          recomputedShape,
+          recomputedShape: recomputed.shape,
         });
+      }
+      // Same denominator vision-probe.mjs's own summary line uses: the
+      // STRUCTURED subset (a row that carried a countOk verdict at all —
+      // PASS/COUNT_ONLY/WRONG), keyed by the truth it was actually drawn
+      // against.
+      if (recomputed.countOk !== undefined && j.truth?.count !== undefined) {
+        const bucket = (countStrata[j.truth.count] ??= { n: 0, ok: 0 });
+        bucket.n++;
+        if (recomputed.countOk) bucket.ok++;
       }
     }
   }
 
-  return { rowsWithRaw, disagreements, storedHistogram, recomputedHistogram };
+  return {
+    rowsWithRaw,
+    disagreements,
+    storedHistogram,
+    recomputedHistogram,
+    countStrata,
+  };
 }
 
 function main() {
   const dir = path.join(process.cwd(), "reports", "vision-probe");
-  const { rowsWithRaw, disagreements, storedHistogram, recomputedHistogram } =
-    auditShapes(dir);
+  const {
+    rowsWithRaw,
+    disagreements,
+    storedHistogram,
+    recomputedHistogram,
+    countStrata,
+  } = auditShapes(dir);
 
   console.log(
     `rows with raw: ${rowsWithRaw}   disagreements: ${disagreements.length}`,
@@ -86,6 +114,34 @@ function main() {
   }
   console.log(`stored histogram:     ${JSON.stringify(storedHistogram)}`);
   console.log(`recomputed histogram: ${JSON.stringify(recomputedHistogram)}`);
+
+  console.log("\nCOUNT right, by truth.count (T-050 — a rate on the");
+  console.log("stimulus, not on the provider — see the file header):");
+  const counts = Object.keys(countStrata)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let lowN = 0,
+    lowOk = 0,
+    highN = 0,
+    highOk = 0;
+  for (const c of counts) {
+    const { n, ok } = countStrata[c];
+    const pct = ((ok / n) * 100).toFixed(1);
+    console.log(`  truth.count=${c}   ${ok}/${n}   ${pct}%`);
+    if (c <= 5) {
+      lowN += n;
+      lowOk += ok;
+    } else {
+      highN += n;
+      highOk += ok;
+    }
+  }
+  if (lowN > 0) {
+    console.log(
+      `  count 3-5: ${lowOk}/${lowN} ${((lowOk / lowN) * 100).toFixed(1)}%   ` +
+        `count 6-9: ${highOk}/${highN} ${highN > 0 ? ((highOk / highN) * 100).toFixed(1) : "0.0"}%`,
+    );
+  }
 }
 
 // Guarded (same pattern as vision-probe.mjs, ia-grade.mjs): importing

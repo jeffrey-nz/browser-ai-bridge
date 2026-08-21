@@ -286,6 +286,20 @@ export const COLORS = {
 // that wants the true odds) is derived, not typed (T-012: "1-in-45" was
 // typed once and never checked against COLORS or this range, and was wrong
 // from the commit that introduced it).
+// T-050: kept at 3-9 (28-combination key space) rather than narrowed to
+// dodge the harder counts — measured live, one provider went 0/3 at
+// truth.count=9 and 3/3 at truth.count=4 with no code change, and the
+// recorded corpus's own count-stratified rate (scripts/shape-audit.mjs)
+// shows the same shape: 3-5 at 90%, 6-9 at 73-77%. Narrowing to e.g. 3-6
+// would shrink KEY_SPACE to 4x4=16, weakening the "nothing an LLM could
+// guess its way into" arrival claim this probe exists to make — COUNT's
+// whole job is being hard to fake, not easy to pass. The problem this
+// ticket found was READABILITY (a rate reported with no stimulus attached
+// reads as more general than it is), not DIFFICULTY, and shape-audit.mjs's
+// per-count table is what actually fixes that: the mixture-over-difficulty
+// is now visible per stratum instead of blended into one number. Revisit
+// the range itself only if a future finding is about difficulty, not about
+// the rate hiding what it was measured on.
 export const MIN_COUNT = 3;
 export const COUNT_RANGE = 7; // draws MIN_COUNT .. MIN_COUNT + COUNT_RANGE - 1
 
@@ -606,7 +620,11 @@ async function main() {
   if (opts.help) {
     console.log(
       "Usage: node scripts/vision-probe.mjs [--endpoint ask|image-ask] [--providers a,b,c] " +
-        "[--base-url url] [--timeout-ms N] [--image path --count N --color name] [--out path]",
+        "[--base-url url] [--timeout-ms N] " +
+        "[--count N --color name [--image path]] [--out path]\n" +
+        "  --count N --color name alone (T-050) renders that exact fixture fresh " +
+        "(renderPng is a pure function of the pair) — add --image path to reuse an " +
+        "already-rendered file instead of re-rendering.",
     );
     return;
   }
@@ -637,6 +655,30 @@ async function main() {
     ({ image: imagePath, count, color } = opts);
     console.log(
       `Using existing test image (endpoint: /api/${opts.endpoint})...`,
+    );
+  } else if (opts.count && opts.color) {
+    // T-050: renderPng is a PURE function of (count, colour) — a probe's own
+    // sha256 comparison found today's fresh render byte-identical to
+    // fixtures committed on different days for the same (count, colour).
+    // So (count, colour) already names a fixture exactly; a caller wanting
+    // to hold the stimulus still across two runs (or match an old sweep's
+    // exact picture) does not need to keep a PNG alive between them — just
+    // pass the same --count/--color and this renders that same picture
+    // fresh, no --image required.
+    count = opts.count;
+    color = opts.color;
+    if (!COLORS[color]) {
+      throw new Error(
+        `--color ${color} is not one of: ${Object.keys(COLORS).join(", ")}`,
+      );
+    }
+    const png = renderPng(CANVAS_WIDTH, CANVAS_HEIGHT, count, COLORS[color]);
+    const outDir = join(REPO_ROOT, "reports", "vision-probe");
+    await mkdir(outDir, { recursive: true });
+    imagePath = join(outDir, `probe-${Date.now()}.png`);
+    await writeFile(imagePath, png);
+    console.log(
+      `Rendering pinned test image (count=${count} color=${color}, endpoint: /api/${opts.endpoint})...`,
     );
   } else {
     console.log(`Generating test image (endpoint: /api/${opts.endpoint})...`);
@@ -686,10 +728,17 @@ async function main() {
   const colorRight = structured.filter((r) => r.colorOk).length;
   const passCount = structured.filter((r) => r.countOk && r.colorOk).length;
 
+  // T-050: the COUNT rate is a rate ON THIS RUN'S OWN STIMULUS, not a
+  // provider-general accuracy figure — measured live (this ticket's own
+  // paired test) to swing 100 points for the same provider between
+  // truth.count=9 (0/3) and truth.count=4 (3/3) with no code change at all.
+  // A rate printed without the count it was measured at reads as more
+  // general than it is; stating it here costs one field.
   console.log(
     `\nCOUNT right ${countRight}/${structured.length}   ` +
       `COLOR right ${colorRight}/${structured.length}   ` +
       `PASS ${passCount}/${structured.length}   ` +
+      `at truth.count=${count} truth.color=${color}   ` +
       `(${results.length} total: ` +
       Object.entries(counts)
         .map(([k, v]) => `${k}=${v}`)

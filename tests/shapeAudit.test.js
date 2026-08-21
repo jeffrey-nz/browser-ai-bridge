@@ -77,6 +77,37 @@ test("auditShapes reports zero disagreements when stored shape already matches c
   }
 });
 
+test("auditShapes buckets COUNT-right by truth.count (T-050 — a rate on the stimulus)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }, // right
+          { providerId: "b", raw: "SEES=yes COUNT=4 COLOR=teal" }, // right
+        ],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" }, // wrong
+          { providerId: "b", raw: "SEES=no" }, // not structured — excluded
+        ],
+      },
+    });
+
+    const { countStrata } = auditShapes(dir);
+
+    assert.deepEqual(countStrata, {
+      4: { n: 2, ok: 2 },
+      9: { n: 1, ok: 0 },
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("auditShapes skips rows with no raw (ERROR shapes, pre-field runs)", () => {
   const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
   try {
