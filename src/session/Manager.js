@@ -180,6 +180,19 @@ export class SessionManager {
       // skipped from then on. Explicit false here, after the spread, so it
       // always wins over whatever the source session carried.
       closedByBridge: false,
+      // T-061: turnCount/createdAt are set once, in Creator.js's cold-boot
+      // path only (turnCount: 0, createdAt: new Date()) — a POOL HIT here
+      // never goes through Creator.js, same shape T-023 fixed two lines up
+      // for the collapse flag. Measured live: after a recycled session came
+      // back under the same id, the chat itself WAS genuinely empty
+      // (startNewChat() above did its job — a DOM conversation-turn count
+      // right after reacquire read 0), but the next /api/ask still reported
+      // turnIndex 2 and this object's original sessionAgeMs, because the
+      // spread above carried the PREVIOUS caller's turnCount/createdAt
+      // straight through. The chat resets; the bridge's own bookkeeping of
+      // it did not. Explicit override, same reasoning as closedByBridge.
+      turnCount: 0,
+      createdAt: new Date(),
     });
 
     return session.id;
