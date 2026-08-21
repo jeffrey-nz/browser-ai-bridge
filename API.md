@@ -227,6 +227,15 @@ independent reader** — a caller that does gets what score-reader's default poo
 before T-008: a "pool" that is really one vendor, silently. See T-008 for the located
 failure if picking this back up.
 
+**A two-vendor cross-check does remain available on crop-sized images** — this is a
+crop-sized result, not a re-quote of the full-page sweep above. `gemini` + `copilot`
+agreed on clef 3 of 3 times on real 3.5 KB crops in 101s total, against perplexity's
+2575s for zero readings on 9 crops. (Key signature disagreed on all 3 of those —
+worth knowing before trusting that field specifically, and it has its own mechanical
+adjudicator in score-reader rather than needing a second model.) score-reader's
+`DEFAULT_POOL` was changed to `['gemini', 'copilot']` on this evidence
+(score-reader `tools/ask-bridge.mjs`).
+
 This is a snapshot of flaky, provider-controlled UIs, not a permanent scorecard — re-run
 `node scripts/vision-probe.mjs` for a current reading before depending on a specific
 provider's image path.
