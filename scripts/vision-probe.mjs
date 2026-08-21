@@ -436,6 +436,14 @@ function parseArgs(argv) {
     else if (a === "--count") out.count = Number(argv[++i]);
     else if (a === "--color") out.color = argv[++i];
     else if (a === "--out") out.outPath = argv[++i];
+    // T-053 review: a deliberate evidence-break test's own report needs to
+    // be self-identifying as a plant to any reader OR script, not only to a
+    // human who happens to read the filename — a naturally-occurring
+    // refutation and a planted one look identical in a tally that reads
+    // `imageAttached`/`raw` alone. `plantedBreak` is a required, non-empty
+    // description (what was broken, and how) rather than a bare boolean, so
+    // the row explains itself without a separate note.
+    else if (a === "--planted-break") out.plantedBreak = argv[++i];
     else if (a === "--help" || a === "-h") out.help = true;
   }
   if (!out.providers) out.providers = ALL_PROVIDERS;
@@ -809,11 +817,20 @@ async function main() {
         `${"!".repeat(70)}\n`,
     );
   }
+  if (opts.plantedBreak) {
+    console.log(
+      `\nPLANTED BREAK: ${opts.plantedBreak}\n` +
+        `This run's results should NOT be read as naturally-occurring — ` +
+        `check each result's imageAttachedEvidence.evidenceSelectorUsed ` +
+        `for the selector actually in effect, not just this note.\n`,
+    );
+  }
   await writeFile(
     outPath,
     JSON.stringify(
       {
         ...provenance,
+        ...(opts.plantedBreak ? { plantedBreak: opts.plantedBreak } : {}),
         endpoint: opts.endpoint,
         truth: { count, color },
         // Repo-relative, not absolute — these files are tracked (T-017) and

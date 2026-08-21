@@ -141,6 +141,12 @@ if (
             ? graded.said === j.truth.count
             : null,
         seesNo: graded.seesNo,
+        // T-053 review: a deliberate evidence-break test's own report is
+        // self-identifying (vision-probe.mjs's --planted-break), which is
+        // what lets section 3 below exclude it from the flag's NATURALLY-
+        // OCCURRING refutable population instead of the two looking
+        // identical to a reader who only sees `imageAttached`/`raw`.
+        plantedBreak: j.plantedBreak || null,
       });
     }
   }
@@ -229,20 +235,40 @@ if (
       `   imageAttached=${String(ia).padEnd(5)}       ${String(cell(ia, (r) => r.right === true)).padEnd(12)} ${String(cell(ia, (r) => r.right === false)).padEnd(12)} ${String(cell(ia, (r) => r.seesNo)).padEnd(10)} ${String(cell(ia, (r) => r.echo)).padEnd(12)} ${cell(ia, (r) => !r.echo && !r.seesNo && r.said === null)}`,
     );
 
-  const refutable = rows.filter((r) => r.ia === false && r.said !== null);
+  // T-053 review: planted rows are counted separately, not folded into the
+  // naturally-occurring refutable population — a deliberate break proves
+  // the flag CAN be wrong under a broken evidence check, which is not the
+  // same claim as "this many turns happened to refute it on their own",
+  // and the two must not read as one number to a script or a reader who
+  // only sees the tally.
+  const refutableAll = rows.filter((r) => r.ia === false && r.said !== null);
+  const refutable = refutableAll.filter((r) => !r.plantedBreak);
+  const planted = refutableAll.filter((r) => r.plantedBreak);
   const confirming = rows.filter((r) => r.ia === true && r.right === true);
   console.log(
     `\n3. HOW MANY OF THE ${rows.length} COULD EVER HAVE CONTRADICTED THE FLAG?`,
   );
   console.log(
-    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} of ${cell(false, () => true)}`,
+    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${cell(false, () => true)} (+ ${planted.length} planted, listed separately)`,
   );
   for (const r of refutable)
     console.log(
       `     ${r.f.padEnd(28)} ${r.p.padEnd(10)} said=${r.said} truth=${r.truth} right=${r.right} :: ${r.raw.slice(0, 42)}`,
     );
+  if (planted.length) {
+    console.log(
+      `   PLANTED (deliberate evidence-break, not naturally-occurring):`,
+    );
+    for (const r of planted)
+      console.log(
+        `     ${r.f.padEnd(28)} ${r.p.padEnd(10)} said=${r.said} truth=${r.truth} right=${r.right} :: ${r.plantedBreak}`,
+      );
+  }
   console.log(
-    `   -> disagreements: ${refutable.filter((r) => r.right).length} of ${refutable.length} refutable turns`,
+    `   -> disagreements: ${refutable.filter((r) => r.right).length} of ${refutable.length} naturally-occurring refutable turns` +
+      (planted.length
+        ? ` (+ ${planted.filter((r) => r.right).length} of ${planted.length} planted)`
+        : ""),
   );
   console.log(
     `   -> agreements resting on an arithmetic reference: ${confirming.length}, every one imageAttached=true`,

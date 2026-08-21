@@ -90,8 +90,13 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     // provider but kimi today), verify() is unchanged: presence is enough.
     requireGrowth = false,
     // T-053: an object the caller can pass to receive WHY a `true` was
-    // returned — populated only on success (see verify() above), never
-    // constructed or guessed from a failure path.
+    // returned — the match/growth fields are populated only on success (see
+    // verify() above). `evidenceSelectorUsed` (below) is the one field set
+    // regardless of outcome, since it answers a question a FAILURE row can
+    // need answered too: which selector string was actually in effect for
+    // this call. (T-053 review: a deliberate evidence-break test's own
+    // report row needs to prove the broken selector was the one running,
+    // not just claim it via a filename or a hand-typed note.)
     evidenceOut = null,
   } = options;
 
@@ -106,9 +111,20 @@ export async function uploadFileToPage(page, filePath, options = {}) {
   }
 
   const evidenceSelector = verifySelector || DEFAULT_ATTACHMENT_EVIDENCE;
-  const baselineCount = requireGrowth
-    ? await page.locator(evidenceSelector).count()
-    : 0;
+  // Set before anything below can throw — a failure row needs this proof
+  // exactly as much as a success row does.
+  if (evidenceOut) evidenceOut.evidenceSelectorUsed = evidenceSelector;
+  // T-053 review: measured UNCONDITIONALLY now, not gated behind
+  // requireGrowth. This was the one piece of clause 1's own gate the first
+  // pass missed — `grew` used to stay `null` for every requireGrowth:false
+  // provider (8 of 10), which is the exact vocabulary-poorer-than-the-code
+  // fault T-038's header warns about: the code CAN tell case (a) [fresh
+  // match] from case (b) [stale match already on the page] by comparing
+  // against this same baseline regardless of whether requireGrowth changes
+  // what verify() itself waits for. Cheap (one extra locator.count() per
+  // upload attempt) and changes no behaviour — nothing branches on this
+  // value when requireGrowth is false, it is purely an observation.
+  const baselineCount = await page.locator(evidenceSelector).count();
 
   // T-053: `imageAttached:true` has at least four distinguishable producing
   // conditions (a real thumbnail; a stale node already on the page when this
@@ -121,11 +137,11 @@ export async function uploadFileToPage(page, filePath, options = {}) {
   // verify() with what THIS call actually observed: which alternative(s) of
   // evidenceSelector matched (split on top-level commas — every selector
   // this file's callers pass is a flat comma list, never a selector with a
-  // comma inside a pseudo-class), whether growth was required and (only
-  // then) whether it was actually seen, and how long verify() took. This is
-  // deliberately not a richer vocabulary than the code can distinguish —
-  // requireGrowth:false genuinely cannot know whether a match is stale or
-  // fresh, and `grew` stays `null` rather than guessing when that's the case.
+  // comma inside a pseudo-class), whether growth was REQUIRED (requireGrowth,
+  // which changes what verify() itself waits for) and separately whether it
+  // was OBSERVED (`grew` — measured against the same baseline regardless of
+  // requireGrowth, per the review above; case (a) vs case (b) from a true
+  // row alone, no re-running needed), and how long verify() took.
   const matchedAlternatives = async () => {
     const alts = evidenceSelector.split(",").map((s) => s.trim());
     const matched = [];
@@ -150,7 +166,15 @@ export async function uploadFileToPage(page, filePath, options = {}) {
       if (ok && evidenceOut) {
         evidenceOut.matchedAlternatives = await matchedAlternatives();
         evidenceOut.requireGrowth = false;
-        evidenceOut.grew = null; // presence-only: growth was never checked
+        // T-053 review: a real observation now, not a shrug — baselineCount
+        // is measured above regardless of requireGrowth, so comparing
+        // against it here costs nothing extra and turns case (a) vs case
+        // (b) into something a reader can tell apart on the row itself.
+        // waitForAttachmentEvidence does not itself distinguish them
+        // (presence-only, by design — requireGrowth is what would make
+        // verify() itself act on this), so re-count rather than infer.
+        evidenceOut.grew =
+          (await page.locator(evidenceSelector).count()) > baselineCount;
         evidenceOut.elapsedMs = Date.now() - startedAt;
       }
       return ok;

@@ -118,8 +118,10 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         if (!imageAttached) {
           result.imageAttachedCause = imageAttachedCause;
           result.warning = describeUploadFailure(imageAttachedCause);
-        } else if (imageAttachedEvidence) {
-          // T-053: see ask.js's identical block — `true` gets its cause too.
+        }
+        // T-053 review: see ask.js's identical block — a false row can
+        // carry evidence too, so this is no longer gated to `true`.
+        if (imageAttachedEvidence) {
           result.imageAttachedEvidence = imageAttachedEvidence;
         }
       }

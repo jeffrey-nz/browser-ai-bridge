@@ -233,10 +233,14 @@ router.post("/", async (req, res, next) => {
           if (!imageAttached) {
             payload.imageAttachedCause = imageAttachedCause;
             payload.warning = describeUploadFailure(imageAttachedCause);
-          } else if (imageAttachedEvidence) {
-            // T-053: the same reasoning as imageAttachedCause above, for the
-            // opposite value — `true` has multiple distinguishable producing
-            // conditions and used to record none of them.
+          }
+          // T-053: `true` has multiple distinguishable producing conditions
+          // and used to record none of them. T-053 review: not gated to the
+          // `true` branch any more — a FALSE row can carry evidence too (at
+          // minimum which selector was actually in effect), which is what
+          // lets a deliberate evidence-break test prove its own claim
+          // instead of relying on a filename or a hand-typed note.
+          if (imageAttachedEvidence) {
             payload.imageAttachedEvidence = imageAttachedEvidence;
           }
         }

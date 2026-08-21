@@ -244,9 +244,13 @@ export function makeInteraction(spec) {
     return {
       ...result,
       imageAttached,
-      ...(imageAttached
-        ? { imageAttachedEvidence: evidenceOut }
-        : { imageAttachedCause }),
+      // T-053 review: evidenceOut carries `evidenceSelectorUsed`
+      // unconditionally (set before uploadFileToPage can throw) — a false
+      // row needs to prove what selector was actually running just as much
+      // as a true row needs to explain what matched, so it is no longer
+      // gated behind `imageAttached`.
+      ...(imageAttached ? {} : { imageAttachedCause }),
+      imageAttachedEvidence: evidenceOut,
     };
   }
 
