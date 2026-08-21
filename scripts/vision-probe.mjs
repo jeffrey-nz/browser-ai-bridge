@@ -822,6 +822,10 @@ async function askProvider(opts, providerId, imagePath, truth) {
       // evidence alternative matched, requireGrowth/grew, elapsedMs,
       // strategy. Present only when imageAttached is true.
       imageAttachedEvidence: json.imageAttachedEvidence,
+      // T-073: deepseek-only today (mode.js's selectDeepSeekVisionMode) —
+      // "already-on" | "clicked-and-confirmed-on" | "not-confirmed",
+      // undefined (dropped by JSON.stringify) for every other provider.
+      visionModeVerdict: json.visionModeVerdict,
       warning: json.warning,
       raw: json.response,
     };

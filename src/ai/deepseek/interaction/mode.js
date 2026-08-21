@@ -31,24 +31,56 @@ import { AI_MODES, resolveModeKey } from "#ai/modes.js";
 // options (Instant / Expert / Vision) sitting in the composer toolbar,
 // found by live DOM inspection (nothing in this repo had ever looked for
 // it before T-048).
+//
+// T-073: returns a VERDICT rather than resolving silently on success —
+// this used to return undefined either way, so a radio that goes stale
+// (the same shape T-018 found for chatgpt's attach button) or a click
+// that lands on the wrong element/gets swallowed by an overlay was
+// indistinguishable from one that genuinely selected Vision. Both silent
+// paths are closed by re-reading aria-checked AFTER the click, not
+// inferring success from the click call resolving:
+//   "already-on"               — was already selected, nothing clicked.
+//   "clicked-and-confirmed-on" — clicked, then re-read aria-checked=true.
+//   "not-confirmed"            — radio never became visible (caught
+//                                 below), OR the click resolved but
+//                                 aria-checked still wasn't "true"
+//                                 afterwards. Both collapse to the same
+//                                 verdict because both mean the same
+//                                 thing to a caller: Vision mode's state
+//                                 is not confirmed, and per T-068 that is
+//                                 NOT "will likely say SEES=no" — an
+//                                 unrouted turn can come back with a
+//                                 fabricated count that looks like a real
+//                                 answer.
 export async function selectDeepSeekVisionMode(page) {
   const vision = page.locator('[role="radio"]:has-text("Vision")').first();
   try {
     await vision.waitFor({ state: "visible", timeout: 10000 });
     const isCurrentlyOn =
       (await vision.getAttribute("aria-checked")) === "true";
-    if (!isCurrentlyOn) {
-      await vision.click();
-      log(`  ${colors.green("✔")} DeepSeek Vision mode selected.`);
-    } else {
+    if (isCurrentlyOn) {
       log(`  ${colors.blue("ℹ")} DeepSeek Vision mode already selected.`);
+      return { verdict: "already-on" };
     }
+    await vision.click();
+    const confirmedOn = (await vision.getAttribute("aria-checked")) === "true";
+    if (confirmedOn) {
+      log(`  ${colors.green("✔")} DeepSeek Vision mode selected.`);
+      return { verdict: "clicked-and-confirmed-on" };
+    }
+    log(
+      colors.yellow(
+        `  ⚠️  Clicked DeepSeek Vision mode radio but it did not confirm on afterwards — sending the image with mode unconfirmed. T-068: this can come back with a fabricated count, not a "SEES=no" refusal.`,
+      ),
+    );
+    return { verdict: "not-confirmed" };
   } catch (err) {
     log(
       colors.yellow(
-        `  ⚠️  DeepSeek Vision mode radio not found — sending the image without it (this is the pre-T-048 behaviour, likely to come back "SEES=no").`,
+        `  ⚠️  DeepSeek Vision mode radio not found — sending the image without it. T-068: this can come back with a fabricated count, not a "SEES=no" refusal.`,
       ),
     );
+    return { verdict: "not-confirmed" };
   }
 }
 

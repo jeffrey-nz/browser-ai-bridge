@@ -307,5 +307,9 @@ async function runAskTurn(
     imageAttached: stallResult.imageAttached,
     imageAttachedCause: stallResult.imageAttachedCause,
     imageAttachedEvidence: stallResult.imageAttachedEvidence,
+    // T-073: deepseek-only today (see mode.js's selectDeepSeekVisionMode)
+    // — undefined for every other provider and for a deepseek turn with
+    // no image, same as imageAttached* above being provider/turn-shaped.
+    visionModeVerdict: stallResult.visionModeVerdict,
   };
 }

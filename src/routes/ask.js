@@ -153,6 +153,7 @@ router.post("/", async (req, res, next) => {
           imageAttached,
           imageAttachedCause,
           imageAttachedEvidence,
+          visionModeVerdict,
         } = await executeAskTurn(
           session,
           prompt,
@@ -242,6 +243,12 @@ router.post("/", async (req, res, next) => {
           // instead of relying on a filename or a hand-typed note.
           if (imageAttachedEvidence) {
             payload.imageAttachedEvidence = imageAttachedEvidence;
+          }
+          // T-073: present only alongside imageAttached (this provider/turn
+          // carried an image at all) — deepseek-only today, undefined and
+          // therefore dropped by JSON.stringify for every other provider.
+          if (visionModeVerdict !== undefined) {
+            payload.visionModeVerdict = visionModeVerdict;
           }
         }
         return {

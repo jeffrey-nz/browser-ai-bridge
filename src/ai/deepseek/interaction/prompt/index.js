@@ -21,12 +21,14 @@ export async function sendPromptWithFile(
   label = "Visual QA",
   sessionId = null,
 ) {
-  // T-048: the default "Instant" mode cannot read an attached image at all
-  // — see mode.js's own comment on selectDeepSeekVisionMode for the live
-  // evidence. Every image turn needs this, not just ones that ask for a
-  // specific mode, so it runs unconditionally here rather than through the
-  // caller-facing setMode() path.
-  await selectDeepSeekVisionMode(page);
+  // T-048: the default "Instant" mode does not reliably read an attached
+  // image — see mode.js's own comment on selectDeepSeekVisionMode for the
+  // live evidence, and T-073's note there on what "not confirmed" actually
+  // risks (a fabricated count, not a safe refusal). Every image turn needs
+  // this, not just ones that ask for a specific mode, so it runs
+  // unconditionally here rather than through the caller-facing setMode()
+  // path.
+  const visionMode = await selectDeepSeekVisionMode(page);
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
@@ -54,6 +56,9 @@ export async function sendPromptWithFile(
     ...(imageAttached
       ? { imageAttachedEvidence: evidenceOut }
       : { imageAttachedCause }),
+    // T-073: rides to the report JSON the same way imageAttached does —
+    // see mode.js's own comment on the three verdict values.
+    visionModeVerdict: visionMode.verdict,
   };
 }
 

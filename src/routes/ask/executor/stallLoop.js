@@ -169,5 +169,10 @@ export async function handleStalls(session, initialResponse, activePrompt) {
     // only, so there is no upload evidence to report for it.
     imageAttachedEvidence:
       stallAttempt > 0 ? undefined : response.imageAttachedEvidence,
+    // T-073: same rule again — a retry never re-selects Vision mode either
+    // (it only re-sends text), so a stalled turn's mode verdict is stale
+    // the moment a retry happens.
+    visionModeVerdict:
+      stallAttempt > 0 ? undefined : response.visionModeVerdict,
   };
 }
