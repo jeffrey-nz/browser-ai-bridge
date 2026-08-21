@@ -1,0 +1,36 @@
+{
+  "graderSha256": "68eabce51cea702d",
+  "bridgeCommit": "c8c7dfcfcf0de1f649cc3c2b1335c1e9fc1fe772",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "scripts/vision-probe.mjs"
+  ],
+  "serverLoadedCommit": "42ec8541d62eaed3665a13e7a4154f448bac50ed",
+  "serverStale": true,
+  "serverTreeDirty": false,
+  "serverProvenance": "stale-confirmed",
+  "gradedAt": "2026-08-21T21:49:31.279Z",
+  "fixtureSha256": "d1c8f9e7f80c3a0171c57e57e8ab1dad49f8a7e88cd747e0e4b2d79516c25a1f",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787348952123.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 19033,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "strategy": "gemini_submenu",
+        "requireGrowth": false,
+        "grew": null
+      },
+      "raw": "SEES=yes COUNT=4 COLOR=crimson"
+    }
+  ]
+}
