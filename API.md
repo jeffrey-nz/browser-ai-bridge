@@ -178,9 +178,34 @@ script, assert on `Mode confirmed`.
 **Images (optional)**
 
 `images` accepts data URLs (`data:image/png;base64,…`) or bare base64. Each is written
-to a temp file and attached to the provider's composer, then cleaned up after the turn.
-PNG, JPEG, GIF and WebP are recognised; anything undecodable is skipped with a warning
-rather than failing the request.
+to a temp file and the bridge **attempts** to attach it to the provider's composer, then
+cleans up the temp file after the turn. PNG, JPEG, GIF and WebP are recognised; anything
+undecodable is skipped with a warning rather than failing the request.
+
+**"Attempts" is not a hedge — attaching a file to a page the bridge does not control can
+fail silently, and for a long time it did.** `setInputFiles` on a hidden `<input
+type="file">` resolves as soon as the DOM element's `.files` list is set, even when that
+element is an unrelated input the page never wired to its composer — so the bridge could
+report `success: true` with a fluent-sounding answer for a turn the model never actually
+saw a picture in (crew board T-001). The upload path now waits for visible evidence in
+the page — an attachment thumbnail or chip — before calling itself done, and the response
+carries that verdict:
+
+- `imageAttached: true` — evidence of the attachment appeared on the page.
+- `imageAttached: false`, plus a `warning` field — no evidence appeared, or a retry inside
+  the turn (a stall retry, a rate-limit retry, a chat rotation) re-sent the prompt as text
+  only and the original attachment did not survive it. **Treat the response as text-only
+  in this case** — the model may answer fluently about an image it never received.
+- Field absent — the turn carried no image at all (nothing to confirm).
+
+As of the T-001 measurement, `chatgpt`, `gemini`, `deepseek`, `grok` and `copilot` can be
+verified as receiving an image on a given turn; `kimi` and `zai` could not complete an
+image turn at all in repeated runs (submit failure / timeout, independent of the image);
+`mistral` and `qwen` were seen returning an unrelated answer (the extractor reading the
+wrong element on the page) rather than confirming or denying the image. This is a snapshot
+of flaky, provider-controlled UIs, not a permanent scorecard — re-run
+`node scripts/vision-probe.mjs` for a current reading before depending on a specific
+provider's image path.
 
 **Only the first attachment is sent** — the current providers accept one file per turn.
 Additional entries are logged and dropped, so send one image per `/api/ask` call.

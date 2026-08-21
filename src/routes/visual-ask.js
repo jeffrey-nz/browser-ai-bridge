@@ -148,7 +148,15 @@ router.post("/", async (req, res) => {
       );
 
       const response = result?.text ?? "";
-      return sendSuccess(res, { response, screenshotUrl });
+      const payload = { response, screenshotUrl };
+      if (result && result.imageAttached !== undefined) {
+        payload.imageAttached = result.imageAttached;
+        if (!result.imageAttached) {
+          payload.warning =
+            "The screenshot could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+        }
+      }
+      return sendSuccess(res, payload);
     } catch (err) {
       logger.warn(`[VisualAsk] sendPromptWithFile failed: ${err.message}`);
       return sendError(res, 500, `Visual ask failed: ${err.message}`);

@@ -273,5 +273,6 @@ async function runAskTurn(
     response: responseText,
     data,
     messageCount,
+    imageAttached: stallResult.imageAttached,
   };
 }

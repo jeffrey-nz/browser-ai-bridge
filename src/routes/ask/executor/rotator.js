@@ -77,5 +77,8 @@ export async function handleRotationIfNeeded(
     markInactive(session.id);
   }
 
+  if (hadImage && newResponse && newResponse.imageAttached === undefined) {
+    newResponse.imageAttached = false;
+  }
   return newResponse;
 }

@@ -144,7 +144,17 @@ router.post("/", async (req, res) => {
         session.id,
         uploadPath,
       );
-      return sendSuccess(res, { response: result?.text ?? "" });
+      const payload = { response: result?.text ?? "" };
+      // Mirror /api/ask's honesty contract: the caller has no other way to
+      // tell a read image from an ignored one (T-001 on the crew board).
+      if (result && result.imageAttached !== undefined) {
+        payload.imageAttached = result.imageAttached;
+        if (!result.imageAttached) {
+          payload.warning =
+            "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+        }
+      }
+      return sendSuccess(res, payload);
     } catch (err) {
       logger.warn(`[ImageAsk] sendPromptWithFile failed: ${err.message}`);
       return sendError(res, 500, `Image ask failed: ${err.message}`);

@@ -142,22 +142,28 @@ router.post("/", async (req, res, next) => {
 
     const outcome = await withSessionLock(session, autoCreated, async () => {
       try {
-        const { response, data, messageCount, selfHealEscape, htmlSnapshot } =
-          await executeAskTurn(
-            session,
-            prompt,
-            requestId,
-            label,
-            pollTimeoutMs,
-            {
-              skipConstraint: !!skipConstraint,
-              mode,
-              images: Array.isArray(images) ? images : [],
-              projectDir: projectDir || "",
-              // Only yield when there is somewhere to yield TO.
-              yieldOnRateLimit: remaining.length > 0,
-            },
-          );
+        const {
+          response,
+          data,
+          messageCount,
+          selfHealEscape,
+          htmlSnapshot,
+          imageAttached,
+        } = await executeAskTurn(
+          session,
+          prompt,
+          requestId,
+          label,
+          pollTimeoutMs,
+          {
+            skipConstraint: !!skipConstraint,
+            mode,
+            images: Array.isArray(images) ? images : [],
+            projectDir: projectDir || "",
+            // Only yield when there is somewhere to yield TO.
+            yieldOnRateLimit: remaining.length > 0,
+          },
+        );
 
         if (selfHealEscape) {
           return {
@@ -181,14 +187,29 @@ router.post("/", async (req, res, next) => {
         //[[ WHO ANSWERED, always. A caller comparing scores between turns
         //   cannot tell two judges apart without it, and averaging two models'
         //   scales is the failure this field exists to make impossible. ]]
+        //
+        //   imageAttached is the honest companion to that: present only when
+        //   this turn carried an image, and false when the upload could not
+        //   be confirmed on the provider's page — success:true still means
+        //   the HTTP turn completed, but a caller that asked a question about
+        //   a picture and gets imageAttached:false is looking at a text-only
+        //   answer wearing a confident face (T-001 on the crew board).
+        const payload = {
+          response,
+          data,
+          messageCount,
+          provider: session.providerId,
+        };
+        if (imageAttached !== undefined) {
+          payload.imageAttached = imageAttached;
+          if (!imageAttached) {
+            payload.warning =
+              "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.";
+          }
+        }
         return {
           done: true,
-          send: () =>
-            sendSuccess(
-              res,
-              { response, data, messageCount, provider: session.providerId },
-              requestId,
-            ),
+          send: () => sendSuccess(res, payload, requestId),
         };
       } catch (err) {
         sessionManager.logTranscript(session.id, "SYSTEM_ERROR", err.message, {

@@ -164,7 +164,18 @@ router.post("/", async (req, res) => {
         session.id,
         uploadPath,
       );
-      return sendSuccess(res, { response: result?.text ?? "" });
+      const payload = { response: result?.text ?? "" };
+      // sendPromptWithFile's confirmation is media-agnostic (it checks for
+      // ANY attachment evidence, not specifically an image) — surfaced here
+      // as audioAttached so the field name doesn't lie about what was sent.
+      if (result && result.imageAttached !== undefined) {
+        payload.audioAttached = result.imageAttached;
+        if (!result.imageAttached) {
+          payload.warning =
+            "The audio file could not be confirmed as attached to the provider's composer — this response may not reflect the audio at all.";
+        }
+      }
+      return sendSuccess(res, payload);
     } catch (err) {
       logger.warn(`[AudioAsk] sendPromptWithFile failed: ${err.message}`);
       return sendError(res, 500, `Audio ask failed: ${err.message}`);
