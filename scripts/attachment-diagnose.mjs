@@ -14,8 +14,21 @@
  * exactly as src/ai/generic/interaction.js and src/ai/chatgpt/.../input.js
  * do, with each provider's own real attachmentBtnSelector.
  *
+ * EVERY SELECTOR IS MEASURED BEFORE THE UPLOAD TOO (T-020). A post-upload-only
+ * count cannot tell an attachment that arrived from one that was already
+ * there. T-014 named `.chip-scroll` as zai's evidence selector on exactly
+ * this script's post-upload-only output — the card was visible, the reading
+ * looked unambiguous, and it was wrong: zai persists UNSENT draft attachments
+ * against the logged-in ACCOUNT, across tabs, so the "fresh" composer this
+ * script navigated to already had three real image chips sitting in it. A
+ * before-count would have printed the contradiction on the first run instead
+ * of costing a live session, a revert, and two review round trips. Any
+ * selector whose before-count is non-zero is flagged unusable in the output —
+ * it cannot distinguish this turn's own attachment from page furniture or an
+ * earlier turn's leftovers.
+ *
  * Usage: node scripts/attachment-diagnose.mjs <providerId>
- *   providerId: zai | kimi | qwen | mistral | perplexity | chatgpt
+ *   providerId: zai | kimi | qwen | mistral | perplexity | chatgpt | deepseek | grok
  */
 import { chromium } from "playwright-core";
 import { writeFile, mkdtemp } from "node:fs/promises";
@@ -63,6 +76,7 @@ for (const [id, spec] of Object.entries(GENERIC_SPECS)) {
     url: spec.url,
     urlMatch: spec.urlMatch,
     attachmentBtnSelector: spec.attachBtn,
+    attachEvidence: spec.attachEvidence || null,
   };
 }
 
@@ -89,6 +103,43 @@ async function main() {
   await page.waitForTimeout(3000);
   console.log(`[${providerId}] tab loaded fresh: ${page.url()}`);
 
+  // Broader-than-default sweep, so a blind-selector finding can point at what
+  // SHOULD have been the evidence selector, not just confirm the default missed.
+  const candidates = [
+    'img[src^="blob:" i]',
+    '[class*="attach" i]',
+    '[class*="thumbnail" i]',
+    '[class*="preview" i]',
+    '[class*="file" i]',
+    // "chip" (T-020, zai): the shape uploadFile.js's own docstring already
+    // names — "a named attachment/file chip" — but the pattern list never
+    // included it. zai's real attachment card is a `.chip-scroll`-wrapped
+    // button with no other matching class.
+    '[class*="chip" i]',
+    '[aria-label*="attach" i]',
+    '[data-testid*="attach" i]',
+    '[data-testid*="file" i]',
+  ];
+  // DEFAULT_ATTACHMENT_EVIDENCE and the provider's own attachEvidence (if its
+  // spec sets one) go first, labelled, ahead of the generic sweep — they're
+  // the selectors that actually decide imageAttached, not just candidates.
+  const named = [["DEFAULT_ATTACHMENT_EVIDENCE", DEFAULT_ATTACHMENT_EVIDENCE]];
+  if (target.attachEvidence)
+    named.push(["spec.attachEvidence", target.attachEvidence]);
+  const allSelectors = [...named, ...candidates.map((c) => [c, c])];
+
+  const countAll = async () => {
+    const out = {};
+    for (const [label, sel] of allSelectors)
+      out[label] = await page.locator(sel).count();
+    return out;
+  };
+
+  // BEFORE (T-020): measured on the composer exactly as loaded, before any
+  // upload is attempted — this is the number that would have caught
+  // .chip-scroll being non-zero on a "fresh" zai composer.
+  const before = await countAll();
+
   const dir = await mkdtemp(join(tmpdir(), "attach-diag-"));
   const filePath = join(dir, "probe.png");
   // Minimal valid 1x1 PNG — content doesn't matter, only that upload accepts it.
@@ -111,35 +162,24 @@ async function main() {
     uploadErr = err.message;
   }
 
-  const evidenceCount = await page.locator(DEFAULT_ATTACHMENT_EVIDENCE).count();
+  const after = await countAll();
   const screenshotPath = join(process.cwd(), `attach-diag-${providerId}.png`);
   await page.screenshot({ path: screenshotPath, fullPage: false });
-
-  // Broader-than-default sweep, so a blind-selector finding can point at what
-  // SHOULD have been the evidence selector, not just confirm the default missed.
-  const candidates = [
-    'img[src^="blob:" i]',
-    '[class*="attach" i]',
-    '[class*="thumbnail" i]',
-    '[class*="preview" i]',
-    '[class*="file" i]',
-    '[aria-label*="attach" i]',
-    '[data-testid*="attach" i]',
-    '[data-testid*="file" i]',
-  ];
-  const candidateCounts = {};
-  for (const sel of candidates) {
-    candidateCounts[sel] = await page.locator(sel).count();
-  }
 
   console.log(`\n=== ${providerId} ===`);
   console.log(`uploadFileToPage() returned: ${attached}`);
   if (uploadErr) console.log(`  (threw: ${uploadErr})`);
-  console.log(`DEFAULT_ATTACHMENT_EVIDENCE count right now: ${evidenceCount}`);
   console.log(`screenshot: ${screenshotPath}`);
-  console.log(`broader candidate sweep:`);
-  for (const [sel, count] of Object.entries(candidateCounts)) {
-    console.log(`  ${count}  ${sel}`);
+  console.log(`\nbefore -> after (a non-zero BEFORE count means that selector`);
+  console.log(`cannot distinguish this turn's own attachment from what was`);
+  console.log(`already on the page — flagged UNUSABLE, not just reported):`);
+  for (const [label] of allSelectors) {
+    const b = before[label];
+    const a = after[label];
+    const flag = b > 0 ? "  UNUSABLE — non-zero before any upload" : "";
+    console.log(
+      `  ${String(b).padStart(2)} -> ${String(a).padEnd(2)}  ${label}${flag}`,
+    );
   }
 }
 
