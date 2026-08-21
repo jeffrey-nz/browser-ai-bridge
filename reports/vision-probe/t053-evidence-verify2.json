@@ -1,0 +1,37 @@
+{
+  "probeSha256": "d8bf984be284ca10",
+  "bridgeCommit": "75e8346d8d747cdb451dd93f050f7a7734176ba3",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "scripts/vision-probe.mjs"
+  ],
+  "serverLoadedCommit": "75e8346d8d747cdb451dd93f050f7a7734176ba3",
+  "serverStale": false,
+  "gradedAt": "2026-08-21T18:56:31.241Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787338576971.png",
+  "results": [
+    {
+      "providerId": "mistral",
+      "elapsedMs": 14150,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "matchedAlternatives": [
+          "[class*='zoomable-image' i]"
+        ],
+        "requireGrowth": false,
+        "grew": null,
+        "elapsedMs": 8,
+        "strategy": "file_chooser"
+      },
+      "raw": "SEES=yes COUNT=4 COLOR=teal"
+    }
+  ]
+}

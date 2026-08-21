@@ -580,6 +580,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
         detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
         imageAttached: json?.imageAttached,
         imageAttachedCause: json?.imageAttachedCause,
+        imageAttachedEvidence: json?.imageAttachedEvidence,
       };
     }
     // T-027: `shape` (via ...cls below) is a MEASUREMENT TAKEN ONCE, BY
@@ -599,6 +600,10 @@ async function askProvider(opts, providerId, imagePath, truth) {
       ...cls,
       imageAttached: json.imageAttached,
       imageAttachedCause: json.imageAttachedCause,
+      // T-053: the "true" counterpart to imageAttachedCause — which
+      // evidence alternative matched, requireGrowth/grew, elapsedMs,
+      // strategy. Present only when imageAttached is true.
+      imageAttachedEvidence: json.imageAttachedEvidence,
       warning: json.warning,
       raw: json.response,
     };
