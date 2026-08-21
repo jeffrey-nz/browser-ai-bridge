@@ -3,8 +3,57 @@ import { GEMINI_LOCATORS } from "#ai/gemini/locators.js";
 import { DEEPSEEK_LOCATORS } from "#ai/deepseek/locators.js";
 import { GROK_LOCATORS } from "#ai/grok/locators.js";
 import { COPILOT_LOCATORS } from "#ai/copilot/client/locators.js";
+import { GENERIC_SPECS } from "#ai/generic/specs.js";
 import { stepGeminiModelDropdown } from "./steps/geminiModelDropdown.js";
 import { stepDeepSeekModeToggle } from "./steps/deepseekModeToggle.js";
+
+//[[ T-010: the five generic providers (kimi, qwen, zai, mistral, perplexity —
+//   src/ai/generic/specs.js) had no audit entry at all, and three separate
+//   tickets (T-005, T-006, T-008) each had to diagnose a generic provider's
+//   break by hand because nothing pointed at it first.
+//
+//   NO SECOND SHAPE NEEDED. Every audit step (contextReset, inputInjection,
+//   submission, generationPolling, dataExtraction — motion.js) reads only
+//   locs.newChatBtn / .inputBox / .sendBtn / .stopBtn / .doneSignal /
+//   .responseBlock, all optional-guarded except inputBox/sendBtn/stopBtn/
+//   responseBlock. GENERIC_SPECS[id].locators already carries exactly those
+//   field names — it was written independently of this file and happens to
+//   match, because both were describing the same five motions. So a generic
+//   provider's spec.locators plugs directly into this array's existing
+//   {name, url, locators, locatorsPath, locatorsExport} shape; nothing here
+//   needed to grow a variant. (Two bespoke-provider fields, conversationTurn
+//   and errorAlert, are unused by every current audit step — they are not
+//   part of the shape this audit actually needs, generic or bespoke.)
+//
+//   WHAT THIS DOES NOT COVER, said plainly rather than left implicit. T-005's
+//   fault was mistral's and qwen's dataExtraction step reading the WRONG
+//   element — a selector that matched something real (the user's own turn),
+//   not a selector matching nothing. stepDataExtraction (./steps/
+//   dataExtraction.js) asserts extracted text is non-empty; it has no truth
+//   value to compare against and cannot tell a right answer from a
+//   plausible wrong one, on a generic provider or a bespoke one. This audit
+//   answers "does the motion still work at all", not "did the correct DOM
+//   node answer" — that second question is what T-005 needed and what
+//   scripts/dom-diagnose.mjs + scripts/extraction-break-demo.mjs (T-005)
+//   exist to answer, by inspecting the live page rather than asserting
+//   non-emptiness.
+//
+//   PERPLEXITY IS ENTERED HERE WITH THE SAME CORRECT SELECTORS T-008
+//   VERIFIED BY HAND — the DOM is not what's wrong (see T-008). Its own
+//   motion test is expected to fail or hang far more often than the other
+//   four (T-008 measured roughly 1 completed turn in 10): a ❌ from this
+//   entry usually means "perplexity's composer DOM-swap race again", not
+//   "a locator string needs updating". Kept in rather than left out, because
+//   an audit that silently excludes a known-flaky provider is exactly the
+//   kind of gap this ticket exists to close — but read a perplexity FAIL
+//   against T-008 before touching its locators.js entry. ]]
+const generic = (id) => ({
+  name: GENERIC_SPECS[id].name,
+  url: GENERIC_SPECS[id].url,
+  locators: GENERIC_SPECS[id].locators,
+  locatorsPath: "src/ai/generic/specs.js",
+  locatorsExport: `GENERIC_SPECS.${id}.locators`,
+});
 
 export const AUDIT_PROVIDERS = [
   {
@@ -56,4 +105,9 @@ export const AUDIT_PROVIDERS = [
     locatorsPath: "src/ai/copilot/client/locators.js",
     locatorsExport: "COPILOT_LOCATORS",
   },
+  generic("kimi"),
+  generic("qwen"),
+  generic("zai"),
+  generic("mistral"),
+  generic("perplexity"),
 ];
