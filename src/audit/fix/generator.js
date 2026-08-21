@@ -6,6 +6,15 @@ export function generateLlmPrompt(baseName, htmlContent, reportData) {
   );
   const providerName = provider ? provider.name : baseName;
 
+  // T-013: a generic provider's locators live inside one entry of a shared
+  // specs.js file (src/ai/generic/specs.js), not in a standalone module with
+  // a real export name — "export a JS object EXACTLY named
+  // `GENERIC_SPECS.kimi.locators`" is not legal JS, and "edit this file"
+  // pointed at a file holding four OTHER providers' entries too. When the
+  // provider entry declares `locatorsShape: "generic-entry"`, ask for just
+  // that entry's locators object and say explicitly what must not move.
+  const isGenericEntry = provider?.locatorsShape === "generic-entry";
+
   const exportName =
     provider?.locatorsExport ||
     `${providerName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_LOCATORS`;
@@ -40,11 +49,20 @@ Please analyze this HTML and provide the updated CSS/Playwright locators needed 
 - doneSignal (any element that reliably indicates generation has finished, e.g. copy/like/feedback buttons)
 
 CRITICAL INSTRUCTIONS FOR AI RESPONSE:
-1. Output the updated locators as a JavaScript exported object EXACTLY named \`${exportName}\`.
+${
+  isGenericEntry
+    ? `1. Output ONLY the updated \`locators\` object for the \`${provider.locatorsEntryId}\` entry — a plain JavaScript object literal, NOT an export statement (\`${exportName}\` is a path into a shared file, not a real export name).
+2. At the very top of the JavaScript code block, include a comment: // relative path: ${expectedFilePath} — locators for the "${provider.locatorsEntryId}" entry ONLY
+3. Do NOT reproduce the whole file. ${expectedFilePath} holds four OTHER providers' entries plus non-locator fields (id, url, urlMatch, maxPromptChars, attachBtn, rateLimit, dismiss, stripSuffix) on THIS entry — none of that is being asked for and none of it should appear in your reply.
+4. Return ONLY the JavaScript object literal enclosed in \`\`\`javascript ... \`\`\`.
+5. ABSOLUTELY DO NOT generate any interactive widgets, dashboards, visualizations, or UI components.
+6. Keep explanations brief or omit them; the code block is the priority.`
+    : `1. Output the updated locators as a JavaScript exported object EXACTLY named \`${exportName}\`.
 2. At the very top of the JavaScript code block, include a comment: // relative path: ${expectedFilePath}
 3. Return ONLY the JavaScript code block enclosed in \`\`\`javascript ... \`\`\`.
 4. ABSOLUTELY DO NOT generate any interactive widgets, dashboards, visualizations, or UI components.
-5. Keep explanations brief or omit them; the code block is the priority.
+5. Keep explanations brief or omit them; the code block is the priority.`
+}
 
 --- DOM SNAPSHOT ---
 \`\`\`html

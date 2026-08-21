@@ -13,14 +13,18 @@ import { stepDeepSeekModeToggle } from "./steps/deepseekModeToggle.js";
 //   break by hand because nothing pointed at it first.
 //
 //   NO SECOND SHAPE NEEDED. Every audit step (contextReset, inputInjection,
-//   submission, generationPolling, dataExtraction — motion.js) reads only
+//   submission, generationPolling, dataExtraction — motion.js) reads
 //   locs.newChatBtn / .inputBox / .sendBtn / .stopBtn / .doneSignal /
-//   .responseBlock, all optional-guarded except inputBox/sendBtn/stopBtn/
-//   responseBlock. GENERIC_SPECS[id].locators already carries exactly those
-//   field names — it was written independently of this file and happens to
-//   match, because both were describing the same five motions. So a generic
-//   provider's spec.locators plugs directly into this array's existing
-//   {name, url, locators, locatorsPath, locatorsExport} shape; nothing here
+//   .responseBlock / .responseText, all optional-guarded except inputBox/
+//   sendBtn/stopBtn/responseBlock (T-013 correction: .responseText is a
+//   seventh field, read at dataExtraction.js:6 and generationPolling.js:84 —
+//   optional and unset by every provider, bespoke or generic, today; listed
+//   here so this comment does not read as exhaustive when it is not).
+//   GENERIC_SPECS[id].locators already carries the six field names the audit
+//   actually exercises — it was written independently of this file and
+//   happens to match, because both were describing the same five motions.
+//   So a generic provider's spec.locators plugs directly into this array's
+//   existing {name, url, locators, locatorsPath, locatorsExport} shape; nothing here
 //   needed to grow a variant. (Two bespoke-provider fields, conversationTurn
 //   and errorAlert, are unused by every current audit step — they are not
 //   part of the shape this audit actually needs, generic or bespoke.)
@@ -47,12 +51,31 @@ import { stepDeepSeekModeToggle } from "./steps/deepseekModeToggle.js";
 //   an audit that silently excludes a known-flaky provider is exactly the
 //   kind of gap this ticket exists to close — but read a perplexity FAIL
 //   against T-008 before touching its locators.js entry. ]]
+//[[ T-013: `locatorsExport: "GENERIC_SPECS.kimi.locators"` below is not a
+//   legal export name — it names a PATH INTO a shared file that holds all
+//   five generic providers plus non-locator fields (id/url/urlMatch/
+//   maxPromptChars/attachBtn/rateLimit/dismiss/stripSuffix), not a standalone
+//   module export the way CHATGPT_LOCATORS etc. are. src/audit/fix/
+//   generator.js used to hand an LLM "export a JS object EXACTLY named
+//   `GENERIC_SPECS.kimi.locators`" — which cannot be written as valid JS —
+//   and "here is the file to edit" pointing at specs.js with no warning that
+//   the file holds four OTHER providers a naive full-file rewrite would drop.
+//   `locatorsShape: "generic-entry"` plus `locatorsEntryId` tell the
+//   generator to ask for just the one entry's locators object instead of an
+//   export statement, and to say explicitly what not to touch. Chose a shape
+//   flag on the provider entry over a second generator function or a
+//   per-provider prompt template, because the only thing that differs is
+//   WHAT to ask for and WHAT to warn against, not how the surrounding report/
+//   HTML/instructions are assembled — a flag branches four lines of prompt
+//   text; a second function would duplicate the other ~30. ]]
 const generic = (id) => ({
   name: GENERIC_SPECS[id].name,
   url: GENERIC_SPECS[id].url,
   locators: GENERIC_SPECS[id].locators,
   locatorsPath: "src/ai/generic/specs.js",
   locatorsExport: `GENERIC_SPECS.${id}.locators`,
+  locatorsShape: "generic-entry",
+  locatorsEntryId: id,
 });
 
 export const AUDIT_PROVIDERS = [
