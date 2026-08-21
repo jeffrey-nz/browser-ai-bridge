@@ -30,17 +30,40 @@ constraint-ON  = label "vision-probe" (bare, pre-T-041 shape — every
 === copilot truth={"count":9,"color":"indigo"} constraint-ON ===
 {"providerId":"copilot","label":"vision-probe","truth":{"count":9,"color":"indigo"},"httpStatus":200,"elapsedMs":28779,"imageAttached":true,"raw":"SEES=yes COUNT=9 COLOR=indigo\n\nEdit in a page","shape":"PASS","countOk":true,"colorOk":true}
 
-=== SUMMARY ===
-gemini   count=4 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=18950
-gemini   count=4 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=17742
-copilot  count=4 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=28652
-copilot  count=4 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=28841
-copilot  count=9 constraint-OFF  shape=PASS countOk=true colorOk=true elapsedMs=28830
-copilot  count=9 constraint-ON   shape=PASS countOk=true colorOk=true elapsedMs=28779
+CORRECTION (PM review): the pair above was NOT T-050's documented hard
+case, despite this transcript's own original text claiming it was. T-050's
+hard case is count=9 COLOUR=TEAL specifically (pair-teal-9.png, sha256
+4162808b) — colour held at teal throughout that ticket precisely so count
+was the only variable. count=9/indigo is a different, untested fixture
+(renderPng is a pure function of (count, colour), so a different colour is
+a different picture). This pair still stands as a valid PASS/PASS
+comparison; it just isn't the discriminating case it was originally
+described as. See the redo pair below, which is.
 
-All 6 pairs: identical shape/countOk/colorOk/imageAttached between
-constraint-OFF and constraint-ON at every pinned fixture. Elapsed-time
-deltas within each pair: gemini -1208ms, copilot(4) +189ms, copilot(9)
--51ms — no consistent direction, all inside ordinary turn-to-turn noise
-(compare to the ~10s spread already visible between gemini's ~18s turns
-and copilot's ~29s turns).
+=== REDO: copilot truth={"count":9,"color":"teal"} constraint-OFF (T-050's actual fixture) ===
+{"providerId":"copilot","label":"API Turn: T-043 control","truth":{"count":9,"color":"teal"},"httpStatus":200,"elapsedMs":28820,"imageAttached":true,"raw":"SEES=no\n\nEdit in a page","shape":"SEES_NO"}
+
+=== REDO: copilot truth={"count":9,"color":"teal"} constraint-ON (T-050's actual fixture) ===
+{"providerId":"copilot","label":"vision-probe","truth":{"count":9,"color":"teal"},"httpStatus":200,"elapsedMs":28895,"imageAttached":true,"raw":"SEES=no\n\nEdit in a page","shape":"SEES_NO"}
+
+=== SUMMARY ===
+gemini   count=4/crimson  constraint-OFF  shape=PASS    countOk=true  colorOk=true  elapsedMs=18950
+gemini   count=4/crimson  constraint-ON   shape=PASS    countOk=true  colorOk=true  elapsedMs=17742
+copilot  count=4/crimson  constraint-OFF  shape=PASS    countOk=true  colorOk=true  elapsedMs=28652
+copilot  count=4/crimson  constraint-ON   shape=PASS    countOk=true  colorOk=true  elapsedMs=28841
+copilot  count=9/indigo   constraint-OFF  shape=PASS    countOk=true  colorOk=true  elapsedMs=28830
+copilot  count=9/indigo   constraint-ON   shape=PASS    countOk=true  colorOk=true  elapsedMs=28779
+copilot  count=9/teal     constraint-OFF  shape=SEES_NO --            --            elapsedMs=28820
+copilot  count=9/teal     constraint-ON   shape=SEES_NO --            --            elapsedMs=28895
+
+All 7 pairs (8 turns): identical shape/countOk/colorOk/imageAttached
+between constraint-OFF and constraint-ON at every pinned fixture,
+INCLUDING the redo pair — the one genuine failure in the set (SEES_NO,
+not T-050's WRONG/COUNT=10; the failure mode itself has apparently shifted
+since T-050's day, a separate observation from this ticket's own question)
+failed IDENTICALLY on both arms. This is the first non-ceiling data point
+in the set and it still shows no constraint effect. Elapsed-time deltas
+within each pair: gemini -1208ms, copilot(4) +189ms, copilot(9/indigo)
+-51ms, copilot(9/teal) +75ms — no consistent direction, all inside
+ordinary turn-to-turn noise (compare to the ~10s spread already visible
+between gemini's ~18s turns and copilot's ~29s turns).
