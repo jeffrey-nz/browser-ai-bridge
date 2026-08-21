@@ -91,6 +91,35 @@ export const GENERIC_SPECS = {
     // CDP against the live kimi.ai composer (attach-diagnose-style probe).
     attachBtn: ".icon-button.toolkit-trigger-btn, input[type='file']",
     attachMenuItem: "label.toolkit-item:has-text('Add files & photos')",
+    //[[ T-031, LIVE-VERIFIED: an upload that errors client-side (a
+    //   malformed/too-small file) leaves an `.image-thumbnail.error` node in
+    //   `.chat-editor-attachment-area` that clicking "New Chat" (the SPA
+    //   button, not a reload) does NOT clear — confirmed surviving three
+    //   consecutive New Chat clicks in one live session, still matching
+    //   DEFAULT_ATTACHMENT_EVIDENCE's `[class*="thumbnail" i]` and still
+    //   satisfying waitForAttachmentEvidence() (verify()'s own call)
+    //   afterwards. An unsent SUCCESS thumbnail left the same way (upload
+    //   without sending) is just as sticky. Two independent defects, one
+    //   fix each:
+    //     1. SAME-TURN: a malformed upload's OWN error thumbnail satisfies
+    //        the default evidence selector just as readily as a real one —
+    //        attachEvidence narrows kimi to `.image-thumbnail.success`,
+    //        which `.error` never carries.
+    //     2. LATER-TURN: a stuck thumbnail (either state) surviving New
+    //        Chat can satisfy THAT selector for a turn that never
+    //        genuinely re-verified — requireGrowth (uploadFile.js) makes
+    //        verify() require the match count to grow past what it already
+    //        was when this call's own upload attempt started, so a stale
+    //        leftover from an earlier turn can't stand in for this turn's
+    //        own evidence. (Tried first: clicking the stuck thumbnail's own
+    //        `.image-delete-icon` away in startNewChat. Abandoned — it
+    //        isn't just CSS-hidden pre-hover, it doesn't mount in the DOM
+    //        until its thumbnail is hovered, and automating that reliably
+    //        through repeated live runs proved too flaky to stand behind;
+    //        requireGrowth reaches the same guarantee without touching the
+    //        page at all.) ]]
+    attachEvidence: ".image-thumbnail.success",
+    requireGrowth: true,
     rateLimit: "Too many people are chatting with Kimi",
     dismiss: ["Got it", "Close"],
   },

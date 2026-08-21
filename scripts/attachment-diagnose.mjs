@@ -100,6 +100,9 @@ for (const [id, spec] of Object.entries(GENERIC_SPECS)) {
     // attach button only opens a menu (kimi, mistral) fails here even
     // though the real /api/ask path (which does pass this) succeeds.
     secondClickSelector: spec.attachMenuItem || null,
+    // T-031: same reasoning — without this, kimi's own before/after growth
+    // check silently reverts to presence-only here, unlike production.
+    requireGrowth: spec.requireGrowth || false,
   };
 }
 
@@ -197,6 +200,7 @@ async function main() {
       : await uploadFileToPage(page, filePath, {
           attachmentBtnSelector: target.attachmentBtnSelector,
           secondClickSelector: target.secondClickSelector,
+          requireGrowth: target.requireGrowth,
         });
   } catch (err) {
     attached = false;

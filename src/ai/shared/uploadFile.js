@@ -22,6 +22,15 @@
  * T-001 on the crew board). So after either strategy we wait for visible
  * evidence in the page — a blob-URL thumbnail, an attachment chip — and
  * only report success if that evidence actually appears.
+ *
+ * PRESENCE ALONE CAN ALSO LIE THE OTHER WAY (T-031): a site can leave an
+ * evidence-matching node on the page from an EARLIER, unrelated turn — kimi
+ * specifically survives its own "New Chat" transition with a failed or
+ * never-sent draft still attached — so a later call's plain presence check
+ * can pass without this call's own upload ever landing anything.
+ * `options.requireGrowth` asks for more than presence: the evidence
+ * selector's match count must grow past what it already was when THIS call
+ * started. Left unset, verify() is exactly the presence-only check above.
  */
 
 import { logger } from "#utils/logger.js";
@@ -70,6 +79,15 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     timeoutMs = 8000,
     verifySelector = null,
     verifyTimeoutMs = 6000,
+    // T-031: some sites (kimi) can leave an evidence-matching node on the
+    // page from an EARLIER turn — a failed or never-sent upload's draft
+    // that survived a "New Chat" transition instead of clearing with it.
+    // requireGrowth makes evidence conditional on the match COUNT growing
+    // past what it already was the instant THIS call started, not merely
+    // being present — a stale leftover already counted in that baseline
+    // can't stand in for this turn's own verification. Left false (every
+    // provider but kimi today), verify() is unchanged: presence is enough.
+    requireGrowth = false,
   } = options;
 
   // Verify the file exists before attempting upload
@@ -79,11 +97,20 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     throw new Error(`Upload file not found: ${filePath}`);
   }
 
-  const verify = () =>
-    waitForAttachmentEvidence(page, {
-      selector: verifySelector || DEFAULT_ATTACHMENT_EVIDENCE,
+  const evidenceSelector = verifySelector || DEFAULT_ATTACHMENT_EVIDENCE;
+  const baselineCount = requireGrowth
+    ? await page.locator(evidenceSelector).count()
+    : 0;
+
+  const verify = async () => {
+    const appeared = await waitForAttachmentEvidence(page, {
+      selector: evidenceSelector,
       timeoutMs: verifyTimeoutMs,
     });
+    if (!appeared || !requireGrowth) return appeared;
+    const currentCount = await page.locator(evidenceSelector).count();
+    return currentCount > baselineCount;
+  };
 
   // Strategy 1: Direct setInputFiles on existing hidden file input
   try {

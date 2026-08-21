@@ -1,0 +1,21 @@
+{
+  "providerId": "kimi",
+  "note": "T-031 fix verification. Ran scripts/t031-growth-check.mjs twice against the live kimi tab over CDP, calling the REAL uploadFileToPage()/startNewChat() from src/ai/shared/uploadFile.js and src/ai/generic/interaction.js with kimi's real spec (attachEvidence: '.image-thumbnail.success', requireGrowth: true).",
+  "run1_unplanned_live_finding": {
+    "description": "First run hit a REAL leftover, not a synthetic one: a fresh navigation to kimi.ai (fresh tab, no prior page reused) already had 2 nodes matching '.image-thumbnail.success' — an unsent success thumbnail for probe-1787313682148.png, a T-030 test image from earlier in the day. This confirms the stuck-draft persistence is ACCOUNT-level (same shape T-014 found for zai), not merely same-page DOM state.",
+    "preExistingCount_freshNavigation": 2,
+    "afterRealStartNewChatClick_count": 2,
+    "conclusion": "The stale node survived the real startNewChat() SPA button click, live, today -- matching the ticket's claim. It ALSO survived this script's own page.goto() hard reload (afterHardReload count was 2, not 0) -- stronger than the ticket's note that 'only a full page reload cleared it, in manual testing'. That claim does not hold for this account-persisted case; a hard reload does not reliably clear it either. Cleaned up manually afterward (see below) so it does not pollute other crew members' live kimi turns.",
+    "cleanup": "Clicked each thumbnail's .image-delete-icon via a one-off script; verified 0 matches on a subsequent fresh reload before re-running the probe."
+  },
+  "run2_clean_synthetic_check": {
+    "description": "Re-ran after cleanup, page genuinely clean (count 0 on fresh navigation), so the script injected one synthetic '.image-thumbnail.success' node to test the fix mechanics deterministically.",
+    "negativeControl_freshPage_count": 0,
+    "presenceOnly_oldBehaviour_wouldReturn": true,
+    "requireGrowth_fixedBehaviour_uploadFileToPage_malformedFile_staleNodePresent": false,
+    "afterHardReloadCleanup_count": 0,
+    "verdict": "PASS -- presence-only (requireGrowth unset, the pre-T-031 behaviour) would have false-positived on the stale node; requireGrowth:true (the shipped fix) correctly returns false because this call's own malformed upload added nothing new to the .success count."
+  },
+  "scriptUsed": "scripts/t031-growth-check.mjs",
+  "checkedAt": "2026-08-21T13:11:00Z"
+}

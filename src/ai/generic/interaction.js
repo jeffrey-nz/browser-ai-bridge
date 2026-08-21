@@ -216,6 +216,7 @@ export function makeInteraction(spec) {
         attachmentBtnSelector: spec.attachBtn,
         verifySelector: spec.attachEvidence,
         secondClickSelector: spec.attachMenuItem,
+        requireGrowth: spec.requireGrowth,
       });
     } catch (err) {
       logger.warn(
