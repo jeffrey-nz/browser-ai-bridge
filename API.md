@@ -380,12 +380,18 @@ claim about the current tree (the code that produced it no longer exists); the o
 `t030-kimi-run1.json`, `-run2.json`, `t030-mistral-run1.json`, `-run2.json`, `-run3.json` —
 are current code, live-verified, and stay true on a re-run today. Of the 23 `false` rows,
 `perplexity` and `qwen`'s are confirmed correct no-attach (see T-022 above), `zai`'s remain
-unconfirmed either way, and `kimi`/`mistral`'s are a mix: pre-T-030 runs that were correct
-for the code that produced them (no second-click path existed yet) plus each provider's
-T-030 negative control (`t030-kimi-negative-control.json`, `t030-mistral-negative-control.json`
-— fresh chat, nothing uploaded, correctly `false` under the CURRENT code too). None of the
-23 is known to be wrong the way the pre-revert `zai` fix would have made its false rows
-appear.
+unconfirmed either way, and `kimi`/`mistral`'s 12 (4 and 8) are ALL pre-T-030 runs, correct
+for the code that produced them (no second-click path existed yet) — `t006-kimi-run2.json`,
+`-run3.json`, `-run4.json`, `t014-kimi-run1.json`, `after-ask.json`,
+`result-ask-mistral.json`, `t005-mistral-run1.json`, `-run2.json`, `-run3.json`,
+`t005-mistral-v2-run1.json`, `-run2.json`, `-run3.json`. Each provider's T-030 negative
+control (`t030-kimi-negative-control.json`, `t030-mistral-negative-control.json` — fresh
+chat, nothing uploaded, correctly `false` under the CURRENT code) is real evidence too, but
+is NOT one of the 23: both files are flat objects with no `results` array, so
+`ia-grade.mjs`'s row loop (`for (const r of j.results || [])`) never iterates them at all —
+they don't add to its graded rows OR its skip count, they simply aren't rows in this tally.
+None of the 23 is known to be wrong the way the pre-revert `zai` fix would have made its
+false rows appear.
 
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
