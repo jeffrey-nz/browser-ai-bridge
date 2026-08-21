@@ -324,11 +324,19 @@ generic providers were checked the same way, live, and were not the same bug: `k
 `mistral` genuinely do not attach through the code as it stands today (both require a menu
 click before any file input exists — `kimi`'s composer opens an "Add files & photos"
 submenu, `mistral` has no `input[type="file"]` anywhere in the DOM until some other
-interaction reveals one — a different, unfixed gap, not a blind selector), `qwen` has a
-matching `input[type="file"]` but no attachment evidence ever rendered on screen after
-setting its files, and `perplexity` never reached a composer at all — the same paywall
-interstitial T-008 already documented. So the image-capable count above stays correctly
-capped at the four bespoke providers. As the corpus stands now, as of `9bb68d6`, the
+interaction reveals one — a different, unfixed gap, not a blind selector), and `perplexity`
+never reached a composer at all — the same paywall interstitial T-008 already documented.
+`qwen` is now confirmed rather than unconfirmed (crew board T-022, re-run 2026-08-21 with
+the improved instrument T-020/T-021 gave it — a before-AND-after count on every selector,
+UNUSABLE decided by visibility rather than count): `setInputFiles` against its real,
+present `input[type="file"]#filesUpload` does not throw, but 10 selectors — the shared
+default, plus a widened sweep including the `chip` pattern that caught `zai`'s card — all
+read `0,false` before the upload and `0,false` after it. Nothing in the composer changes at
+all; the input accepts the file and the page shows no acknowledgment of it whatsoever, not
+even a hidden node that becomes visible. `qwen` joins `kimi` and `mistral` as a confirmed
+no, with its own distinct cause from either of theirs — naming a selector is not possible
+here because nothing appeared for one to name. So the image-capable count above stays
+correctly capped at the four bespoke providers. As the corpus stands now, as of `9bb68d6`, the
 generic path's `imageAttached` is 1 `true` of 24 recorded turns (23 `false`) — not 0 of
 21; this ticket's own work added generic-provider turns to a corpus that is now tracked in
 git (crew board T-017), and the founding "0 of 21" above is the measurement that started
@@ -336,9 +344,9 @@ this ticket, not the live count. The one `true` — `reports/vision-probe/
 t014-zai-run1.json` — is the reverted `.chip-scroll` fix's own output, kept in the corpus
 as an accurate record of what that code produced at the time, not a claim about the
 current tree; the code that produced it no longer exists. Every one of the 23 `false`
-readings is either confirmed correct (kimi, mistral, perplexity) or unconfirmed either way
-(qwen, zai) — none is known to be wrong the way the pre-revert fix would have made `zai`'s
-appear.
+readings is either confirmed correct (kimi, mistral, perplexity, qwen — see T-022 above) or
+unconfirmed either way (zai) — none is known to be wrong the way the pre-revert fix would
+have made `zai`'s appear.
 
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
