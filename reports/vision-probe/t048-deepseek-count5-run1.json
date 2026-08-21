@@ -1,0 +1,35 @@
+{
+  "probeSha256": "b245fb6d760ef0a2",
+  "bridgeCommit": "9df630de942cf4a456a4c4616c37e053b9229eda",
+  "treeDirty": false,
+  "serverLoadedCommit": "35cc4630c1ff0a19472ad2ca39d47ee6c7853a1c",
+  "serverStale": true,
+  "serverTreeDirty": false,
+  "serverProvenance": "stale-confirmed",
+  "gradedAt": "2026-08-21T20:45:43.726Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787345092270.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 51346,
+      "shape": "SEES_NO",
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 28,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=no"
+    }
+  ]
+}

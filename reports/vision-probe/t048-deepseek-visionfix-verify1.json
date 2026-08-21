@@ -1,0 +1,41 @@
+{
+  "probeSha256": "b245fb6d760ef0a2",
+  "bridgeCommit": "9df630de942cf4a456a4c4616c37e053b9229eda",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/deepseek/interaction/mode.js",
+    "src/ai/deepseek/interaction/prompt/index.js"
+  ],
+  "serverLoadedCommit": "9df630de942cf4a456a4c4616c37e053b9229eda",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-21T20:55:26.246Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787345674685.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 51437,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 34,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=yes COUNT=5 COLOR=crimson"
+    }
+  ]
+}

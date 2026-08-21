@@ -1,0 +1,37 @@
+{
+  "probeSha256": "b245fb6d760ef0a2",
+  "bridgeCommit": "6aa7e6710fdbbaaf2ff566f9c4643d9833eb595e",
+  "treeDirty": false,
+  "serverLoadedCommit": "6aa7e6710fdbbaaf2ff566f9c4643d9833eb595e",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-21T20:58:10.778Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787345839247.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 51415,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 35,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=yes COUNT=5 COLOR=crimson"
+    }
+  ]
+}
