@@ -140,6 +140,79 @@ const REPO_ROOT = join(__dirname, "..");
  *                          `bridgeCommit`. Printed loudly to the console
  *                          when this happens (see main()) — the report
  *                          itself carries it either way, console or not.
+ *   serverTreeDirty: null,
+ *   serverProvenance: "unmeasured" — T-052: same failure /api/ping's ping
+ *                          call can hit as serverLoadedCommit above (bridge
+ *                          down, network error, or a bridge old enough not
+ *                          to carry `loadedTreeDirty` yet).
+ *   serverTreeDirty: false — measured: the bridge's working tree matched
+ *                          its own `loadedCommit` at THE MOMENT THE SERVER
+ *                          STARTED (health.js's `LOADED_TREE_DIRTY`, cached
+ *                          once at process startup, same shape as
+ *                          `loadedCommit` itself).
+ *   serverTreeDirty: true  — measured: the bridge started from a dirty
+ *                          tree — it loaded whatever the working tree held
+ *                          at that moment, which may or may not equal any
+ *                          commit's checked-in content, `loadedCommit`
+ *                          included.
+ *
+ *   serverProvenance       — T-052: `serverStale` alone conflates two
+ *                          opposite failures the ticket's own review found
+ *                          in the ordinary edit-restart-commit loop this
+ *                          board runs constantly:
+ *
+ *                            FALSE ALARM — edit, restart (server loads the
+ *                            edited code), THEN commit. loadedCommit is the
+ *                            sha from before the commit; bridgeCommit is the
+ *                            new one; serverStale reads true even though the
+ *                            server is running exactly the code under test.
+ *
+ *                            SILENT LIE — restart from a dirty tree and
+ *                            never commit. loadedCommit still equals
+ *                            bridgeCommit (nothing moved HEAD), so
+ *                            serverStale reads a confident false, but the
+ *                            server is running uncommitted edits that
+ *                            `loadedCommit` never described.
+ *
+ *                          Both are the SAME underlying gap: `serverStale`
+ *                          only ever compares two shas, and a sha says
+ *                          nothing about whether the tree matched it at
+ *                          startup. `serverTreeDirty` is that missing
+ *                          measurement; `serverProvenance` is
+ *                          `classifyServerProvenance(serverStale,
+ *                          serverTreeDirty)` folding both into one of six
+ *                          states a reader can check without re-deriving
+ *                          the cross product themselves:
+ *
+ *                            "verified"          stale:false, dirty:false —
+ *                                                 clean startup, sha
+ *                                                 matches. No ambiguity.
+ *                            "unverifiable"       stale:false, dirty:true —
+ *                                                 the SILENT LIE shape: sha
+ *                                                 matches but the server
+ *                                                 loaded uncommitted edits,
+ *                                                 so the match proves
+ *                                                 nothing.
+ *                            "stale-confirmed"    stale:true, dirty:false —
+ *                                                 clean startup, sha moved
+ *                                                 since. Genuinely running
+ *                                                 old code, no ambiguity.
+ *                            "stale-ambiguous"    stale:true, dirty:true —
+ *                                                 the FALSE ALARM shape: sha
+ *                                                 moved, but the server
+ *                                                 started dirty, so the new
+ *                                                 sha may just be the same
+ *                                                 edits, now committed.
+ *                            "stale-unmeasured-tree" / "verified-unmeasured-
+ *                                                 tree" — sha comparison
+ *                                                 succeeded but
+ *                                                 serverTreeDirty is null;
+ *                                                 cannot rule the ambiguous
+ *                                                 or silent-lie shapes in or
+ *                                                 out.
+ *                            "unmeasured"         serverStale itself is
+ *                                                 null — see serverStale:
+ *                                                 null above.
  */
 // T-049: pulled out of gradingProvenance() so the tri-state rule (see the
 // reader contract above) is unit-testable without mocking fetch/exec — same
@@ -150,6 +223,24 @@ const REPO_ROOT = join(__dirname, "..");
 export function compareServerCommit(bridgeCommit, serverLoadedCommit) {
   if (bridgeCommit === null || serverLoadedCommit === null) return null;
   return serverLoadedCommit !== bridgeCommit;
+}
+
+// T-052: folds serverStale and serverTreeDirty into the single verdict the
+// reader-contract block above documents — pulled out to its own function,
+// same reasoning as compareServerCommit above it, so the cross product of
+// two tri-states is unit-testable without mocking fetch/exec and cannot
+// silently drift out of sync with the doc comment enumerating it.
+export function classifyServerProvenance(serverStale, serverTreeDirty) {
+  if (serverStale === null) return "unmeasured";
+  if (serverStale === true) {
+    if (serverTreeDirty === true) return "stale-ambiguous";
+    if (serverTreeDirty === false) return "stale-confirmed";
+    return "stale-unmeasured-tree";
+  }
+  // serverStale === false
+  if (serverTreeDirty === true) return "unverifiable";
+  if (serverTreeDirty === false) return "verified";
+  return "verified-unmeasured-tree";
 }
 
 async function gradingProvenance(baseUrl) {
@@ -209,6 +300,12 @@ async function gradingProvenance(baseUrl) {
   // carry a correct answer here), fetch the bridge's own cached startup
   // commit and compare.
   let serverLoadedCommit = null;
+  // T-052: whether the bridge's own working tree was dirty AT ITS STARTUP —
+  // see LOADED_TREE_DIRTY in health.js and the reader contract above. Read
+  // from the same /api/ping call as serverLoadedCommit; a second request
+  // could observe a different process (a restart in between) and would
+  // answer a question this probe is not asking.
+  let serverTreeDirty = null;
   try {
     const res = await fetch(`${baseUrl}/api/ping`, {
       signal: AbortSignal.timeout(5000),
@@ -217,11 +314,19 @@ async function gradingProvenance(baseUrl) {
     if (typeof json.loadedCommit === "string") {
       serverLoadedCommit = json.loadedCommit;
     }
+    if (typeof json.loadedTreeDirty === "boolean") {
+      serverTreeDirty = json.loadedTreeDirty;
+    }
   } catch {
-    // Not fatal — see the reader contract above: serverStale stays null
-    // (unmeasured), never false, when the ping itself couldn't be read.
+    // Not fatal — see the reader contract above: serverStale and
+    // serverTreeDirty stay null (unmeasured), never false, when the ping
+    // itself couldn't be read.
   }
   const serverStale = compareServerCommit(bridgeCommit, serverLoadedCommit);
+  const serverProvenance = classifyServerProvenance(
+    serverStale,
+    serverTreeDirty,
+  );
 
   return {
     probeSha256,
@@ -230,6 +335,8 @@ async function gradingProvenance(baseUrl) {
     ...(treeDirty ? { dirtyPaths } : {}),
     serverLoadedCommit,
     serverStale,
+    serverTreeDirty,
+    serverProvenance,
     gradedAt: new Date().toISOString(),
   };
 }
@@ -797,16 +904,26 @@ async function main() {
   await mkdir(outDir, { recursive: true });
   const outPath = opts.outPath || join(outDir, `run-${Date.now()}.json`);
   const provenance = await gradingProvenance(opts.baseUrl);
-  // T-049: warn loudly and continue, not refuse — chosen over an override
-  // flag because this tool's whole purpose is diagnosis, and refusing to
-  // run against a bridge whose staleness you are trying to SEE (e.g. "does
-  // the old code still misbehave this way") would make the tool useless for
-  // exactly the situation that most needs it. Every other provenance field
-  // in this file (dirtyPaths, the absent-field convention T-012 set up)
-  // already follows "record the truth, let the reader decide" over
-  // "refuse" — consistent with that, and the field is now impossible to
-  // miss: console AND every report, every time, not an opt-in check.
-  if (provenance.serverStale) {
+  // T-049/T-052: warn loudly and continue, not refuse — chosen over an
+  // override flag because this tool's whole purpose is diagnosis, and
+  // refusing to run against a bridge whose staleness you are trying to SEE
+  // (e.g. "does the old code still misbehave this way") would make the tool
+  // useless for exactly the situation that most needs it. Every other
+  // provenance field in this file (dirtyPaths, the absent-field convention
+  // T-012 set up) already follows "record the truth, let the reader decide"
+  // over "refuse" — consistent with that, and the field is now impossible
+  // to miss: console AND every report, every time, not an opt-in check.
+  //
+  // T-052 chose to keep firing a banner on `serverStale`, rather than
+  // suppressing it for the "stale-ambiguous" case, and to say WHICH
+  // situation the run is actually in (acceptance clause 3's second option)
+  // instead: `classifyServerProvenance` cannot prove the ambiguous case is
+  // actually fine — it only knows the tree WAS dirty at startup, not that
+  // the commit that followed captured exactly those edits and nothing else
+  // — so collapsing it to silence would let a genuinely stale run through
+  // on a guess. A banner that is right about being uncertain is worth more
+  // than one that is confidently wrong in either direction.
+  if (provenance.serverProvenance === "stale-confirmed") {
     console.log(
       `\n${"!".repeat(70)}\n` +
         `STALE BRIDGE: this run's results came from a server process\n` +
@@ -814,6 +931,45 @@ async function main() {
         `HEAD (${provenance.bridgeCommit}). Node does not hot-reload — restart\n` +
         `the bridge before trusting this run as a live verification of\n` +
         `anything committed after ${provenance.serverLoadedCommit}.\n` +
+        `${"!".repeat(70)}\n`,
+    );
+  } else if (provenance.serverProvenance === "stale-unmeasured-tree") {
+    console.log(
+      `\n${"!".repeat(70)}\n` +
+        `STALE BRIDGE: this run's results came from a server process\n` +
+        `running commit ${provenance.serverLoadedCommit}, not this checkout's\n` +
+        `HEAD (${provenance.bridgeCommit}). Whether that server started from\n` +
+        `a dirty tree could not be measured, so this may be a same-code\n` +
+        `restart under an old sha rather than genuinely old code — restart\n` +
+        `the bridge to be sure before trusting this run.\n` +
+        `${"!".repeat(70)}\n`,
+    );
+  } else if (provenance.serverProvenance === "stale-ambiguous") {
+    console.log(
+      `\n${"!".repeat(70)}\n` +
+        `POSSIBLY-STALE BRIDGE (ambiguous): server loadedCommit\n` +
+        `(${provenance.serverLoadedCommit}) differs from this checkout's HEAD\n` +
+        `(${provenance.bridgeCommit}), BUT the server's tree was dirty at ITS\n` +
+        `OWN startup — the ordinary edit-restart-commit loop. This may mean\n` +
+        `the server is running exactly the code now committed at HEAD (the\n` +
+        `edits it loaded were committed afterward), not old code. Cannot be\n` +
+        `told apart from a genuinely stale bridge without checking by hand\n` +
+        `(e.g. diff ${provenance.serverLoadedCommit}..${provenance.bridgeCommit}\n` +
+        `against what you edited) — treat this run as unverified, not as\n` +
+        `definitely wrong.\n` +
+        `${"!".repeat(70)}\n`,
+    );
+  } else if (provenance.serverProvenance === "unverifiable") {
+    console.log(
+      `\n${"!".repeat(70)}\n` +
+        `UNVERIFIABLE PROVENANCE: server loadedCommit matches this\n` +
+        `checkout's HEAD (${provenance.bridgeCommit}), but the server's tree\n` +
+        `was DIRTY AT ITS OWN STARTUP — it loaded whatever uncommitted edits\n` +
+        `were on disk at that moment, which the matching sha does not\n` +
+        `describe. If nothing has been committed since, this run may be\n` +
+        `grading code that never made it into HEAD at all. Restart the\n` +
+        `bridge from a clean, committed tree before trusting this run as a\n` +
+        `verification of anything.\n` +
         `${"!".repeat(70)}\n`,
     );
   }

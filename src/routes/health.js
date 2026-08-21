@@ -40,6 +40,38 @@ const LOADED_COMMIT = (() => {
   }
 })();
 
+// T-052: LOADED_COMMIT says which sha HEAD pointed to at startup, but says
+// nothing about whether the WORKING TREE matched that commit at the moment
+// this process read its modules — the same gap T-046 closed on the probe
+// side (vision-probe.mjs's own `treeDirty`), now on the server side. The
+// ordinary edit-restart-commit loop this board runs constantly leaves the
+// tree dirty at restart time and commits afterward, so loadedCommit alone
+// makes a same-code restart look identical to a stale one to any reader
+// comparing shas. Measured once, here, next to LOADED_COMMIT — a per-request
+// read would answer "is the tree dirty right now", not "was it dirty when
+// this process loaded its code", and reproduce the exact bug this field
+// exists to catch.
+const LOADED_TREE_DIRTY = (() => {
+  try {
+    const out = execSync("git diff --name-only HEAD", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    });
+    return (
+      out
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean).length > 0
+    );
+  } catch {
+    // Not fatal, and NOT false — same tri-state rule vision-probe.mjs's
+    // treeDirty follows: an unmeasurable state (no checkout, git missing,
+    // rev-parse ok but diff throws) must read as unmeasured, never as
+    // "verified clean".
+    return null;
+  }
+})();
+
 function buildProvidersPayload(sessions) {
   const byProvider = {};
   for (const id of ALL_PROVIDER_IDS) {
@@ -98,6 +130,9 @@ router.get("/", (_req, res) => {
       status: "ready",
       browser: getBrowserState(),
       loadedCommit: LOADED_COMMIT,
+      // T-052: whether the working tree differed from loadedCommit's HEAD
+      // AT THE MOMENT this process started — see LOADED_TREE_DIRTY above.
+      loadedTreeDirty: LOADED_TREE_DIRTY,
       uptime: process.uptime(),
       sessions: sessions.length,
       activeSessions: sessions.filter((s) => s.state === "active").length,
