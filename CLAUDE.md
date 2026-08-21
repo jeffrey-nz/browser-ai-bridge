@@ -137,6 +137,19 @@ API route validation tests live in `tests/api.test.js`. Integration tests
 against real browsers are not feasible in CI — the audit tool plays that
 role locally.
 
+## Evidence for live-verified tickets
+
+`reports/*` is gitignored except `reports/vision-probe/*.json` and `*.png`
+— it exists for that one probe's own tracked corpus, not as a general
+place to commit what a ticket produced while verifying a live change
+(a transcript, a before/after `/api/ping` capture, a one-off repro
+script). Put that under `evidence/`, named so a reader can tell which
+ticket it belongs to (e.g. `evidence/t051-two-turn-transcript.txt`) — it
+is not covered by any ignore rule, so a plain `git add` tracks it. A
+ticket's artifact quoted only into the crew log is a transcription a
+reviewer has to trust; the same file committed under `evidence/` is one
+they can open.
+
 ## When something breaks
 
 1. Hit `/api/ping` — confirms server is alive and reports memory.

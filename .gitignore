@@ -3,6 +3,10 @@ node_modules/
 
 # Runtime output
 logs/
+# T-062: a ticket's OWN live-verification artifact (a transcript, a repro
+# script, a before/after capture) does not belong under reports/ — commit
+# it under evidence/ instead, which no rule below touches. See CLAUDE.md's
+# "Evidence for live-verified tickets".
 reports/*
 !reports/vision-probe/
 reports/vision-probe/*

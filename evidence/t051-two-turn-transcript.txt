@@ -1,0 +1,18 @@
+=== T-051: create session ===
+{"success":true,"sessionId":"b7242dc1-8b85-437d-9e32-bbc389c8dad2","maxPromptChars":150000}
+
+=== T-051 turn 1 ===
+truth1 { count: 4, color: 'crimson' }
+elapsedMs 47208 http 200
+{"success":true,"response":"SEES=yes COUNT=4 COLOR=crimson","data":null,"turnIndex":3,"sessionAgeMs":106548,"provider":"chatgpt","imageAttached":true,"imageAttachedEvidence":{"evidenceSelectorUsed":"img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]","matchedAlternatives":["img[src^=\"blob:\" i]"],"requireGrowth":true,"grew":true,"elapsedMs":464,"strategy":"direct_input"},"requestId":"35d97439-22d6-49d7-aa5e-de033c78dc48"}
+
+=== T-051: DOM check RIGHT BEFORE turn 2's own upload starts ===
+{"success":true,"result":1}
+
+=== T-051 turn 2 (same sessionId, no new-chat) ===
+truth2 { count: 6, color: 'indigo' }
+elapsedMs 9947 http 200
+{"success":true,"response":"SEES=yes COUNT=6 COLOR=indigo","data":null,"turnIndex":4,"sessionAgeMs":153759,"provider":"chatgpt","imageAttached":true,"imageAttachedEvidence":{"evidenceSelectorUsed":"img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]","matchedAlternatives":["img[src^=\"blob:\" i]"],"requireGrowth":true,"grew":true,"elapsedMs":29,"strategy":"direct_input"},"requestId":"97cb1f70-8fc6-480c-9a82-b99d64090b82"}
+
+=== T-051: cleanup ===
+delete status 200
