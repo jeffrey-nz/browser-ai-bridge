@@ -82,7 +82,7 @@ import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join, dirname, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -331,7 +331,11 @@ function buildPrompt(truth) {
  * on pain of a grader that under-reports arrival exactly when this ticket's
  * board is inclined to believe that story anyway.
  */
-function classify(replyText, truth) {
+// T-025: exported so ia-grade.mjs (and anything else that needs to know
+// whether a recorded reply is a prompt echo) decides it from the SAME code
+// this probe grades with, instead of carrying a second, independently
+// hand-typed pattern that can drift from this one.
+export function classify(replyText, truth) {
   const text = (replyText || "").trim();
 
   // Prompt-echo MUST be checked first: the prompt's own text contains the
@@ -565,7 +569,15 @@ async function main() {
   console.log(`\nFull results written to ${outPath}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// T-025: guarded so `import { classify } from "./vision-probe.mjs"` (ia-grade.mjs)
+// does not also fire off a live probe run against a bridge — main() only runs
+// when this file is executed directly.
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
