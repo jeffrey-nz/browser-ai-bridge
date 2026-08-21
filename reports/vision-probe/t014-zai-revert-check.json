@@ -1,0 +1,22 @@
+{
+  "probeSha256": "18b04c23567c82f6",
+  "bridgeCommit": "707fc096a71cd49345ad2f0bdd191babb2294fb1",
+  "gradedAt": "2026-08-21T09:58:52.010Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787306309791.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 22154,
+      "shape": "NO_ANSWER",
+      "detail": "Thinking...",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "Thinking..."
+    }
+  ]
+}
