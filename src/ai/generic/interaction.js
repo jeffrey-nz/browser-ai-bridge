@@ -217,6 +217,11 @@ export function makeInteraction(spec) {
         verifySelector: spec.attachEvidence,
         secondClickSelector: spec.attachMenuItem,
         requireGrowth: spec.requireGrowth,
+        // T-035: left undefined for every provider but kimi, so
+        // uploadFileToPage's own 6000ms default applies unchanged there.
+        ...(spec.verifyTimeoutMs != null
+          ? { verifyTimeoutMs: spec.verifyTimeoutMs }
+          : {}),
       });
     } catch (err) {
       logger.warn(

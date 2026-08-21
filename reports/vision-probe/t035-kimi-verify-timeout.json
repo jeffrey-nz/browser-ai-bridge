@@ -1,0 +1,131 @@
+{
+  "providerId": "kimi",
+  "note": "T-035: kimi's requireGrowth poll (uploadFile.js) ran on the inherited 6000ms default -- nothing in src/ had ever passed a verifyTimeoutMs override before this. Measured what an unthrottled real kimi upload actually takes, and what the failure path now costs after T-034's poll fix, then set kimi's own verifyTimeoutMs from the measured distribution instead of leaving the constant inherited.",
+  "latencyDistribution": {
+    "scriptUsed": "scripts/t035-kimi-latency-check.mjs",
+    "description": "10 unthrottled, live uploads of a real valid image (reports/vision-probe/probe-1787313682148.png -- the same file T-030/T-034 already confirmed reaching .image-thumbnail.success on kimi) through the real uploadFileToPage(), each against a fresh navigation to kimi.ai. verifyTimeoutMs was raised to 30000ms for this script ONLY so a slow real run would not be cut short before it could be measured; production's own default was still 6000ms (kimi's spec had no override yet) at the time these runs were taken. growthAtMs comes from an INDEPENDENT watcher polling page.locator(attachEvidence).count() every 100ms starting at the same t0 as uploadFileToPage() entry -- it is not gated by verifyTimeoutMs at all, so it is the true growth instant, not verify()'s own decision instant (which only samples every 300ms and can be up to one poll interval later).",
+    "runs": [
+      {
+        "label": "batch1-run1",
+        "baseline": 0,
+        "result": true,
+        "returnedAtMs": 8955,
+        "growthAtMs": 8785,
+        "finalCount": 1
+      },
+      {
+        "label": "batch1-run2",
+        "baseline": 1,
+        "result": true,
+        "returnedAtMs": 5867,
+        "growthAtMs": 5866,
+        "finalCount": 2
+      },
+      {
+        "label": "batch1-run3",
+        "baseline": 2,
+        "result": true,
+        "returnedAtMs": 5307,
+        "growthAtMs": 5244,
+        "finalCount": 3
+      },
+      {
+        "label": "batch1-run4",
+        "baseline": 3,
+        "result": true,
+        "returnedAtMs": 4964,
+        "growthAtMs": 4792,
+        "finalCount": 4
+      },
+      {
+        "label": "batch1-run5",
+        "baseline": 4,
+        "result": true,
+        "returnedAtMs": 4830,
+        "growthAtMs": 4737,
+        "finalCount": 5
+      },
+      {
+        "label": "batch1-run6",
+        "baseline": 5,
+        "result": true,
+        "returnedAtMs": 5007,
+        "growthAtMs": 4836,
+        "finalCount": 6
+      },
+      {
+        "label": "batch2-run1",
+        "baseline": 6,
+        "result": true,
+        "returnedAtMs": 5034,
+        "growthAtMs": 4941,
+        "finalCount": 7
+      },
+      {
+        "label": "batch2-run2",
+        "baseline": 7,
+        "result": true,
+        "returnedAtMs": 4882,
+        "growthAtMs": 4697,
+        "finalCount": 8
+      },
+      {
+        "label": "batch2-run3",
+        "baseline": 7,
+        "result": true,
+        "returnedAtMs": 5334,
+        "growthAtMs": 5148,
+        "finalCount": 8
+      },
+      {
+        "label": "batch2-run4",
+        "baseline": 7,
+        "result": true,
+        "returnedAtMs": 4889,
+        "growthAtMs": 4627,
+        "finalCount": 8
+      }
+    ],
+    "failedRuns": 0,
+    "note_onFailedRuns": "0 of 10 runs failed to attach at all -- there is no discarded tail in this sample. All 10 are included above, in run order across both batches, nothing dropped.",
+    "growthAtMs_values": [
+      8785, 5866, 5244, 4792, 4737, 4836, 4941, 4697, 5148, 4627
+    ],
+    "min": 4627,
+    "max": 8785,
+    "mean": 5367.3,
+    "conclusion": "The max (8785ms, the FIRST run of the batch -- a cold navigation with no prior warm-up in this session) already exceeds the inherited 6000ms default. Under the old default, that single run's genuinely valid, landed upload would have read imageAttached:false -- 1 of 10 runs in this sample, i.e. this is not a theoretical gap, it happened on the very first live run taken for this measurement. The other 9 runs cluster tightly (4627-5866ms), suggesting run1's 8785ms was a cold-start effect rather than the steady-state distribution, but the sample is only 10 runs and does not bound the true tail, so the chosen constant carries headroom over the observed max rather than sitting just above it."
+  },
+  "chosenConstant": {
+    "value_ms": 15000,
+    "setIn": "src/ai/generic/specs.js kimi.verifyTimeoutMs, wired through src/ai/generic/interaction.js (previously nothing in src/ passed this option at all -- interaction.js's uploadFileToPage() call had no verifyTimeoutMs key)",
+    "reasoning": "~1.7x headroom over the single worst observed sample (8785ms), not just over the mean/median -- deliberately more than 'observed max + a little', because 10 runs is not enough to bound the true tail and another cold-start-shaped run is plausible. Not a round number picked first and justified after: 15000 is the smallest round-thousand value that clears 8785ms by at least 1.5x while keeping the failure-path cost (see failurePath below) from growing past what was already measured there.",
+    "otherProvidersUnaffected": "confirmed at runtime -- built the exact options object interaction.js constructs for every GENERIC_SPECS entry: kimi -> {requireGrowth:true,verifyTimeoutMs:15000}, qwen/zai/mistral/perplexity -> {} (verifyTimeoutMs key absent, so uploadFileToPage's own 6000ms default parameter applies unchanged)."
+  },
+  "failurePath": {
+    "scriptUsed": "scripts/t035-kimi-failure-timing.mjs",
+    "description": "Stale .image-thumbnail.success nodes present (7, left over from the latency-distribution runs above -- real nodes, not synthetic, since the page already had them), and a malformed/too-small PNG (T-031's own fixture shape) uploaded through the real uploadFileToPage() with requireGrowth:true and NO verifyTimeoutMs override -- i.e. whichever default the currently-checked-out uploadFile.js carries (6000ms for both runs below; kimi's own spec override was not yet added at the time these were taken). The malformed file lands an ERROR thumbnail, never a new SUCCESS one, so count never grows past baseline -- a genuinely failed upload, not a simulated one.",
+    "preT034": {
+      "commit": "c674de8 (T-031's shipped state, the commit immediately before T-034)",
+      "result": false,
+      "elapsedMs": 4003,
+      "note": "verify() itself returned near-instantly here (waitForAttachmentEvidence's first-visible wait is satisfied immediately by the stale node; the count comparison that follows is a single synchronous check) -- the 4003ms total is almost entirely the mechanical cost of strategy 1 (setInputFiles + 500ms settle) falling through to strategy 2 (open toolkit menu, click 'Add files & photos', chooser dialog, setFiles, 500ms settle), not any poll."
+    },
+    "postT034": {
+      "commit": "44b2e29 (current)",
+      "result": false,
+      "elapsedMs": 12730,
+      "note": "MEASURED, NOT ASSUMED: this is roughly TWO 6000ms poll cycles, not one. Kimi has a hidden input[type=\"file\"] already present in the DOM, so strategy 1 (setInputFiles) runs and its own verify() call polls the full 6000ms before falling through; strategy 2 then repeats the same poll. The ticket's framing ('every genuinely-failed kimi upload now costs 6s it did not cost yesterday') undercounts this -- the actual failure path touches requireGrowth's poll twice per call, not once, because uploadFileToPage always tries strategy 1 before strategy 2 when any file input exists on the page at all."
+    },
+    "addedCostMs": 8727,
+    "addedCostMs_note": "12730 - 4003. This is the real, current cost of a genuinely-failed kimi upload with a stale node present, at the moment this was measured (6000ms default, both strategies polling). Once kimi's own verifyTimeoutMs is raised to 15000ms, the same failure path costs roughly 2x15000 + mechanics -- not separately re-measured live (would just restate the same two-poll structure at the new constant with predictable arithmetic), so recorded here as a computed consequence rather than a second live number: expect on the order of 30-31s for a genuinely-failed kimi upload with a stale node present.",
+    "verdict": "Cost judged acceptable against: kimi is a lower-tier fallback provider (API.md already records it completing only ~3 of 4 turns), a stale-node-present failure needs a prior turn's own failed/unsent upload to have happened at all (not the common case), and the alternative -- a shorter timeout -- was shown above to false-negative a genuinely valid upload in 1 of the first 10 unthrottled runs taken. If the ~30s two-poll failure cost turns out to matter in practice (e.g. it compounds with /api/ask's own retry/rotation logic), that is a distinct defect in uploadFileToPage always attempting strategy 1 before strategy 2 even when strategy 1's own input is not the composer's real one -- out of this ticket's scope per its own scope guard (measures and sets a constant, does not re-open the poll logic), filed separately if it turns out to matter."
+  },
+  "gates": {
+    "test": "NODE_ENV=test node --test: 81/81 pass, 0 fail",
+    "prettier": "npx prettier --check on every touched file (src/ai/generic/specs.js, src/ai/generic/interaction.js, scripts/t035-kimi-latency-check.mjs, scripts/t035-kimi-failure-timing.mjs): clean"
+  },
+  "housekeeping": "Every live run left a real .image-thumbnail node behind (10 from the latency runs, unaffected by the failure-path runs since those used a malformed file). Removed all of them via each thumbnail's own hover-revealed delete icon (T-031's technique) before finishing; confirmed 0 .image-thumbnail nodes on a fresh reload afterward.",
+  "whatWasNotDone": "Did not re-measure the ~30-31s post-constant-change failure-path number live -- it is stated as a computed consequence of the same two-poll structure already measured at the 6000ms default, not a second live timing. Did not re-open or alter requireGrowth's poll logic itself (scope guard) -- both uploadFile.js and the poll loop it added in T-034 are untouched by this ticket; only kimi's spec gained a verifyTimeoutMs value and interaction.js gained the three-line passthrough needed for that value to ever reach uploadFileToPage (previously absent for every provider).",
+  "checkedAt": "2026-08-21T13:50:00Z"
+}

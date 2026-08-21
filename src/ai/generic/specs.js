@@ -120,6 +120,25 @@ export const GENERIC_SPECS = {
     //        page at all.) ]]
     attachEvidence: ".image-thumbnail.success",
     requireGrowth: true,
+    //[[ T-035, MEASURED (2026-08-21): the inherited 6000ms default
+    //   (uploadFile.js) was never chosen for kimi — nothing in src/ ever
+    //   passed a verifyTimeoutMs override before this. 10 unthrottled, live
+    //   uploads of a real valid image on kimi.ai, timed from
+    //   uploadFileToPage() entry to .image-thumbnail.success count reaching
+    //   baseline+1 (an independent 100ms-poll watcher, not gated by any
+    //   timeout): 4627, 4697, 4737, 4792, 4836, 4941, 5148, 5244, 5866,
+    //   8785ms (min 4627 / max 8785 — reports/vision-probe/
+    //   t035-kimi-verify-timeout.json). The 8785ms run (the first of the
+    //   batch, a cold navigation) ALREADY exceeds the 6000ms default, so
+    //   that default was reading a genuinely valid, landed upload as
+    //   imageAttached:false roughly 1 run in 10 in this sample. 15000ms
+    //   carries ~1.7x headroom over the single worst observed sample —
+    //   deliberately more than the observed max alone, since 10 runs does
+    //   not bound the true tail and another cold-start-shaped run is
+    //   plausible. This constant only lengthens the SUCCESS path's ceiling;
+    //   the failure-path cost this also raises is measured and accepted
+    //   separately (same report, failurePath field). ]]
+    verifyTimeoutMs: 15000,
     rateLimit: "Too many people are chatting with Kimi",
     dismiss: ["Got it", "Close"],
   },
