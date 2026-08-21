@@ -22,10 +22,24 @@
  * against the logged-in ACCOUNT, across tabs, so the "fresh" composer this
  * script navigated to already had three real image chips sitting in it. A
  * before-count would have printed the contradiction on the first run instead
- * of costing a live session, a revert, and two review round trips. Any
- * selector whose before-count is non-zero is flagged unusable in the output —
- * it cannot distinguish this turn's own attachment from page furniture or an
- * earlier turn's leftovers.
+ * of costing a live session, a revert, and two review round trips.
+ *
+ * THE UNUSABLE FLAG IS DECIDED BY VISIBILITY, NOT COUNT (T-021). count()
+ * counts nodes attached to the DOM; the production code this instrument
+ * models — waitForAttachmentEvidence, src/ai/shared/uploadFile.js — decides
+ * imageAttached with `.first().waitFor({ state: "visible" })`. Those are
+ * different questions: a selector that matches a hidden placeholder
+ * (display:none, zero size, an empty template an SPA keeps mounted) before
+ * the upload and a real, visible card after it is a perfectly usable
+ * evidence selector, and count() alone would flag it UNUSABLE on a false
+ * premise — the same selector would correctly report imageAttached:false on
+ * an empty composer in production, because waitFor({state:"visible"}) does
+ * too. So both count and visibility are measured and printed for every
+ * selector, before and after, but only a selector VISIBLE before the upload
+ * is flagged unusable — that is the one shape that would make
+ * waitForAttachmentEvidence return true on an empty composer. Do not
+ * simplify this back to a bare count; that is the exact regression this
+ * ticket exists to prevent.
  *
  * Usage: node scripts/attachment-diagnose.mjs <providerId>
  *   providerId: zai | kimi | qwen | mistral | perplexity | chatgpt | deepseek | grok
@@ -128,17 +142,34 @@ async function main() {
     named.push(["spec.attachEvidence", target.attachEvidence]);
   const allSelectors = [...named, ...candidates.map((c) => [c, c])];
 
-  const countAll = async () => {
+  // count() and isVisible() are DIFFERENT QUESTIONS (T-021): count() counts
+  // nodes attached to the DOM, but the production code this instrument
+  // models — waitForAttachmentEvidence, src/ai/shared/uploadFile.js — decides
+  // imageAttached with `.first().waitFor({ state: "visible" })`. A selector
+  // that matches a hidden placeholder (display:none, zero size, an empty
+  // template an SPA keeps mounted) before the upload and a real visible card
+  // after it is a perfectly usable evidence selector — count() alone would
+  // flag it UNUSABLE on a false premise. isVisible() is false for a
+  // zero-node locator too, so it needs no separate zero-count case.
+  const measureAll = async () => {
     const out = {};
-    for (const [label, sel] of allSelectors)
-      out[label] = await page.locator(sel).count();
+    for (const [label, sel] of allSelectors) {
+      const loc = page.locator(sel);
+      out[label] = {
+        count: await loc.count(),
+        visible: await loc
+          .first()
+          .isVisible()
+          .catch(() => false),
+      };
+    }
     return out;
   };
 
   // BEFORE (T-020): measured on the composer exactly as loaded, before any
   // upload is attempted — this is the number that would have caught
   // .chip-scroll being non-zero on a "fresh" zai composer.
-  const before = await countAll();
+  const before = await measureAll();
 
   const dir = await mkdtemp(join(tmpdir(), "attach-diag-"));
   const filePath = join(dir, "probe.png");
@@ -162,7 +193,7 @@ async function main() {
     uploadErr = err.message;
   }
 
-  const after = await countAll();
+  const after = await measureAll();
   const screenshotPath = join(process.cwd(), `attach-diag-${providerId}.png`);
   await page.screenshot({ path: screenshotPath, fullPage: false });
 
@@ -170,15 +201,27 @@ async function main() {
   console.log(`uploadFileToPage() returned: ${attached}`);
   if (uploadErr) console.log(`  (threw: ${uploadErr})`);
   console.log(`screenshot: ${screenshotPath}`);
-  console.log(`\nbefore -> after (a non-zero BEFORE count means that selector`);
-  console.log(`cannot distinguish this turn's own attachment from what was`);
-  console.log(`already on the page — flagged UNUSABLE, not just reported):`);
+  console.log(
+    `\ncount, visible: before -> after (UNUSABLE is decided by VISIBILITY`,
+  );
+  console.log(
+    `before the upload, not count — that is the measurement production code`,
+  );
+  console.log(
+    `(waitForAttachmentEvidence) actually makes. A selector that is present`,
+  );
+  console.log(
+    `but hidden before the upload is usable; one visible before it is not:`,
+  );
   for (const [label] of allSelectors) {
     const b = before[label];
     const a = after[label];
-    const flag = b > 0 ? "  UNUSABLE — non-zero before any upload" : "";
+    const flag = b.visible
+      ? "  UNUSABLE — already visible before any upload"
+      : "";
     console.log(
-      `  ${String(b).padStart(2)} -> ${String(a).padEnd(2)}  ${label}${flag}`,
+      `  ${String(b.count).padStart(2)},${String(b.visible).padStart(6)}  ->  ` +
+        `${String(a.count).padStart(2)},${String(a.visible).padStart(6)}  ${label}${flag}`,
     );
   }
 }
