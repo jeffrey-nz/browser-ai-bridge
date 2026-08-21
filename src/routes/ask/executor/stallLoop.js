@@ -128,7 +128,10 @@ export async function handleStalls(session, initialResponse, activePrompt) {
 
     if (control.action === "manual") {
       logger.info("[Ask] Stall resolved: manual response accepted.");
-      return { response: control.text, imageAttached: hadImage ? false : undefined };
+      return {
+        response: control.text,
+        imageAttached: hadImage ? false : undefined,
+      };
     }
 
     logger.info("[Ask] Stall resolved: skipped by operator.");
@@ -142,6 +145,11 @@ export async function handleStalls(session, initialResponse, activePrompt) {
   // is only trustworthy off the loop's first (unmodified) response.
   return {
     response: response.text,
-    imageAttached: stallAttempt > 0 ? (hadImage ? false : undefined) : response.imageAttached,
+    imageAttached:
+      stallAttempt > 0
+        ? hadImage
+          ? false
+          : undefined
+        : response.imageAttached,
   };
 }
