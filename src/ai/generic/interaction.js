@@ -93,6 +93,26 @@ export function makeInteraction(spec) {
       .catch(() => "");
   }
 
+  //[[ Chrome-only text must count as NO answer during the stability check
+  //   (T-005). Mistral's message group renders its turn timestamp and
+  //   "Was this helpful?" row before or independently of the model's own
+  //   text, so raw innerText can be non-empty and constant — "ready 2:24am"
+  //   — for several polls before any real content exists. Judging stability
+  //   on the RAW text let that satisfy "stable, non-empty" and declare the
+  //   turn done; extractResponse's stripSuffix then emptied it, and its own
+  //   never-empty guard (below) restored the raw chrome, which is how a bare
+  //   timestamp like "3:59pm" reached a caller as the "answer". Stripping
+  //   the SAME declared chrome before measuring length — with no fallback
+  //   here, unlike extractResponse — makes chrome-only content read as
+  //   length 0, so the poll correctly keeps waiting for the model's actual
+  //   text instead of stabilizing on what rendered first. ]]
+  function stripChrome(text) {
+    let out = String(text || "");
+    if (spec.stripPrefix) out = out.replace(spec.stripPrefix, "");
+    if (spec.stripSuffix) out = out.replace(spec.stripSuffix, "");
+    return out;
+  }
+
   async function waitForCompletion(page) {
     let aborted = false;
     const onAbort = () => {
@@ -128,7 +148,7 @@ export function makeInteraction(spec) {
           }
 
           const txt = await readAnswer(page);
-          const len = (txt || "").trim().length;
+          const len = stripChrome(txt).trim().length;
 
           if (len > 0 && len === lastLen) {
             stable += 1;

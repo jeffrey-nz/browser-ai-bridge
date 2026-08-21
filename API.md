@@ -204,12 +204,20 @@ carries that verdict:
 
 As of the T-001 measurement, `chatgpt`, `gemini`, `deepseek`, `grok` and `copilot` can be
 verified as receiving an image on a given turn; `kimi` and `zai` could not complete an
-image turn at all in repeated runs (submit failure / timeout, independent of the image);
-`mistral` and `qwen` were seen returning an unrelated answer (the extractor reading the
-wrong element on the page) rather than confirming or denying the image. This is a snapshot
-of flaky, provider-controlled UIs, not a permanent scorecard — re-run
-`node scripts/vision-probe.mjs` for a current reading before depending on a specific
-provider's image path.
+image turn at all in repeated runs (submit failure / timeout, independent of the image).
+`mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
+selector could also match the USER's own turn, so a fast reply could be captured before
+the assistant's message ever rendered, echoing the prompt back; mistral separately showed
+a bare timestamp for the same underlying reason (its turn's chrome — timestamp, feedback
+row — could render, and stabilize, before the model's own text did). Both fixed in T-005
+(`src/ai/generic/specs.js`'s `responseBlock` selectors now exclude the user's own turn;
+`src/ai/generic/interaction.js`'s completion poll now judges stability on text with the
+same chrome stripped, not the raw block). Live-verified three consecutive sweeps each:
+neither provider echoes or leaks chrome anymore — both now report an honest `SEES=no`
+(a real, upload-related limitation, not this extractor bug). This is a
+snapshot of flaky, provider-controlled UIs, not a permanent scorecard — re-run
+`node scripts/vision-probe.mjs` for a current reading
+before depending on a specific provider's image path.
 
 **Only the first attachment is sent** — the current providers accept one file per turn.
 Additional entries are logged and dropped, so send one image per `/api/ask` call.

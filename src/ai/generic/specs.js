@@ -68,8 +68,21 @@ export const GENERIC_SPECS = {
         "textarea.message-input-textarea, textarea[placeholder*='Ask Qwen' i]",
       sendBtn: ".message-input-right-button-send",
       stopBtn: "[class*='stop' i]",
+      //[[ WRONG ABOUT WHICH SIDE "message"+"content" MATCHES (T-005). Qwen's
+      //   own paragraph carries `user-message-content` — a class containing
+      //   BOTH "message" and "content" on the QUESTION, not the answer. The
+      //   assistant's markdown spans already match the first alternative, but
+      //   `.last()` over BOTH alternatives together doesn't guarantee DOM
+      //   order puts an assistant element after the user's, and for a fast
+      //   short answer the user's bubble alone can be the only thing
+      //   rendered when the completion poll's stability check runs, giving a
+      //   verbatim echo of the prompt. The assistant's own class is
+      //   `response-message-content` — excluding anything with "user" in its
+      //   class keeps the second alternative's intent (a message/content
+      //   block) while dropping the one turn it was never meant to match.
+      //   Verified live: chat.qwen.ai, T-005 hand-back. ]]
       responseBlock:
-        "[class*='markdown' i], [class*='message' i][class*='content' i]",
+        "[class*='markdown' i], [class*='message' i][class*='content' i]:not([class*='user' i])",
       doneSignal: null,
     },
     attachBtn: "input[type='file']",
@@ -119,11 +132,26 @@ export const GENERIC_SPECS = {
       stopBtn: "button[aria-label*='stop' i]",
       //[[ Mistral styles with Tailwind utilities and no semantic class, so there
       //   is nothing like ".markdown" to match. Each turn is a [class*="group/message"]
-      //   and the USER's bubble is the one carrying ms-auto (right-aligned); taking
-      //   the last one therefore lands on the assistant. My first attempt matched
-      //   "prose" and "markdown", found neither, and the poll waited on empty text
-      //   for five minutes while the answer sat on screen. ]]
-      responseBlock: "[class*='group/message']",
+      //   and the USER's bubble is the one carrying ms-auto (right-aligned) on an
+      //   inner div. My first attempt matched "prose" and "markdown", found
+      //   neither, and the poll waited on empty text for five minutes while the
+      //   answer sat on screen.
+      //
+      //   WRONG ABOUT WHAT ".last()" WOULD DO (T-005). The user's turn is the
+      //   ONLY [class*="group/message"] element that exists for the first few
+      //   seconds of a turn — Mistral does not create the assistant's own
+      //   group/message wrapper until its reply actually starts streaming. With
+      //   the plain selector, `.last()` on a one-element list IS the user's
+      //   bubble, its text never changes, and the stability poll below saw a
+      //   constant non-empty length from its very first read — "done" fired
+      //   before Mistral had rendered a single token of an answer, extracting
+      //   the prompt (or, once stripSuffix stripped it to nothing and the
+      //   never-empty guard restored the original, a bare timestamp) instead.
+      //   Excluding the ms-auto branch means the selector matches NOTHING
+      //   until the assistant's own bubble exists, so the poll's `len > 0`
+      //   check correctly keeps waiting instead of stabilizing on the wrong
+      //   element. Verified live: chat.mistral.ai/chat, T-005 hand-back. ]]
+      responseBlock: "[class*='group/message']:not(:has([class*='ms-auto']))",
       doneSignal: null,
     },
     attachBtn: "input[type='file']",
