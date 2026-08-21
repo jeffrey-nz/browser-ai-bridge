@@ -128,7 +128,21 @@ export const GENERIC_SPECS = {
     maxPromptChars: 100000,
     //[[ The cleanest of the five: a textarea with a stable id, a send button with
     //   a real class, and a file input that names .png/.jpg in its accept list —
-    //   so image work needs no click-through-to-chooser dance. ]]
+    //   so image work needs no click-through-to-chooser dance.
+    //
+    //   T-014: THE UPLOAD WAS NEVER THE PROBLEM — THE VERIFY SELECTOR WAS BLIND
+    //   TO IT. imageAttached was false on every recorded zai run (0 of 4), yet
+    //   t006-zai-r2-run1.json is a PASS with the count and colour both correct
+    //   on a freshly-drawn image (1-in-28 to guess both, and it also said
+    //   SEES=yes) — a real read reported as unconfirmed. Live-verified:
+    //   setInputFiles on the file input above genuinely attaches (a filename +
+    //   size card renders in the composer, screenshot on file), but that card's
+    //   only class is `chip-scroll` — DEFAULT_ATTACHMENT_EVIDENCE's patterns
+    //   (attachment/thumbnail/file-preview/blob-src) don't include "chip", so
+    //   waitForAttachmentEvidence timed out on a file that had already landed,
+    //   and uploadFileToPage's strategy-2 fallback then failed too (the same
+    //   input, checked for visibility this time, isn't visible), throwing
+    //   "no file input or attachment button found" over a genuine success. ]]
     locators: {
       newChatBtn: "a[href='/'], button:has-text('New Chat')",
       inputBox: "textarea#chat-input",
@@ -138,6 +152,7 @@ export const GENERIC_SPECS = {
       doneSignal: null,
     },
     attachBtn: "input[type='file']",
+    attachEvidence: ".chip-scroll",
     rateLimit: null,
     dismiss: [],
     //[[ GLM prefixes its answer with a collapsed reasoning block that renders as

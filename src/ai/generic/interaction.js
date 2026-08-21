@@ -214,6 +214,7 @@ export function makeInteraction(spec) {
     try {
       imageAttached = await uploadFileToPage(page, filePath, {
         attachmentBtnSelector: spec.attachBtn,
+        verifySelector: spec.attachEvidence,
       });
     } catch (err) {
       logger.warn(

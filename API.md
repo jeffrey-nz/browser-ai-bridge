@@ -233,6 +233,25 @@ Two numbers worth keeping separate, named rather than counted by subtraction:
 - **Seen to complete a turn AND read an image** (n=4): `gemini`, `deepseek`, `grok`,
   `copilot` — see the `chatgpt` correction above for why it is not a 5th.
 
+**`imageAttached` itself had a false negative on the generic path (crew board T-014).**
+`zai`'s upload genuinely lands — a live look confirmed a real attachment card renders in
+its composer — but the only class on that card is `chip-scroll`, which
+`DEFAULT_ATTACHMENT_EVIDENCE` (`src/ai/shared/uploadFile.js`) does not match, so a
+successful attach was reported as `imageAttached: false` and its answer was flagged
+"may be text-only" even though the model had genuinely seen the picture. Fixed by letting
+a `GENERIC_SPECS` entry name its own evidence selector (`attachEvidence`, forwarded as
+`verifySelector`); `zai` now reports `imageAttached: true` on the same upload path. The
+other four generic providers were checked the same way, live, and were not the same bug:
+`kimi` and `mistral` genuinely do not attach through the code as it stands today (both
+require a menu click before any file input exists — `kimi`'s composer opens an "Add files
+& photos" submenu, `mistral` has no `input[type="file"]` anywhere in the DOM until some
+other interaction reveals one — a different, unfixed gap, not a blind selector), `qwen`
+has a matching `input[type="file"]` but no attachment evidence ever rendered on screen
+after setting its files, and `perplexity` never reached a composer at all — the same
+paywall interstitial T-008 already documented. So the image-capable count above is
+correctly capped at the four bespoke providers for now: none of the other four generic
+providers' `imageAttached: false` readings are known to be wrong the way `zai`'s were.
+
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
 the assistant's message ever rendered, echoing the prompt back; mistral separately showed
