@@ -24,9 +24,55 @@ import { cooldownManager } from "../../session/CooldownManager.js";
 import { logger } from "#utils/logger.js";
 import { describeUploadFailure } from "#ai/shared/uploadOutcome.js";
 
+// T-079: pulled out of askOne's try-block so the shape of a successful
+// result — which optional fields appear, and under what gate — is
+// unit-testable without mocking sessionManager/resolveSession/
+// executeAskTurn/withSessionLock. Mirrors ask.js's identical block:
+// imageAttachedEvidence and visionModeVerdict are both nested inside the
+// `imageAttached !== undefined` gate (both only ever arrive from the same
+// image-upload code path in executeAskTurn, so one being defined without
+// the other doesn't happen), but neither is further restricted to
+// `imageAttached === true` — a failed upload's mode verdict, or its
+// evidence, is still a fact worth reporting.
+export function buildAskOneSuccessResult(providerId, turn) {
+  const {
+    response,
+    data,
+    turnIndex,
+    sessionAgeMs,
+    imageAttached,
+    imageAttachedCause,
+    imageAttachedEvidence,
+    visionModeVerdict,
+  } = turn;
+
+  const result = {
+    provider: providerId,
+    answered: true,
+    response,
+    data,
+    turnIndex,
+    sessionAgeMs,
+  };
+  if (imageAttached !== undefined) {
+    result.imageAttached = imageAttached;
+    if (!imageAttached) {
+      result.imageAttachedCause = imageAttachedCause;
+      result.warning = describeUploadFailure(imageAttachedCause);
+    }
+    if (imageAttachedEvidence) {
+      result.imageAttachedEvidence = imageAttachedEvidence;
+    }
+    if (visionModeVerdict !== undefined) {
+      result.visionModeVerdict = visionModeVerdict;
+    }
+  }
+  return result;
+}
+
 /**
  * @returns {Promise<object>} always one of:
- *   { provider, answered: true, response, data, turnIndex, sessionAgeMs, imageAttached?, imageAttachedCause?, warning? }
+ *   { provider, answered: true, response, data, turnIndex, sessionAgeMs, imageAttached?, imageAttachedCause?, imageAttachedEvidence?, visionModeVerdict?, warning? }
  *   { provider, answered: false, reason, retryAfter? }
  */
 export async function askOne(providerId, prompt, requestId, opts = {}) {
@@ -75,6 +121,7 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         imageAttached,
         imageAttachedCause,
         imageAttachedEvidence,
+        visionModeVerdict,
         selfHealEscape,
       } = await executeAskTurn(
         session,
@@ -105,27 +152,16 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         };
       }
 
-      const result = {
-        provider: providerId,
-        answered: true,
+      return buildAskOneSuccessResult(providerId, {
         response,
         data,
         turnIndex,
         sessionAgeMs,
-      };
-      if (imageAttached !== undefined) {
-        result.imageAttached = imageAttached;
-        if (!imageAttached) {
-          result.imageAttachedCause = imageAttachedCause;
-          result.warning = describeUploadFailure(imageAttachedCause);
-        }
-        // T-053 review: see ask.js's identical block — a false row can
-        // carry evidence too, so this is no longer gated to `true`.
-        if (imageAttachedEvidence) {
-          result.imageAttachedEvidence = imageAttachedEvidence;
-        }
-      }
-      return result;
+        imageAttached,
+        imageAttachedCause,
+        imageAttachedEvidence,
+        visionModeVerdict,
+      });
     } catch (err) {
       sessionManager.logTranscript(session.id, "SYSTEM_ERROR", err.message, {
         requestId,
