@@ -26,13 +26,32 @@ export const GENERIC_SPECS = {
   //   div with no role and no aria-label — so `clickOrFallbackToEnter` cannot find
   //   it by any accessible name and the class is the only handle there is.
   //
-  //   MEASURED AND UNRESOLVED: on 2026-08-18 Kimi accepted a prompt, rendered the
+  //   MEASURED AND UNRESOLVED (2026-08-18): Kimi accepted a prompt, rendered the
   //   answer with its Copy/Share controls, then WITHDREW it and put the text back
   //   in the composer, showing "Too many people are chatting with Kimi right now.
   //   Subscribe to enter a dedicated priority queue!". That is a capacity refusal,
   //   not a selector fault, and it is why `rateLimit` matches that sentence: the
   //   bridge should fall through to another provider rather than sit in a queue.
-  //   The send path here is therefore SELECTOR-VERIFIED BUT NOT TURN-VERIFIED. ]]
+  //
+  //   T-006: THE REAL FAULT WAS responseBlock, AND IT WAS A REDESIGN, NOT THE
+  //   RATE LIMIT. Kimi's site was rebuilt since the note above was written —
+  //   `.message-list` does not exist anywhere in the current DOM (0 matches,
+  //   confirmed live), so readAnswer() always returned "", the completion
+  //   poll's `len > 0` check never passed, and every turn ran out the full
+  //   300s poll timeout regardless of whether the model had already answered.
+  //   It had: live-verified turns show the answer rendered and complete
+  //   ("PONG", with its Copy/regenerate/Share/thumbs row) while the bridge
+  //   was still waiting. Same failure shape as T-005's mistral/qwen — a
+  //   completion check with nothing to read — except here the selector
+  //   matches NOTHING at all rather than the wrong element, so it was never
+  //   going to intermittently work the way T-005's bug did.
+  //
+  //   Current structure: the assistant's final answer is a `.markdown-
+  //   container` inside `.chat-content-item-assistant`; Kimi's own visible
+  //   "Think" reasoning toggle renders as a SIBLING `.markdown-container`
+  //   that additionally carries `.toolcall-content-text` — excluding that
+  //   class is what keeps the reasoning block from being mistaken for the
+  //   answer, the same shape as T-005's exclusions for mistral and qwen. ]]
   kimi: {
     id: "kimi",
     name: "Kimi",
@@ -45,7 +64,8 @@ export const GENERIC_SPECS = {
         ".chat-input-editor[contenteditable='true'], .chat-input-editor",
       sendBtn: ".send-button-container:not(.disabled)",
       stopBtn: "[class*='stop' i]",
-      responseBlock: ".message-list > *",
+      responseBlock:
+        "div.chat-content-item-assistant div.markdown-container:not(.toolcall-content-text)",
       doneSignal: null,
     },
     // The composer placeholder says "Ask anything. Images work too.", but no

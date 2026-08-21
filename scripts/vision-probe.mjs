@@ -125,6 +125,22 @@ async function gradingProvenance() {
   };
 }
 
+// zai deliberately EXCLUDED from the default roster (T-006). Still a real,
+// callable provider (src/ai/generic/specs.js) — pass --providers zai
+// explicitly if you want it — but it does not belong in a sweep nobody is
+// specifically asking about. Evidence: 8 attempts across two sessions on one
+// day, submission click/keyboard-fallback succeeding only 3 of 8 times
+// (2 ERROR "Failed to submit prompt: input did not clear and generation did
+// not start", 1 ERROR 300s timeout, 2 NO_ANSWER — one a stuck "Thinking..."
+// placeholder, one a truncated reply missing its final character, a
+// DIFFERENT and still-unexplained fault). No single root cause identified
+// the way kimi's was (a stale `.message-list` selector, fixed in this same
+// commit) — the failures are three distinct shapes, not one bug wearing
+// three costumes, and none of the three yielded to the diagnostic tools
+// this ticket had (dom-diagnose.mjs, direct DOM inspection of the send
+// button's disabled state, manual submission via Playwright). Re-add if a
+// real fix lands; until then a sweep that includes it spends up to 300s
+// finding out what this comment already knows.
 const ALL_PROVIDERS = [
   "chatgpt",
   "gemini",
@@ -133,7 +149,6 @@ const ALL_PROVIDERS = [
   "copilot",
   "kimi",
   "qwen",
-  "zai",
   "mistral",
   "perplexity",
 ];

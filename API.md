@@ -203,8 +203,23 @@ carries that verdict:
   the two states above always applies instead (crew board T-004).
 
 As of the T-001 measurement, `chatgpt`, `gemini`, `deepseek`, `grok` and `copilot` can be
-verified as receiving an image on a given turn; `kimi` and `zai` could not complete an
-image turn at all in repeated runs (submit failure / timeout, independent of the image).
+verified as receiving an image on a given turn. `kimi` and `zai` could not complete a
+turn at all in repeated runs; `kimi`'s cause was found and fixed (crew board T-006): its
+`responseBlock` selector (`.message-list`) no longer existed on the current site, so
+every completion poll ran out its full timeout regardless of whether the model had
+already answered — verified with a real answer ("PONG") sitting complete on the page
+while the bridge was still waiting. Fixed selector, live-verified three consecutive
+completions in 28-38s each (was a 300s timeout on every prior sweep). `zai` is NOT fixed
+and is deliberately excluded from `scripts/vision-probe.mjs`'s default provider list
+(T-006): 8 attempts across two sessions completed only 3, with three distinct,
+unexplained failure shapes (a submission click that intermittently doesn't register, a
+generation that gets stuck showing "Thinking...", and a reply truncated by exactly one
+character) rather than one identifiable cause. Still callable by naming it explicitly;
+just not part of a sweep nobody asked about it by name. Removing it takes T-002's
+n-way-ask consensus design from a nominal 10-provider roster to 9 that have been SEEN to
+complete a text turn, and (separately, per this section) the smaller set above that has
+been seen to complete an IMAGE turn.
+
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
 the assistant's message ever rendered, echoing the prompt back; mistral separately showed
