@@ -2,18 +2,21 @@
 ╔════════════════════════════════════════╗
 ║     AI Browser Automation API          ║
 ╚════════════════════════════════════════╝
-[2026-08-22 07:39:52.881 +1000] [33mWARN[39m: [36m[Startup] Stale instance detected on port 3342 (PID 3888) - sending SIGTERM...[39m
 
 =============================================
    AI Provider Authentication & Tab Setup
 =============================================
 
 -> Configuring [1mChatGPT[0m...
-[92m   [Detected] Interface found.[0m
+[93m   [Pending] Manual login or navigation may be required in Chrome.[0m
    [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
 
 =============================================
    Setup Complete. Active providers ready.
 =============================================
 
-[2026-08-22 07:39:54.888 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-3
+[2026-08-22 07:45:17.558 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3346 (requestTimeout disabled)[39m
+[2026-08-22 07:45:17.560 +1000] [32mINFO[39m: [36m[Config] Bound port 3346 written to config files[39m
+[2026-08-22 07:45:17.628 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[2026-08-22 07:45:17.628 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[2026-08-22 07:45:17.655 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
