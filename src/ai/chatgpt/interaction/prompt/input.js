@@ -2,7 +2,10 @@ import {
   clearAndType,
   clickOrFallbackToEnter,
 } from "#ai/shared/domInteraction.js";
-import { uploadFileToPage } from "#ai/shared/uploadFile.js";
+import {
+  uploadFileToPage,
+  DEFAULT_ATTACHMENT_EVIDENCE,
+} from "#ai/shared/uploadFile.js";
 
 export async function injectChatGptText(page, text) {
   await clearAndType(
@@ -24,8 +27,25 @@ export async function uploadFileToChatGpt(page, filePath) {
     'button[data-testid*="attach" i], button[data-testid*="file" i], ' +
     '[class*="composer"] button:has(svg[class*="paperclip" i])';
 
+  // T-042: DEFAULT_ATTACHMENT_EVIDENCE never matches chatgpt's real
+  // thumbnail — confirmed by direct DOM inspection (9/9 attachment-diagnose
+  // repro, plus a manual network-request trace showing the upload itself
+  // succeeding end-to-end — POST .../backend-api/files, a PUT to blob
+  // storage, process_upload_stream — every time, with a real thumbnail
+  // visibly rendered every time). chatgpt's thumbnail is an
+  // `aria-label="Open image: User uploaded image"` button wrapping an
+  // `<img src="https://chatgpt.com/backend-api/estuary/content?...">` —
+  // never a `blob:` src, no "attachment"/"thumbnail"/"file-preview" class or
+  // testid anywhere on it, so every alternative in DEFAULT_ATTACHMENT_EVIDENCE
+  // misses it. Keep the shared defaults too (harmless if they never match,
+  // and free coverage if a future redesign happens to satisfy one of them).
+  const chatgptEvidenceSelector =
+    DEFAULT_ATTACHMENT_EVIDENCE +
+    ', button[aria-label*="uploaded image" i], img[src*="backend-api/estuary" i], img[src*="backend-api/files" i]';
+
   return uploadFileToPage(page, filePath, {
     attachmentBtnSelector: chatgptAttachSelector,
+    verifySelector: chatgptEvidenceSelector,
   });
 }
 

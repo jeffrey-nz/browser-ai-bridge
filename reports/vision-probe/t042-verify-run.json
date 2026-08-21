@@ -1,0 +1,22 @@
+{
+  "probeSha256": "b97b1723cee3624b",
+  "bridgeCommit": "0929580f454b5d2136d40dcacfbe1927cb7b6d33",
+  "gradedAt": "2026-08-21T17:43:21.005Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 9,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787334155599.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 45325,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}
