@@ -62,8 +62,26 @@ async function init() {
   if (isNaN(port)) port = 3333;
   else if (port <= 0) throw new Error("PORT must be a positive integer");
 
-  // Kill stale processes first so the port is free before we start the server.
-  await killBrowserProcess();
+  // Kill a stale bridge process first so the HTTP port is free before we
+  // start the server.
+  //
+  // T-064: this used to ALSO call killBrowserProcess() here, unconditionally,
+  // before connectToBrowser() ever got a chance to try CDP_URL. That call
+  // kills whatever owns CDP_PORT (default 9222) with no tracked PID to
+  // check against on a fresh process — so a second bridge, pointed via
+  // CDP_URL at a DIFFERENT, perfectly healthy bridge's Chrome, killed it
+  // before even attempting to connect, every time the CDP_PORT it resolved
+  // to happened to match. Measured live: two "No tracked PID; killing
+  // process on CDP port <N>..." log lines per startup — one from here, one
+  // from inside autoLaunchChrome() a moment later — the FIRST of which
+  // fired before "Server listening" even printed, i.e. before this
+  // process had tried CDP_URL at all. connectToBrowser() (below) already
+  // tries connectOverCDP() FIRST and only falls through to
+  // autoLaunchChrome() — which does its own, later, narrower kill — when
+  // that genuinely fails. This call added a second, earlier, unconditional
+  // kill with no corresponding attempt to connect first; removed rather
+  // than guarded, since nothing here needs it that connectToBrowser()
+  // doesn't already do more carefully.
   await killZombieProcess(port);
 
   // Start the HTTP server early — before browser connect and login sequence —
