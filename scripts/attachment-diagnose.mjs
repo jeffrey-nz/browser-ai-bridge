@@ -45,7 +45,7 @@
  *   providerId: zai | kimi | qwen | mistral | perplexity | chatgpt | deepseek | grok
  */
 import { chromium } from "playwright-core";
-import { writeFile, mkdtemp } from "node:fs/promises";
+import { writeFile, mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -55,6 +55,10 @@ import {
 import { GENERIC_SPECS } from "../src/ai/generic/specs.js";
 import { uploadFileToDeepSeek } from "../src/ai/deepseek/interaction/prompt/input.js";
 import { uploadFileToGrok } from "../src/ai/grok/interaction/prompt/input.js";
+// T-024: same REPORTS_DIR the audit path writes to (src/audit/io.js), not a
+// second hardcoded "reports" string — gitignored, so this script's output
+// can never become commit-bait the way a repo-root screenshot was.
+import { REPORTS_DIR } from "../src/audit/io.js";
 
 const CDP_URL = process.env.CDP_URL || "http://127.0.0.1:9222";
 const providerId = process.argv[2];
@@ -194,13 +198,15 @@ async function main() {
   }
 
   const after = await measureAll();
-  const screenshotPath = join(process.cwd(), `attach-diag-${providerId}.png`);
+  await mkdir(REPORTS_DIR, { recursive: true });
+  const screenshotFilename = `attach-diag-${providerId}.png`;
+  const screenshotPath = join(REPORTS_DIR, screenshotFilename);
   await page.screenshot({ path: screenshotPath, fullPage: false });
 
   console.log(`\n=== ${providerId} ===`);
   console.log(`uploadFileToPage() returned: ${attached}`);
   if (uploadErr) console.log(`  (threw: ${uploadErr})`);
-  console.log(`screenshot: ${screenshotPath}`);
+  console.log(`  [IO] Screenshot → ./reports/${screenshotFilename}`);
   console.log(
     `\ncount, visible: before -> after (UNUSABLE is decided by VISIBILITY`,
   );

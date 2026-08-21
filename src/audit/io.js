@@ -4,7 +4,7 @@ import process from "node:process";
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
 
-const REPORTS_DIR = path.join(process.cwd(), "reports");
+export const REPORTS_DIR = path.join(process.cwd(), "reports");
 
 function ensureDir() {
   if (!fs.existsSync(REPORTS_DIR)) {
