@@ -233,8 +233,9 @@ Two numbers worth keeping separate, named rather than counted by subtraction:
 - **Seen to complete a turn AND read an image** (n=4): `gemini`, `deepseek`, `grok`,
   `copilot` — see the `chatgpt` correction above for why it is not a 5th.
 
-**`imageAttached` had never once been `true` for any of the five generic providers, 0 of
-21 recorded turns (crew board T-014), and at least one of those 21 falses was wrong.**
+**`imageAttached` had never once been `true` for any of the five generic providers — 0 of
+21 recorded turns in the corpus this finding was made on (crew board T-014), and at least
+one of those 21 falses was wrong.**
 `zai`'s upload genuinely lands — a live look confirmed a real attachment card renders in
 its composer — but the only class on that card is `chip-scroll`, which
 `DEFAULT_ATTACHMENT_EVIDENCE` (`src/ai/shared/uploadFile.js`) does not match, so a
@@ -262,10 +263,17 @@ interaction reveals one — a different, unfixed gap, not a blind selector), `qw
 matching `input[type="file"]` but no attachment evidence ever rendered on screen after
 setting its files, and `perplexity` never reached a composer at all — the same paywall
 interstitial T-008 already documented. So the image-capable count above stays correctly
-capped at the four bespoke providers: the generic path's `imageAttached` is still 0 of 21
-`true`, and every one of those 21 `false` readings is either confirmed correct (kimi,
-mistral, perplexity) or unconfirmed either way (qwen, zai) — none is now known to be wrong
-the way the pre-revert fix would have made `zai`'s appear.
+capped at the four bespoke providers. As the corpus stands now, as of `9bb68d6`, the
+generic path's `imageAttached` is 1 `true` of 24 recorded turns (23 `false`) — not 0 of
+21; this ticket's own work added generic-provider turns to a corpus that is now tracked in
+git (crew board T-017), and the founding "0 of 21" above is the measurement that started
+this ticket, not the live count. The one `true` — `reports/vision-probe/
+t014-zai-run1.json` — is the reverted `.chip-scroll` fix's own output, kept in the corpus
+as an accurate record of what that code produced at the time, not a claim about the
+current tree; the code that produced it no longer exists. Every one of the 23 `false`
+readings is either confirmed correct (kimi, mistral, perplexity) or unconfirmed either way
+(qwen, zai) — none is known to be wrong the way the pre-revert fix would have made `zai`'s
+appear.
 
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
