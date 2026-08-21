@@ -141,6 +141,17 @@ const REPO_ROOT = join(__dirname, "..");
  *                          when this happens (see main()) — the report
  *                          itself carries it either way, console or not.
  */
+// T-049: pulled out of gradingProvenance() so the tri-state rule (see the
+// reader contract above) is unit-testable without mocking fetch/exec — same
+// reasoning as classify()/gradeReply() elsewhere in this file's own
+// history. `null` in either argument means "unmeasured", and unmeasured
+// must never collapse into a measured false the way T-046's own review
+// caught treeDirty doing.
+export function compareServerCommit(bridgeCommit, serverLoadedCommit) {
+  if (bridgeCommit === null || serverLoadedCommit === null) return null;
+  return serverLoadedCommit !== bridgeCommit;
+}
+
 async function gradingProvenance(baseUrl) {
   const src = await readFile(__filename, "utf8");
   const probeSha256 = createHash("sha256")
@@ -198,7 +209,6 @@ async function gradingProvenance(baseUrl) {
   // carry a correct answer here), fetch the bridge's own cached startup
   // commit and compare.
   let serverLoadedCommit = null;
-  let serverStale = null;
   try {
     const res = await fetch(`${baseUrl}/api/ping`, {
       signal: AbortSignal.timeout(5000),
@@ -206,14 +216,12 @@ async function gradingProvenance(baseUrl) {
     const json = await res.json();
     if (typeof json.loadedCommit === "string") {
       serverLoadedCommit = json.loadedCommit;
-      if (bridgeCommit !== null) {
-        serverStale = serverLoadedCommit !== bridgeCommit;
-      }
     }
   } catch {
     // Not fatal — see the reader contract above: serverStale stays null
     // (unmeasured), never false, when the ping itself couldn't be read.
   }
+  const serverStale = compareServerCommit(bridgeCommit, serverLoadedCommit);
 
   return {
     probeSha256,
