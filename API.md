@@ -309,8 +309,18 @@ Two numbers worth keeping separate, named rather than counted by subtraction:
   roughly even odds but has completed at least once, named with its measured rate: `zai`
   (~3 of 8, ~38%), `perplexity` (~1 of 10, ~10% — see below). All 10 roster providers are
   accounted for above; none are inferred by subtracting a "known-broken" count from 10.
-- **Seen to complete a turn AND read an image** (n=4): `gemini`, `deepseek`, `grok`,
-  `copilot` — see the `chatgpt` correction above for why it is not a 5th.
+- **Seen to complete a turn AND read an image** (n=6): `gemini`, `deepseek`, `grok`,
+  `copilot` — see the `chatgpt` correction above for why it is not a 5th — plus `kimi` and
+  `mistral`, added by T-030 (commit `32ebfeb`): both need a second click to reach a file
+  input at all (`kimi`'s "Add files & photos" menu item, `mistral`'s own menu equivalent),
+  which `uploadFileToPage`'s new `secondClickSelector` option now expresses. Live-verified
+  `imageAttached: true` with a correct or near-correct COUNT read back:
+  `reports/vision-probe/t030-kimi-run1.json`, `-run2.json` (both `PASS`), `t030-mistral-run1.json`,
+  `-run2.json` (both attached, COUNT off by exactly one — `WRONG` shape, not a non-attach),
+  `-run3.json` (`PASS`). Negative controls (fresh chat, nothing uploaded) confirmed
+  `imageAttached: false` for both: `t030-kimi-negative-control.json`,
+  `t030-mistral-negative-control.json`. See the corrected passage below (previously here:
+  "`kimi` and `mistral` genuinely do not attach") for what was wrong before this fix.
 
 **`imageAttached` had never once been `true` for any of the five generic providers — 0 of
 21 recorded turns in the corpus this finding was made on (crew board T-014), and at least
@@ -335,10 +345,15 @@ worse than the bug. `zai` is back to reporting `imageAttached: false` unconfirme
 conservative, correct-when-uncertain default, until a selector that identifies one specific
 turn's own chip is found, or the stuck-draft accumulation itself is fixed. The other four
 generic providers were checked the same way, live, and were not the same bug: `kimi` and
-`mistral` genuinely do not attach through the code as it stands today (both require a menu
-click before any file input exists — `kimi`'s composer opens an "Add files & photos"
-submenu, `mistral` has no `input[type="file"]` anywhere in the DOM until some other
-interaction reveals one — a different, unfixed gap, not a blind selector), and `perplexity`
+`mistral` needed a menu click before any file input existed at all (`kimi`'s composer opens
+an "Add files & photos" submenu, `mistral` has no `input[type="file"]` anywhere in the DOM
+until some other interaction reveals one) — a different gap from a blind selector, and one
+`uploadFileToPage` had no way to express until T-030 gave it a `secondClickSelector` option
+(commit `32ebfeb`): a spec can now name a menu item to click after the attach button, before
+the file chooser. Both are live-verified attaching with it —
+`reports/vision-probe/t030-kimi-run1.json`, `-run2.json`, `t030-mistral-run1.json`,
+`-run2.json`, `-run3.json`, negative controls in `t030-kimi-negative-control.json` and
+`t030-mistral-negative-control.json` — see the `n=6` list above. `perplexity`
 never reached a composer at all — the same paywall interstitial T-008 already documented.
 `qwen` is now confirmed rather than unconfirmed (crew board T-022, re-run 2026-08-21 with
 the improved instrument T-020/T-021 gave it — a before-AND-after count on every selector,
@@ -350,20 +365,27 @@ inferred from the generic top-level error message alone — but 10 selectors —
 default, plus a widened sweep including the `chip` pattern that caught `zai`'s card — all
 read `0,false` before the upload and `0,false` after it. Nothing in the composer changes at
 all; the input accepts the file and the page shows no acknowledgment of it whatsoever, not
-even a hidden node that becomes visible. `qwen` joins `kimi` and `mistral` as a confirmed
-no, with its own distinct cause from either of theirs — naming a selector is not possible
-here because nothing appeared for one to name. So the image-capable count above stays
-correctly capped at the four bespoke providers. As the corpus stands now, as of `9bb68d6`, the
-generic path's `imageAttached` is 1 `true` of 24 recorded turns (23 `false`) — not 0 of
-21; this ticket's own work added generic-provider turns to a corpus that is now tracked in
-git (crew board T-017), and the founding "0 of 21" above is the measurement that started
-this ticket, not the live count. The one `true` — `reports/vision-probe/
-t014-zai-run1.json` — is the reverted `.chip-scroll` fix's own output, kept in the corpus
-as an accurate record of what that code produced at the time, not a claim about the
-current tree; the code that produced it no longer exists. Every one of the 23 `false`
-readings is either confirmed correct (kimi, mistral, perplexity, qwen — see T-022 above) or
-unconfirmed either way (zai) — none is known to be wrong the way the pre-revert fix would
-have made `zai`'s appear.
+even a hidden node that becomes visible. `qwen` is a confirmed no with its own distinct
+cause — naming a selector is not possible here because nothing appeared for one to name.
+`kimi` and `mistral` are NOT in this group any more: T-030 (commit `32ebfeb`, above) gave
+both a working second-click path, so the image-capable count is six providers, not the four
+bespoke ones alone. As the corpus stands now, as of `c674de8`, running `node
+scripts/ia-grade.mjs` gives the generic path's `imageAttached` as 6 `true` of 29 recorded
+turns (23 `false`) — not 1 of 24 (T-017's own count, since superseded by T-030's new turns)
+and not 0 of 21 (the founding "0 of 21" measurement, kept above as the number that started
+T-017, not a live count — same treatment as before). The 6 `true` rows split into two very
+different kinds: `reports/vision-probe/t014-zai-run1.json` is the reverted `.chip-scroll`
+fix's own output, kept as an accurate record of what THAT code produced at the time, not a
+claim about the current tree (the code that produced it no longer exists); the other 5 —
+`t030-kimi-run1.json`, `-run2.json`, `t030-mistral-run1.json`, `-run2.json`, `-run3.json` —
+are current code, live-verified, and stay true on a re-run today. Of the 23 `false` rows,
+`perplexity` and `qwen`'s are confirmed correct no-attach (see T-022 above), `zai`'s remain
+unconfirmed either way, and `kimi`/`mistral`'s are a mix: pre-T-030 runs that were correct
+for the code that produced them (no second-click path existed yet) plus each provider's
+T-030 negative control (`t030-kimi-negative-control.json`, `t030-mistral-negative-control.json`
+— fresh chat, nothing uploaded, correctly `false` under the CURRENT code too). None of the
+23 is known to be wrong the way the pre-revert `zai` fix would have made its false rows
+appear.
 
 `mistral` and `qwen` were seen returning an unrelated answer — the extractor's response
 selector could also match the USER's own turn, so a fast reply could be captured before
