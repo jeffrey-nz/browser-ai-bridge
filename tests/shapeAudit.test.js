@@ -294,3 +294,47 @@ test("classifyAbsence: some excluded, some not, is mixed", () => {
     excluded: 1,
   });
 });
+
+// T-076: an out-of-range WRONG count names a picture the generator could
+// never have drawn. auditShapes collects these (outOfRangeRows) straight
+// from classify()'s own outOfRange field, split by onBoundary (said
+// MAX+1 at truth MAX — a miscount) vs not (cannot be a miscount).
+test("auditShapes collects outOfRangeRows, split by onBoundary", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "boundary.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" }, // boundary
+        ],
+      },
+      "floor.json": {
+        truth: { count: 5, color: "teal" },
+        results: [
+          { providerId: "b", raw: "SEES=yes COUNT=1 COLOR=teal" }, // not boundary
+        ],
+      },
+      "inrange.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "c", raw: "SEES=yes COUNT=5 COLOR=teal" }, // WRONG, in range
+        ],
+      },
+    });
+
+    const { outOfRangeRows } = auditShapes(dir);
+
+    assert.equal(outOfRangeRows.length, 2);
+    const boundary = outOfRangeRows.find((r) => r.file === "boundary.json");
+    const floor = outOfRangeRows.find((r) => r.file === "floor.json");
+    assert.equal(boundary.said, 10);
+    assert.equal(boundary.truth, 9);
+    assert.equal(boundary.onBoundary, true);
+    assert.equal(floor.said, 1);
+    assert.equal(floor.truth, 5);
+    assert.equal(floor.onBoundary, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

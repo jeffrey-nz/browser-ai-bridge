@@ -30,7 +30,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { classify } from "./vision-probe.mjs";
+import { classify, MIN_COUNT, COUNT_RANGE } from "./vision-probe.mjs";
+
+const MAX_COUNT = MIN_COUNT + COUNT_RANGE - 1;
 
 export function auditShapes(dir) {
   const files = fs
@@ -85,6 +87,16 @@ export function auditShapes(dir) {
   // providerBand above, because an excluded row by definition never gets a
   // countOk verdict and would be invisible to this table if it were.
   const exclusionByProviderBand = {};
+  // T-076: a WRONG count outside MIN_COUNT..MAX_COUNT names a picture the
+  // generator could never have drawn — strictly stronger than "got it
+  // wrong". classify() already flags this (outOfRange, derived from the
+  // SAME two constants, not a second "3 to 9"); collected here so the
+  // adjacent-to-boundary split (a miscount by a model that was looking)
+  // can be told apart from everything else (a fabrication by one that
+  // wasn't) — see the LIMIT in the comment above classify()'s own check,
+  // which applies here identically: a zero count here is not evidence
+  // nobody fabricated, only that nobody fabricated conspicuously.
+  const outOfRangeRows = [];
 
   for (const f of files) {
     let j;
@@ -106,6 +118,19 @@ export function auditShapes(dir) {
           providerId: r.providerId,
           storedShape: r.shape,
           recomputedShape: recomputed.shape,
+        });
+      }
+
+      if (recomputed.outOfRange && j.truth?.count !== undefined) {
+        const m = /COUNT\s*=\s*(\d+)/i.exec(r.raw ?? "");
+        const said = m ? Number(m[1]) : null;
+        outOfRangeRows.push({
+          file: f,
+          providerId: r.providerId,
+          truth: j.truth.count,
+          said,
+          imageAttached: r.imageAttached,
+          onBoundary: said === MAX_COUNT + 1 && j.truth.count === MAX_COUNT,
         });
       }
 
@@ -157,6 +182,7 @@ export function auditShapes(dir) {
     providerBand,
     shapeByCount,
     exclusionByProviderBand,
+    outOfRangeRows,
   };
 }
 
@@ -254,6 +280,7 @@ function main() {
     providerBand,
     shapeByCount,
     exclusionByProviderBand,
+    outOfRangeRows,
   } = auditShapes(dir);
 
   console.log(
@@ -410,6 +437,45 @@ function main() {
         console.log(`    ${u.providerId} (${missingBand}): ${desc}`);
       }
     }
+  }
+
+  // T-076: an out-of-range WRONG count names a picture the generator could
+  // never have drawn — split adjacent-to-boundary (said MAX+1 at truth
+  // MAX: a miscount by a model that was looking) from everything else (not
+  // adjacent — cannot be a miscount, the shape T-068 reproduced live as
+  // Instant-mode fabrication). A single total hides that these are two
+  // different faults wearing one label.
+  if (outOfRangeRows.length > 0) {
+    const boundary = outOfRangeRows.filter((r) => r.onBoundary);
+    const other = outOfRangeRows.filter((r) => !r.onBoundary);
+    console.log(
+      `\nOut-of-range COUNT (generator draws ${MIN_COUNT}..${MAX_COUNT} only) — ` +
+        `${outOfRangeRows.length} row${outOfRangeRows.length === 1 ? "" : "s"}:`,
+    );
+    console.log(
+      `  boundary miscount (said ${MAX_COUNT + 1} at truth ${MAX_COUNT}, off by one): ${boundary.length}`,
+    );
+    for (const r of boundary) {
+      console.log(
+        `    ${r.file}  ${r.providerId}  truth=${r.truth} said=${r.said}  imageAttached=${r.imageAttached}`,
+      );
+    }
+    console.log(
+      `  below the floor / not adjacent — cannot be a miscount: ${other.length}`,
+    );
+    for (const r of other) {
+      const gap = r.said - r.truth;
+      console.log(
+        `    ${r.file}  ${r.providerId}  truth=${r.truth} said=${r.said}  ` +
+          `gap=${gap > 0 ? "+" : ""}${gap}  imageAttached=${r.imageAttached}`,
+      );
+    }
+    console.log(
+      `  NOTE: this check is one-directional — out of range proves the reply\n` +
+        `  is not a reading of any drawable picture; IN range proves nothing.\n` +
+        `  A total of 0 here is not evidence nobody fabricated, only that\n` +
+        `  nobody fabricated conspicuously.`,
+    );
   }
 }
 

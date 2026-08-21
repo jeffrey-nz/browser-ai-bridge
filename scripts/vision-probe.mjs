@@ -721,10 +721,31 @@ export function classify(replyText, truth) {
         detail: `COUNT=${count} correct, COLOR=${color} not on the list (expected ${truth.color})`,
       };
     }
+    // T-076: a WRONG count outside MIN_COUNT..MAX_COUNT names a picture
+    // the generator could never have drawn — strictly stronger than "got
+    // it wrong", since it rules out "miscounted a real picture" entirely.
+    // Derived from the same two constants validateStimulusArgs already
+    // enforces on the STIMULUS (MIN_COUNT/COUNT_RANGE below), not a second
+    // "3 to 9" typed here — that duplication is exactly the shape this
+    // ticket is about, one layer over.
+    //
+    // THE LIMIT, which must travel with this field: out of range proves
+    // the reply is NOT a reading of any drawable picture. In range proves
+    // NOTHING — 52.0% of this corpus's recorded truths fall at count 4 or
+    // 5, so a fabricated small number is likely to land inside the range
+    // and be invisible to this check. An outOfRange tally of zero is
+    // evidence nobody fabricated CONSPICUOUSLY, not evidence nobody
+    // fabricated.
     return {
       shape: "WRONG",
       countOk,
       colorOk,
+      // Always present, true or false — never omitted. This board has
+      // three tickets (T-038, T-046, T-052) about absence-of-a-field
+      // silently reading as false; an omitted outOfRange would repeat
+      // that shape for a field whose whole point is "checked, not just
+      // assumed".
+      outOfRange: Number(count) < MIN_COUNT || Number(count) > MAX_COUNT,
       detail: `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}`,
     };
   }
