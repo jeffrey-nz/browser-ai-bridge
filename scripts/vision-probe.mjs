@@ -565,6 +565,13 @@ function parseArgs(argv) {
     else if (a === "--count") out.count = Number(argv[++i]);
     else if (a === "--color") out.color = argv[++i];
     else if (a === "--out") out.outPath = argv[++i];
+    // T-072: the blind arm — sends the probe's own buildPrompt() with NO
+    // `images` key at all, not an empty array. No code in this tree could
+    // take this reading before now (askProvider() below always attaches an
+    // image); this is the tool the board runs, not a bespoke evidence
+    // script, so the next person can re-take the measurement without
+    // re-deriving the request shape from scratch.
+    else if (a === "--blind") out.blind = true;
     // T-053 review: a deliberate evidence-break test's own report needs to
     // be self-identifying as a plant to any reader OR script, not only to a
     // human who happens to read the filename — a naturally-occurring
@@ -589,10 +596,36 @@ function parseArgs(argv) {
 // an operator who believes they pinned the stimulus has no reason to
 // re-read. Extracted as its own function (not inlined in main()) so the
 // rule is unit-testable without mocking the whole CLI.
-export function validateStimulusArgs({ image, count, color } = {}) {
+export function validateStimulusArgs({
+  image,
+  count,
+  color,
+  blind,
+  endpoint,
+} = {}) {
   const hasCount = count !== undefined;
   const hasColor = color !== undefined;
   const hasImage = image !== undefined;
+  // T-072: --blind sends no image at all — a --count/--color/--image
+  // alongside it would name a picture that is never actually rendered or
+  // sent, reading as pinned when the whole point of this arm is that
+  // nothing was drawn. --endpoint image-ask has no request shape that
+  // omits an image (it always attaches imagePath), so it cannot express
+  // "blind" and is rejected rather than silently sending an image anyway.
+  if (blind && (hasCount || hasColor || hasImage)) {
+    throw new Error(
+      "--blind sends no image at all — it cannot be combined with " +
+        "--count/--color/--image, which would name a picture nothing " +
+        "actually renders or sends.",
+    );
+  }
+  if (blind && endpoint === "image-ask") {
+    throw new Error(
+      "--blind is not supported with --endpoint image-ask — that endpoint " +
+        "always attaches imagePath, so there is no request shape that omits " +
+        "an image.",
+    );
+  }
   if (hasCount !== hasColor) {
     throw new Error(
       "--count and --color must be given together (both, or neither) — " +
@@ -842,6 +875,144 @@ async function askProvider(opts, providerId, imagePath, truth) {
   }
 }
 
+// T-072: classify() needs a `truth` to grade a structured answer's
+// COUNT/COLOR against — a blind turn has no picture, so there is nothing
+// real to grade. A sentinel truth ({count: null, color: ""}) makes
+// countOk/colorOk always false without ever throwing (a real stated
+// count is never null, a real stated colour is never the empty string),
+// so this is used ONLY to reuse classify()'s shape detection (ECHO/
+// SEES_NO/NO_ANSWER/structured), never its correctness verdict. `stated`
+// is the number worth reporting for a blind turn — whether a count was
+// said AT ALL, not whether it happened to be right — extracted the same
+// way the redo's own probe script did, with the same ECHO exception (an
+// echoed prompt contains "COUNT=<how many..." verbatim and would
+// otherwise misreport a non-answer as "stated <garbage>").
+export function classifyBlind(replyText) {
+  const shape = classify(replyText, { count: null, color: "" }).shape;
+  const m =
+    shape === "ECHO" ? null : /COUNT\s*=\s*(\d+)/i.exec(replyText ?? "");
+  return { shape, stated: m ? Number(m[1]) : null };
+}
+
+async function askProviderBlind(opts, providerId) {
+  const prompt = buildPrompt();
+  const started = Date.now();
+  const url = `${opts.baseUrl}/api/ask`;
+  const body = {
+    providers: [providerId],
+    prompt,
+    label: opts.label,
+    // Deliberately NO `images` key — not an empty array — this is the
+    // whole experiment: the server must take no upload path at all.
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const elapsedMs = Date.now() - started;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        providerId,
+        elapsedMs,
+        shape: "ERROR",
+        detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
+        imageAttached: json?.imageAttached,
+      };
+    }
+    const { shape, stated } = classifyBlind(json.response);
+    return {
+      providerId,
+      elapsedMs,
+      shape,
+      stated,
+      // Expected to be undefined on every blind turn — the server takes
+      // no upload path at all with no `images` key sent. Recorded rather
+      // than assumed, so a future regression that DOES set it here (a
+      // sign something upstream started treating a blind turn as an
+      // image turn) is visible on the row, not silently dropped.
+      imageAttached: json.imageAttached,
+      raw: json.response,
+    };
+  } catch (err) {
+    const elapsedMs = Date.now() - started;
+    return {
+      providerId,
+      elapsedMs,
+      shape: "ERROR",
+      detail: err.name === "AbortError" ? "timeout" : err.message,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function runBlind(opts) {
+  console.log(
+    `Blind arm (T-072): sending the probe's own prompt with NO images key ` +
+      `at all to ${opts.providers.length} provider(s)...\n`,
+  );
+
+  const results = [];
+  for (const providerId of opts.providers) {
+    process.stdout.write(`${providerId.padEnd(12)} ... `);
+    const r = await askProviderBlind(opts, providerId);
+    results.push(r);
+    const secs = (r.elapsedMs / 1000).toFixed(0) + "s";
+    const stated = r.stated === undefined ? "" : `  stated=${r.stated}`;
+    console.log(
+      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${r.imageAttached}${stated}  ${r.detail || ""}`,
+    );
+  }
+
+  const EXCLUDED = new Set(["ECHO", "ERROR", "NO_ANSWER"]);
+  const informative = results.filter((r) => !EXCLUDED.has(r.shape));
+  const guessed = informative.filter((r) => r.stated !== null);
+  const refused = informative.filter((r) => r.stated === null);
+  console.log(
+    `\nblind turns sent ${results.length}   informative (not ECHO/ERROR/NO_ANSWER) ${informative.length}   ` +
+      `refused (stated no count) ${refused.length}   STATED A COUNT ${guessed.length}`,
+  );
+  if (guessed.length) {
+    console.log(
+      `\n!!! PROVIDER(S) STATED A COUNT WHILE BLIND — THIS IS THE RESULT:`,
+    );
+    for (const r of guessed) {
+      console.log(`    ${r.providerId}  stated=${r.stated}  :: ${r.raw}`);
+    }
+  }
+
+  const outDir = join(REPO_ROOT, "reports", "vision-probe");
+  await mkdir(outDir, { recursive: true });
+  const outPath = opts.outPath || join(outDir, `blind-${Date.now()}.json`);
+  const provenance = await gradingProvenance(opts.baseUrl);
+  await writeFile(
+    outPath,
+    JSON.stringify(
+      {
+        ...provenance,
+        // T-072: THE field that marks a blind run — read by ia-grade.mjs's
+        // section 5, not a filename substring (nothing greps filenames).
+        // No `truth` and no `imagePath`/`fixtureSha256`: nothing was
+        // rendered or sent, so there is nothing real those fields could
+        // name without reading as a picture that does not exist.
+        blind: true,
+        endpoint: opts.endpoint,
+        results,
+      },
+      null,
+      2,
+    ),
+  );
+  console.log(`\nFull results written to ${outPath}`);
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
@@ -853,12 +1024,21 @@ async function main() {
         "(renderPng is a pure function of the pair) — add --image path to reuse an " +
         "already-rendered file instead of re-rendering.\n" +
         "  --count/--color must be given together (T-055) — a lone one, or " +
-        "--image with neither, is rejected rather than silently randomised.",
+        "--image with neither, is rejected rather than silently randomised.\n" +
+        "  --blind (T-072) sends the SAME prompt with NO image at all — no --count/" +
+        "--color/--image/--break, and endpoint must be the default ask (there is no " +
+        "picture to upload for --endpoint image-ask to attach). Measures whether a " +
+        "provider ever states a COUNT with nothing attached — the arrival test's own " +
+        "prior, unmeasured until this flag existed.",
     );
     return;
   }
   // T-055: fail fast, before generating anything or touching a provider.
   validateStimulusArgs(opts);
+
+  if (opts.blind) {
+    return await runBlind(opts);
+  }
 
   if (opts.breakProvider) {
     console.log(

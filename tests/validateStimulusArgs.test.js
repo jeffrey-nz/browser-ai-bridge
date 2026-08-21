@@ -93,4 +93,31 @@ test.describe("validateStimulusArgs", () => {
       /--color tael is not one of/,
     );
   });
+
+  // T-072: --blind sends no image at all — a --count/--color/--image
+  // alongside it would name a picture nothing actually renders or sends.
+  test("--blind alone: valid", () => {
+    assert.doesNotThrow(() => validateStimulusArgs({ blind: true }));
+  });
+
+  test("--blind with --count/--color throws", () => {
+    assert.throws(
+      () => validateStimulusArgs({ blind: true, count: 4, color: "teal" }),
+      /--blind sends no image at all/,
+    );
+  });
+
+  test("--blind with --image throws", () => {
+    assert.throws(
+      () => validateStimulusArgs({ blind: true, image: "x.png" }),
+      /--blind sends no image at all/,
+    );
+  });
+
+  test("--blind with --endpoint image-ask throws", () => {
+    assert.throws(
+      () => validateStimulusArgs({ blind: true, endpoint: "image-ask" }),
+      /--blind is not supported with --endpoint image-ask/,
+    );
+  });
 });

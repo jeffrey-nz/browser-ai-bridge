@@ -56,6 +56,20 @@ export function gradeReply(raw, truth) {
   };
 }
 
+// T-072: gradeReply's truth-less counterpart — a blind run (vision-probe.mjs
+// --blind) has no picture, so there is nothing real to grade COUNT/COLOR
+// against, only whether a count was STATED at all. Mirrors gradeReply's
+// shape (recompute fresh from `raw` via classify(), never trust a stored
+// verdict — T-027's policy) with the same sentinel-truth trick vision-probe's
+// own classifyBlind() uses, so an echoed prompt (which contains the literal
+// "COUNT=<how many..." text) is never misread as a stated count.
+export function gradeBlindReply(raw) {
+  const cleaned = (raw || "").replace(/\s+/g, " ").trim();
+  const shape = classify(cleaned, { count: null, color: "" }).shape;
+  const m = shape === "ECHO" ? null : cleaned.match(/COUNT\s*=\s*(\d+)/i);
+  return { raw: cleaned, shape, stated: m ? Number(m[1]) : null };
+}
+
 // T-029: pulled out of the report-scanning block below, same reason as
 // gradeReply above — a check whose numerator can never read below its
 // denominator (T-026 gave reports/vision-probe a second tracked population,
@@ -100,11 +114,36 @@ if (
   for (const f of files) h.update(fs.readFileSync(path.join(dir, f)));
   const rows = [];
   let skipped = 0;
+  // T-072: a blind run (vision-probe.mjs --blind) is marked by `blind: true`
+  // at the FILE's top level — the field the ticket asked for, not a filename
+  // substring nothing greps. Collected separately from `rows`: none of the
+  // sighted grading below applies (no truth, no imageAttached — the server
+  // takes no upload path at all for a blind turn, confirmed live: T-072's
+  // own measurement found imageAttached undefined on every one of 29 blind
+  // turns). A blind file's rows would already fall through the imageAttached
+  // gate below into `skipped` if this branch didn't exist first — routed
+  // here instead so they are counted as what they are, not as an unexplained
+  // skip.
+  const blindRows = [];
+  let blindErrored = 0;
   for (const f of files) {
     let j;
     try {
       j = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
     } catch {
+      continue;
+    }
+    if (j.blind === true) {
+      for (const r of j.results || []) {
+        if (r.raw == null) {
+          // ERROR-shaped blind turn (timeout, HTTP failure) — no text to
+          // grade. Counted, not silently dropped.
+          blindErrored++;
+          continue;
+        }
+        const g = gradeBlindReply(r.raw);
+        blindRows.push({ f, p: r.providerId, ...g });
+      }
       continue;
     }
     for (const r of j.results || []) {
@@ -150,6 +189,17 @@ if (
       });
     }
   }
+
+  // T-072: computed here (once, before any section prints) so section 3's
+  // conditional wording and section 5's own report read the same numbers —
+  // never two independently-filtered passes that could quietly disagree.
+  const BLIND_EXCLUDED = new Set(["ECHO", "ERROR", "NO_ANSWER"]);
+  const blindInformative = blindRows.filter(
+    (r) => !BLIND_EXCLUDED.has(r.shape),
+  );
+  const blindGuessed = blindInformative.filter((r) => r.stated !== null);
+  const blindRefused = blindInformative.filter((r) => r.stated === null);
+
   console.log(
     `corpus  ${files.length} files, sha256-16 ${h.digest("hex").slice(0, 16)}   graded rows ${rows.length}  (${skipped} skipped, no imageAttached)`,
   );
@@ -270,8 +320,18 @@ if (
         ? ` (+ ${planted.filter((r) => r.right).length} of ${planted.length} planted)`
         : ""),
   );
+  // T-072: this prior used to be stated as purely DERIVED (L-002 rung 2) —
+  // "a correct COUNT cannot be a guess because it is 1-in-7 by chance" — and
+  // had never been measured, because no code in this tree could send the
+  // probe's own prompt with nothing attached until vision-probe.mjs grew
+  // --blind. When blind rows exist, the sentence says the MEASURED fact
+  // instead of the derived one; when none exist (unchanged corpus), this
+  // prints the exact original sentence — see section 5 for the numbers and
+  // scope of what the blind arm does and does not cover.
   console.log(
-    `   -> agreements resting on an arithmetic reference: ${confirming.length}, every one imageAttached=true`,
+    blindInformative.length
+      ? `   -> agreements resting on a MEASURED prior (${blindRefused.length} of ${blindInformative.length} blind, informative turns stated no count at all — section 5): ${confirming.length}, every one imageAttached=true`
+      : `   -> agreements resting on an arithmetic reference: ${confirming.length}, every one imageAttached=true`,
   );
   console.log(
     `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length}`,
@@ -297,5 +357,48 @@ if (
   );
   for (const [label, n] of causeCounts) {
     console.log(`     ${String(n).padStart(3)} x  ${label}`);
+  }
+
+  // T-072: section 3's "arithmetic reference" is a DERIVED prior (L-002
+  // rung 2) — a correct COUNT cannot be a guess because it is 1-in-7 by
+  // chance — and until vision-probe.mjs grew --blind, no code in this tree
+  // could take the one measurement that would move it from derived to
+  // measured: send the probe's own prompt with nothing attached at all,
+  // and see whether any provider states a count anyway.
+  //
+  // SCOPE, stated because the whole value of this measurement depends on
+  // it: this tests "no image in the request" — the composer receives no
+  // file at all. It is NOT the same arm as "an image WAS handed to the
+  // composer and evidence did not confirm it" (imageAttached:false in
+  // production), where the model may well have actually received the
+  // file. This section licenses the CONFIRMING direction only (a correct
+  // COUNT really is arrival evidence, not a guess) and says nothing about
+  // the REFUTING direction (a false imageAttached that states a count
+  // anyway) — that reading is section 3's own, unaffected by this one.
+  console.log(
+    `\n5. BLIND ARM (T-072) — does any provider state a COUNT with no image in the request at all?`,
+  );
+  console.log(
+    `   SCOPE: tests "no image in the request", not "image handed to the composer and evidence unconfirmed" — licenses the CONFIRMING direction only (section 3's REFUTING direction is untouched by this).`,
+  );
+  if (blindRows.length === 0) {
+    console.log(`   0 of 0 — no blind rows recorded`);
+  } else {
+    console.log(
+      `   blind rows ${blindRows.length}  (${blindErrored} ERROR-shaped, excluded — no text to grade)   ` +
+        `informative (not ECHO/ERROR/NO_ANSWER) ${blindInformative.length}   ` +
+        `refused, stated no count ${blindRefused.length}   ` +
+        `STATED A COUNT ${blindGuessed.length}`,
+    );
+    if (blindGuessed.length) {
+      console.log(
+        `   PROVIDER(S) THAT STATED A COUNT WHILE BLIND — THIS IS THE RESULT:`,
+      );
+      for (const r of blindGuessed) {
+        console.log(
+          `     ${r.f.padEnd(28)} ${r.p.padEnd(10)} stated=${r.stated} :: ${r.raw.slice(0, 60)}`,
+        );
+      }
+    }
   }
 }
