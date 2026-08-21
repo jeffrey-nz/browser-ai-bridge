@@ -7,7 +7,11 @@ export {
 } from "./state.js";
 export { connectToBrowser } from "./connection.js";
 export { getBrowserContext, assertBrowserReady } from "./context.js";
-export { autoLaunchChrome, killBrowserProcess } from "./launcher/index.js";
+export {
+  autoLaunchChrome,
+  killBrowserProcess,
+  shouldKillOwnChromeOnShutdown,
+} from "./launcher/index.js";
 
 export const getBrowserState = () => internalState.status;
 

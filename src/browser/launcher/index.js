@@ -8,13 +8,13 @@ import process from "node:process";
 import { spawn } from "node:child_process";
 import { logger } from "#utils/logger.js";
 
-import { killBrowserProcess } from "./killer.js";
+import { killBrowserProcess, shouldKillOwnChromeOnShutdown } from "./killer.js";
 import { cleanupUserDataDir } from "./cleanup.js";
 import { getChromeArgs } from "./args.js";
 import { findChromeExecutable } from "./pathFinder.js";
 import { internalState } from "../state.js";
 
-export { killBrowserProcess };
+export { killBrowserProcess, shouldKillOwnChromeOnShutdown };
 
 // Active TCP poll — resolves as soon as Chrome accepts a connection on the
 // CDP port. Beats a fixed sleep because bind time varies (cold start, VPN,

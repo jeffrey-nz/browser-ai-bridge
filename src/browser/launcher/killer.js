@@ -3,6 +3,21 @@ import process from "node:process";
 import { logger } from "#utils/logger.js";
 import { internalState } from "../state.js";
 
+// T-075: pure decision — should a shutdown kill a Chrome process at all?
+// Mirrors decidePidFileAction's shape (T-060, pidManager.js): a chromePid
+// of null does not mean "nothing recorded, so fall back to whoever owns
+// the port" on shutdown — chromePid is only ever set inside
+// autoLaunchChrome (launcher/index.js), so null here means "this process
+// never spawned its own Chrome," which for a process that instead reused
+// an existing one via CDP_URL means that Chrome belongs to someone else.
+// Killing it on THIS process's own clean exit is T-064's startup bug
+// (killZombieProcess/killBrowserProcess called before a connect was ever
+// attempted) one layer later: the same untracked-PID port-fallback firing
+// on the way OUT instead of on the way IN.
+export function shouldKillOwnChromeOnShutdown(chromePid) {
+  return chromePid !== null;
+}
+
 export async function killBrowserProcess() {
   const pid = internalState.chromePid;
 

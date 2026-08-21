@@ -1,7 +1,12 @@
 import process from "node:process";
 import readline from "node:readline";
 import { pathToFileURL } from "node:url";
-import { connectToBrowser, killBrowserProcess } from "./browser.js";
+import {
+  connectToBrowser,
+  killBrowserProcess,
+  shouldKillOwnChromeOnShutdown,
+  browserInternalState,
+} from "./browser.js";
 import { startServer } from "./server.js";
 import { runLoginSequence } from "./startup/authSequence.js";
 import {
@@ -119,7 +124,22 @@ async function init() {
       logger.error(e, "[Shutdown] Error during session cleanup");
     }
     server.close(async () => {
-      await killBrowserProcess();
+      // T-075: killBrowserProcess() falls back to killing whatever owns
+      // CDP_PORT when internalState.chromePid is null — correct when THIS
+      // process spawned its own Chrome and lost track of the pid, wrong
+      // when chromePid is null because this process instead reused an
+      // existing Chrome via CDP_URL (connectOverCDP succeeded on the first
+      // try, so autoLaunchChrome — the only place chromePid is ever set —
+      // never ran). Unconditionally calling it here killed a Chrome this
+      // process merely borrowed, on its own clean shutdown. T-064 fixed the
+      // same mechanism on the startup path; this is the exit-path half.
+      if (shouldKillOwnChromeOnShutdown(browserInternalState.chromePid)) {
+        await killBrowserProcess();
+      } else {
+        logger.info(
+          "[Shutdown] No Chrome process owned by this bridge — leaving a shared/borrowed Chrome running.",
+        );
+      }
       process.exit(0);
     });
   };
