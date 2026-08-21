@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { logger } from "#utils/logger.js";
 import { sessionLogger } from "./Logger.js";
+import { recordFreshSessionCreated } from "./collapseDetector.js";
 
 import { ChatGPTProvider } from "#ai/chatgpt/session.js";
 import { GeminiProvider } from "#ai/gemini/session.js";
@@ -28,6 +29,11 @@ export async function createNewSession(providerId) {
 
   const engineSession = new ProviderClass();
   await engineSession.initialize();
+
+  // T-023: a freshly-initialized session proves the browser can still open
+  // and drive a live page — the recovery signal for collapseDetector's
+  // sticky lastUnexpectedPageCloseAt.
+  recordFreshSessionCreated();
 
   const sessionId = randomUUID();
   const activeLogger = sessionLogger.initLog(sessionId, providerId);

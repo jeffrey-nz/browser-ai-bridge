@@ -39,6 +39,7 @@ Returns liveness and browser state information.
   "longRunningSessions": 0,
   "longRunningThresholdMs": 120000,
   "attachedPages": 2,
+  "lastUnexpectedPageCloseAt": null,
   "devServers": 0,
   "providers": {
     "gemini": {
@@ -77,7 +78,29 @@ connection itself intact (every page/context closed underneath it, `status` stil
 `"ready"`) can climb `uptime` the entire time. Compare `attachedPages` against
 `sessions` — a caller about to commit to a long batch should not proceed if `sessions`
 is non-zero but `attachedPages` is far lower, or if `attachedPages` is `0` while turns
-are supposedly in flight.
+are supposedly in flight. **Blind spot (crew board T-023):** `attachedPages` is only
+informative while a dead session is still registered — a window bounded by the next
+GC sweep (`GC_INTERVAL_MS`, 5 minutes by default) or the next call that touches that
+session. Once the dead session is pruned, `attachedPages` reads `0`, identical to a
+bridge that was simply never asked to do anything. See `lastUnexpectedPageCloseAt`
+for the reading that survives past that point.
+
+**`lastUnexpectedPageCloseAt`** — ISO 8601 timestamp of the last time this process
+found a _registered_ session's page already closed without this process itself
+having asked for that close (a GC sweep or a session-access self-prune discovering
+`page.isClosed()`), or `null` if none is outstanding. This is a sticky edge detector,
+not a level: it is set the moment a collapse is _discovered_ and stays set — surviving
+the registry drain that erases `attachedPages`'s evidence — until a brand-new session
+finishes initializing, which is treated as confirmed proof the browser can still open
+and drive a live page. A caller polling before a batch, with `sessions: 0` and
+`attachedPages: 0` on both a healthy idle bridge and one whose pages were just killed
+underneath it, can tell the two apart here: `null` on the healthy bridge, a timestamp
+on the collapsed one. Costs nothing per poll — both values `/api/ping` reads for this
+field are already maintained synchronously elsewhere; the endpoint makes no new
+`await` against the browser. Blind spot: it can only fire once a dead session is
+actually _discovered_ (GC tick or an access attempt) — a collapse nothing has touched
+yet is invisible here too, same as `attachedPages`, until something touches it or the
+next GC tick runs.
 
 **Response (starting up)**
 

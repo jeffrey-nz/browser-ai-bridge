@@ -4,6 +4,7 @@ import { sessionLogger } from "./Logger.js";
 import { sessionPool } from "./Pool.js";
 import { logger } from "#utils/logger.js";
 import { getSessionState, cleanupSession as cleanupStalls } from "../stalls.js";
+import { recordUnexpectedPageClose } from "./collapseDetector.js";
 
 // Per-provider lock: prevents two concurrent createSession() calls from
 // both doing a cold boot and opening duplicate tabs for the same provider.
@@ -12,7 +13,9 @@ const _creatingLocks = new Map(); // providerId → Promise
 // Sliding TTL - resets on every access. Sessions that haven't been touched
 // for this long are swept; actively-used sessions survive indefinitely.
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 15 * 60 * 1000;
-const GC_INTERVAL_MS = 5 * 60 * 1000;
+// Overridable for T-023's demonstration — reproducing a collapse and waiting
+// out a real 5-minute GC tick is possible but needlessly slow to verify.
+const GC_INTERVAL_MS = Number(process.env.GC_INTERVAL_MS) || 5 * 60 * 1000;
 
 export class SessionManager {
   constructor() {
@@ -36,6 +39,7 @@ export class SessionManager {
         logger.info(
           `[SessionManager] GC sweeping session with closed tab: ${session.id}`,
         );
+        recordUnexpectedPageClose();
         await this.closeSession(session.id);
         continue;
       }
@@ -168,6 +172,7 @@ export class SessionManager {
     if (!session) return null;
 
     if (!session.page || session.page.isClosed()) {
+      recordUnexpectedPageClose();
       this.closeSession(sessionId);
       return null;
     }

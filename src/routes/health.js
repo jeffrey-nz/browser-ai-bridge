@@ -8,6 +8,7 @@ import { PROVIDER_CONFIG } from "../config/providers.js";
 import { getDevServerCount } from "./devserver.js";
 import { logger } from "#utils/logger.js";
 import { isLongRunning, LONG_RUNNING_THRESHOLD_MS } from "../stalls.js";
+import { getLastUnexpectedPageCloseAt } from "../session/collapseDetector.js";
 
 const router = express.Router();
 
@@ -96,6 +97,22 @@ router.get("/", (_req, res) => {
       // self-pruning getSession() does on access), so it reflects reality
       // even for sessions nothing has tried to use since they died.
       attachedPages: sessions.filter((s) => s.pageAttached).length,
+      // T-023: attachedPages is only informative while a dead session is
+      // still in the registry — a window bounded by the GC sweep or the next
+      // getSession() touch. Once that session is gone, attachedPages reads
+      // the same 0 a healthy idle bridge reads. This is the sticky half:
+      // the timestamp of the last time this process discovered a registered
+      // session's page closed WITHOUT this process asking for that close
+      // (collapseDetector.js), surviving the registry drain that erases
+      // attachedPages's evidence. Reset to null only when a brand-new
+      // session finishes initializing — confirmed proof the browser can
+      // still produce a live page. No added cost: both values it reads are
+      // already computed synchronously elsewhere; this endpoint makes no new
+      // await against the browser.
+      lastUnexpectedPageCloseAt: (() => {
+        const ms = getLastUnexpectedPageCloseAt();
+        return ms === null ? null : new Date(ms).toISOString();
+      })(),
       devServers: getDevServerCount(),
       providers,
       mem: {
