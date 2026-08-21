@@ -1,0 +1,23 @@
+{
+  "probeSha256": "74dce7771bd9c43c",
+  "bridgeCommit": "70638c48c45dfbd90a2a2a4f4e91b94e71d69615",
+  "treeDirty": false,
+  "gradedAt": "2026-08-21T17:59:29.556Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 8,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787335134242.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 35201,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=8 COLOR=goldenrod"
+    }
+  ]
+}
