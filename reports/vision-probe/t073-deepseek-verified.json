@@ -1,0 +1,39 @@
+{
+  "graderSha256": "ea90831e1d2e024c",
+  "bridgeCommit": "f9764283ea03246c8a43fb92fa5520433ff0c776",
+  "treeDirty": false,
+  "serverLoadedCommit": "f9764283ea03246c8a43fb92fa5520433ff0c776",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-21T22:04:24.960Z",
+  "fixtureSha256": "f626b887c879f26ad319da788abd6204e3af6c4cbc552b644b8cbbcaf4c0b5c9",
+  "endpoint": "ask",
+  "truth": {
+    "count": 6,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787349813403.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 51440,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 27,
+        "strategy": "direct_input"
+      },
+      "visionModeVerdict": "clicked-and-confirmed-on",
+      "raw": "SEES=yes COUNT=6 COLOR=teal"
+    }
+  ]
+}
