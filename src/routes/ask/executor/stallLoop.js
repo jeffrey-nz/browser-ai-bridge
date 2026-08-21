@@ -11,6 +11,12 @@ import { cooldownManager } from "../../../session/CooldownManager.js";
 export async function handleStalls(session, initialResponse, activePrompt) {
   let response = initialResponse;
   let stallAttempt = 0;
+  // Only sendPromptWithFile sets imageAttached — its presence on the first
+  // response (whatever the value) is how we know this turn asked for an
+  // image at all. Every retry path below re-sends TEXT ONLY, so once we
+  // fall into the stall loop an image turn's attachment is gone regardless
+  // of how the retry resolves.
+  const hadImage = initialResponse.imageAttached !== undefined;
 
   while (!response.ok) {
     // In non-interactive (web / headless API) mode there is no human operator
@@ -45,7 +51,13 @@ export async function handleStalls(session, initialResponse, activePrompt) {
             activePrompt,
             `API Turn (post-cooldown retry ${stallAttempt})`,
           );
-          if (response.ok) return { response: response.text };
+          // This retry never re-sends the original attachment (only text), so
+          // an image that was part of the turn is no longer part of it.
+          if (response.ok)
+            return {
+              response: response.text,
+              imageAttached: hadImage ? false : undefined,
+            };
           logger.warn(
             `[Ask] Post-cooldown retry still failed — falling through to auto-skip.`,
           );
@@ -116,7 +128,7 @@ export async function handleStalls(session, initialResponse, activePrompt) {
 
     if (control.action === "manual") {
       logger.info("[Ask] Stall resolved: manual response accepted.");
-      return { response: control.text };
+      return { response: control.text, imageAttached: hadImage ? false : undefined };
     }
 
     logger.info("[Ask] Stall resolved: skipped by operator.");
@@ -126,5 +138,10 @@ export async function handleStalls(session, initialResponse, activePrompt) {
     throw err;
   }
 
-  return { response: response.text };
+  // The while loop only re-runs turns as TEXT (see above), so `imageAttached`
+  // is only trustworthy off the loop's first (unmodified) response.
+  return {
+    response: response.text,
+    imageAttached: stallAttempt > 0 ? (hadImage ? false : undefined) : response.imageAttached,
+  };
 }

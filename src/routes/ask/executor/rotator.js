@@ -14,6 +14,10 @@ export async function handleRotationIfNeeded(
     return currentResponse;
   }
 
+  // Rotation always resends as TEXT ONLY (below) — an image that was part of
+  // the original turn does not survive into the fresh chat.
+  const hadImage = currentResponse.imageAttached !== undefined;
+
   // If this was a content-filter refusal AND the caller provided a constraint-free
   // fallback prompt, use that instead of the full activePrompt so we don't send
   // the same blocked text into the fresh chat.
