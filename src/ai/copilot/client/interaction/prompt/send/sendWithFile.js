@@ -27,9 +27,10 @@ export async function sendPromptWithFile(
   pollTimeoutMs = 420000,
 ) {
   logger.info(`[Copilot] Uploading image for visual analysis: ${filePath}`);
+  let imageAttached = false;
   try {
-    const ok = await attachFileToCopilot(page, filePath);
-    if (!ok) {
+    imageAttached = await attachFileToCopilot(page, filePath);
+    if (!imageAttached) {
       logger.warn("[Copilot] Image attach failed — sending text-only");
     }
   } catch (err) {
@@ -46,5 +47,5 @@ export async function sendPromptWithFile(
     pollTimeoutMs,
   );
   if (result?.ok) printResponseSummary(result.text);
-  return result;
+  return { ...result, imageAttached };
 }

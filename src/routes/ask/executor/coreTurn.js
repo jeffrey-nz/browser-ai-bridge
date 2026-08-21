@@ -22,12 +22,18 @@ export async function executeCoreTurn(
           `[Ask] ${attachmentPaths.length} attachments queued, but provider only supports 1 — sending first.`,
         );
       }
-      return await session.engine.sendPromptWithFile(
+      const result = await session.engine.sendPromptWithFile(
         promptText,
         label,
         session.id,
         filePath,
       );
+      if (result && !result.imageAttached) {
+        logger.warn(
+          `[Ask] ${session.providerId} could not confirm the image reached its composer — response is text-only despite the caller sending an image.`,
+        );
+      }
+      return result;
     }
     return await session.engine.sendPromptAndWait(
       promptText,

@@ -190,8 +190,9 @@ export function makeInteraction(spec) {
 
   async function sendPromptWithFile(page, filePath, text, label = "Visual QA") {
     logger.info(`[${spec.name}] Uploading ${filePath}`);
+    let imageAttached = false;
     try {
-      await uploadFileToPage(page, filePath, {
+      imageAttached = await uploadFileToPage(page, filePath, {
         attachmentBtnSelector: spec.attachBtn,
       });
     } catch (err) {
@@ -199,7 +200,13 @@ export function makeInteraction(spec) {
         `[${spec.name}] File upload failed: ${err.message} — sending text-only`,
       );
     }
-    return sendPromptAndWait(page, text, label);
+    if (!imageAttached) {
+      logger.warn(
+        `[${spec.name}] Upload could not be confirmed — sending text-only, caller should not trust a visual answer.`,
+      );
+    }
+    const result = await sendPromptAndWait(page, text, label);
+    return { ...result, imageAttached };
   }
 
   return {

@@ -2,9 +2,19 @@ import {
   clearAndType,
   clickOrFallbackToEnter,
 } from "#ai/shared/domInteraction.js";
-import { uploadFileToPage } from "#ai/shared/uploadFile.js";
+import {
+  uploadFileToPage,
+  waitForAttachmentEvidence,
+} from "#ai/shared/uploadFile.js";
 import { logger } from "#utils/logger.js";
 import fs from "node:fs/promises";
+
+// Gemini renders an uploaded image as a thumbnail chip above the composer
+// once ingestion finishes — this is the same evidence the settle-wait below
+// is timed around, made explicit rather than trusted on faith.
+const GEMINI_ATTACHMENT_EVIDENCE =
+  'img[src^="blob:" i], [data-test-id*="file-preview" i], [class*="file-preview" i], ' +
+  '[class*="uploaded-file" i], [class*="attachment-chip" i]';
 
 export async function uploadFileToGemini(page, filePath) {
   try {
@@ -71,9 +81,6 @@ export async function uploadFileToGemini(page, filePath) {
       }),
     ]);
     await fileChooser.setFiles(filePath);
-    logger.info(
-      `[Gemini] Uploaded file via sub-menu file chooser (${filePath})`,
-    );
     // Gemini ingests the file before the prompt can be sent; large files
     // (multi-MB audio renders) take noticeably longer than a small PNG.
     // Scale the settle wait by file size: ~1.5s base + 1s per MB, capped 30s.
@@ -83,13 +90,27 @@ export async function uploadFileToGemini(page, filePath) {
       settleMs = Math.min(30000, 1500 + Math.round(size / 1024 / 1024) * 1000);
     } catch {}
     await page.waitForTimeout(settleMs);
-    return true;
+    const attached = await waitForAttachmentEvidence(page, {
+      selector: GEMINI_ATTACHMENT_EVIDENCE,
+      timeoutMs: 6000,
+    });
+    if (attached) {
+      logger.info(
+        `[Gemini] Uploaded file via sub-menu file chooser (${filePath}) — attachment confirmed`,
+      );
+    } else {
+      logger.warn(
+        `[Gemini] Sub-menu file chooser accepted the file but no thumbnail/chip appeared for ${filePath}`,
+      );
+    }
+    return attached;
   }
 
   return uploadFileToPage(page, filePath, {
     attachmentBtnSelector:
       'button[aria-label*="attach" i], button[aria-label*="image" i], [aria-label="Add image"], [aria-label="Add file"]',
     timeoutMs: 10000,
+    verifySelector: GEMINI_ATTACHMENT_EVIDENCE,
   });
 }
 

@@ -15,14 +15,21 @@ export async function sendPromptWithFile(
   label = "Visual QA",
 ) {
   logger.info(`[ChatGPT] Uploading file for visual analysis: ${filePath}`);
+  let imageAttached = false;
   try {
-    await uploadFileToChatGpt(page, filePath);
+    imageAttached = await uploadFileToChatGpt(page, filePath);
   } catch (err) {
     logger.warn(
       `[ChatGPT] File upload failed: ${err.message} — sending text-only`,
     );
   }
-  return sendPromptAndWait(page, text, label);
+  if (!imageAttached) {
+    logger.warn(
+      `[ChatGPT] Upload could not be confirmed — sending text-only, caller should not trust a visual answer.`,
+    );
+  }
+  const result = await sendPromptAndWait(page, text, label);
+  return { ...result, imageAttached };
 }
 
 export async function sendPromptAndWait(

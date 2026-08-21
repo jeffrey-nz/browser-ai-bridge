@@ -22,12 +22,19 @@ export async function sendPromptWithFile(
   sessionId = null,
 ) {
   logger.info(`[Grok] Uploading file for visual analysis: ${filePath}`);
+  let imageAttached = false;
   try {
-    await uploadFileToGrok(page, filePath);
+    imageAttached = await uploadFileToGrok(page, filePath);
   } catch (err) {
     logger.warn(
       `[Grok] File upload failed: ${err.message} — sending text-only`,
     );
   }
-  return sendPromptAndWait(page, text, label);
+  if (!imageAttached) {
+    logger.warn(
+      `[Grok] Upload could not be confirmed — sending text-only, caller should not trust a visual answer.`,
+    );
+  }
+  const result = await sendPromptAndWait(page, text, label);
+  return { ...result, imageAttached };
 }

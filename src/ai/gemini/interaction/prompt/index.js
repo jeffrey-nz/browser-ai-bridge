@@ -12,14 +12,21 @@ export async function sendPromptWithFile(
   sessionId = null,
 ) {
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
+  let imageAttached = false;
   try {
-    await uploadFileToGemini(page, filePath);
+    imageAttached = await uploadFileToGemini(page, filePath);
   } catch (err) {
     logger.warn(
       `[Gemini] File upload failed: ${err.message} — sending text-only`,
     );
   }
-  return sendPromptAndWait(page, text, label, sessionId);
+  if (!imageAttached) {
+    logger.warn(
+      `[Gemini] Upload could not be confirmed — sending text-only, caller should not trust a visual answer.`,
+    );
+  }
+  const result = await sendPromptAndWait(page, text, label, sessionId);
+  return { ...result, imageAttached };
 }
 
 export async function sendPromptAndWait(

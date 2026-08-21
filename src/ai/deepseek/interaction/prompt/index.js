@@ -20,14 +20,21 @@ export async function sendPromptWithFile(
   sessionId = null,
 ) {
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
+  let imageAttached = false;
   try {
-    await uploadFileToDeepSeek(page, filePath);
+    imageAttached = await uploadFileToDeepSeek(page, filePath);
   } catch (err) {
     logger.warn(
       `[DeepSeek] File upload failed: ${err.message} — sending text-only`,
     );
   }
-  return sendPromptAndWait(page, text, label, sessionId);
+  if (!imageAttached) {
+    logger.warn(
+      `[DeepSeek] Upload could not be confirmed — sending text-only, caller should not trust a visual answer.`,
+    );
+  }
+  const result = await sendPromptAndWait(page, text, label, sessionId);
+  return { ...result, imageAttached };
 }
 
 export async function sendPromptAndWait(
