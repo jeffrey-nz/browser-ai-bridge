@@ -23,8 +23,12 @@ export async function sendPromptWithFile(
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
+  // T-053: see uploadFile.js's evidenceOut comment — a `true` gets a cause
+  // (which alternative matched, requireGrowth/grew, elapsedMs, strategy)
+  // the same way T-038 gave `false` one.
+  const evidenceOut = {};
   try {
-    imageAttached = await uploadFileToDeepSeek(page, filePath);
+    imageAttached = await uploadFileToDeepSeek(page, filePath, evidenceOut);
   } catch (err) {
     imageAttachedCause = classifyUploadError(err);
     logger.warn(
@@ -40,7 +44,9 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached ? {} : { imageAttachedCause }),
+    ...(imageAttached
+      ? { imageAttachedEvidence: evidenceOut }
+      : { imageAttachedCause }),
   };
 }
 

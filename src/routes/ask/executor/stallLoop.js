@@ -164,5 +164,10 @@ export async function handleStalls(session, initialResponse, activePrompt) {
           ? UPLOAD_CAUSES.TEXT_ONLY_RETRY
           : undefined
         : response.imageAttachedCause,
+    // T-053: same "only the first, unmodified response is trustworthy" rule
+    // as imageAttached/imageAttachedCause above — a retry re-sends text
+    // only, so there is no upload evidence to report for it.
+    imageAttachedEvidence:
+      stallAttempt > 0 ? undefined : response.imageAttachedEvidence,
   };
 }

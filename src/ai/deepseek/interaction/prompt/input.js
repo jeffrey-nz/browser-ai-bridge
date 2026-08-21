@@ -14,7 +14,7 @@ export async function injectDeepSeekText(page, text) {
   });
 }
 
-export async function uploadFileToDeepSeek(page, filePath) {
+export async function uploadFileToDeepSeek(page, filePath, evidenceOut = null) {
   // DeepSeek chat has an image/file upload button near the input toolbar.
   // The button is typically a small icon that triggers a file chooser.
   // Known selectors for DeepSeek's attachment button (checked against chat.deepseek.com):
@@ -26,6 +26,7 @@ export async function uploadFileToDeepSeek(page, filePath) {
 
   return uploadFileToPage(page, filePath, {
     attachmentBtnSelector: deepseekAttachSelector,
+    evidenceOut,
   });
 }
 

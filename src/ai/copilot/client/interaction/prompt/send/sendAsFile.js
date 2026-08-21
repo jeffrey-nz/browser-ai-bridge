@@ -195,9 +195,18 @@ async function uploadViaPlusMenu(page, filePath) {
  * composer-file-input, then the "+" menu → file chooser. Returns true if a
  * file was attached.
  */
-export async function attachFileToCopilot(page, filePath) {
+export async function attachFileToCopilot(page, filePath, evidenceOut = null) {
   let attached = await uploadViaHiddenInput(page, filePath);
-  if (!attached) attached = await uploadViaPlusMenu(page, filePath);
+  // T-053: which of the two strategies actually landed it is already
+  // distinguishable here (this if/else IS the distinction) — record it
+  // rather than inventing anything uploadViaHiddenInput/uploadViaPlusMenu
+  // don't themselves report (their own return shape stays untouched, same
+  // scope boundary the T-038 comment above already drew for this file).
+  let strategy = "hidden_input";
+  if (!attached) {
+    attached = await uploadViaPlusMenu(page, filePath);
+    strategy = "plus_menu";
+  }
   if (!attached) {
     log(colors.yellow("  [Copilot] Could not attach file for image-ask."));
     // T-038: UNCONFIRMED rather than NOT_OFFERED. sendPromptAsFile's own
@@ -216,6 +225,7 @@ export async function attachFileToCopilot(page, filePath) {
     );
   }
   await waitForUploadComplete(page);
+  if (evidenceOut) evidenceOut.strategy = strategy;
   return true;
 }
 

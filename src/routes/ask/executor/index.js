@@ -306,5 +306,6 @@ async function runAskTurn(
     sessionAgeMs,
     imageAttached: stallResult.imageAttached,
     imageAttachedCause: stallResult.imageAttachedCause,
+    imageAttachedEvidence: stallResult.imageAttachedEvidence,
   };
 }

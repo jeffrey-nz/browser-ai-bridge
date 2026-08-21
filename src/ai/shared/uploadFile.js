@@ -89,6 +89,10 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     // can't stand in for this turn's own verification. Left false (every
     // provider but kimi today), verify() is unchanged: presence is enough.
     requireGrowth = false,
+    // T-053: an object the caller can pass to receive WHY a `true` was
+    // returned — populated only on success (see verify() above), never
+    // constructed or guessed from a failure path.
+    evidenceOut = null,
   } = options;
 
   // Verify the file exists before attempting upload
@@ -106,12 +110,50 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     ? await page.locator(evidenceSelector).count()
     : 0;
 
-  const verify = async () => {
+  // T-053: `imageAttached:true` has at least four distinguishable producing
+  // conditions (a real thumbnail; a stale node already on the page when this
+  // call started, satisfied under requireGrowth:false; a transient preview
+  // gone by send time; an unrelated element sharing a substring like
+  // "thumbnail") and today none of them are told apart — the six call sites
+  // that read this function's result all write `true` with no cause,
+  // mirroring exactly the one-boolean-four-meanings shape T-038 fixed for
+  // `false`. `evidenceOut`, when passed, is populated on a successful
+  // verify() with what THIS call actually observed: which alternative(s) of
+  // evidenceSelector matched (split on top-level commas — every selector
+  // this file's callers pass is a flat comma list, never a selector with a
+  // comma inside a pseudo-class), whether growth was required and (only
+  // then) whether it was actually seen, and how long verify() took. This is
+  // deliberately not a richer vocabulary than the code can distinguish —
+  // requireGrowth:false genuinely cannot know whether a match is stale or
+  // fresh, and `grew` stays `null` rather than guessing when that's the case.
+  const matchedAlternatives = async () => {
+    const alts = evidenceSelector.split(",").map((s) => s.trim());
+    const matched = [];
+    for (const alt of alts) {
+      try {
+        if (await page.locator(alt).count()) matched.push(alt);
+      } catch {
+        // A malformed fragment from a caller-supplied selector — not this
+        // function's job to validate; skip it rather than fail verify().
+      }
+    }
+    return matched;
+  };
+
+  const verify = async (evidenceOut) => {
+    const startedAt = Date.now();
     if (!requireGrowth) {
-      return await waitForAttachmentEvidence(page, {
+      const ok = await waitForAttachmentEvidence(page, {
         selector: evidenceSelector,
         timeoutMs: verifyTimeoutMs,
       });
+      if (ok && evidenceOut) {
+        evidenceOut.matchedAlternatives = await matchedAlternatives();
+        evidenceOut.requireGrowth = false;
+        evidenceOut.grew = null; // presence-only: growth was never checked
+        evidenceOut.elapsedMs = Date.now() - startedAt;
+      }
+      return ok;
     }
     // T-034: waitForAttachmentEvidence resolves on the FIRST visible match —
     // a stale node already satisfies that instantly, which let this turn's
@@ -122,7 +164,15 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     const deadline = Date.now() + verifyTimeoutMs;
     while (Date.now() < deadline) {
       const currentCount = await page.locator(evidenceSelector).count();
-      if (currentCount > baselineCount) return true;
+      if (currentCount > baselineCount) {
+        if (evidenceOut) {
+          evidenceOut.matchedAlternatives = await matchedAlternatives();
+          evidenceOut.requireGrowth = true;
+          evidenceOut.grew = true; // this branch only returns on count > baseline
+          evidenceOut.elapsedMs = Date.now() - startedAt;
+        }
+        return true;
+      }
       await page.waitForTimeout(300);
     }
     return false;
@@ -143,7 +193,8 @@ export async function uploadFileToPage(page, filePath, options = {}) {
       await fileInputs.first().setInputFiles(filePath);
       landedOnInput = true;
       await page.waitForTimeout(500);
-      if (await verify()) {
+      if (await verify(evidenceOut)) {
+        if (evidenceOut) evidenceOut.strategy = "direct_input";
         logger.info(
           `[UploadFile] Set files directly on input[type="file"] (${filePath}) — attachment confirmed`,
         );
@@ -195,7 +246,8 @@ export async function uploadFileToPage(page, filePath, options = {}) {
       ]);
       await fileChooser.setFiles(filePath);
       await page.waitForTimeout(500);
-      if (await verify()) {
+      if (await verify(evidenceOut)) {
+        if (evidenceOut) evidenceOut.strategy = "file_chooser";
         logger.info(
           `[UploadFile] Set files via file chooser (${filePath}) — attachment confirmed`,
         );

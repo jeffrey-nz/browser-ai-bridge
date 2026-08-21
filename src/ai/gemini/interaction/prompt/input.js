@@ -17,7 +17,7 @@ const GEMINI_ATTACHMENT_EVIDENCE =
   'img[src^="blob:" i], [data-test-id*="file-preview" i], [class*="file-preview" i], ' +
   '[class*="uploaded-file" i], [class*="attachment-chip" i]';
 
-export async function uploadFileToGemini(page, filePath) {
+export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
   // T-038: mirrors uploadFile.js's own file-existence throw — this is a
   // second, previously-unlisted site for the exact same NOT_OFFERED cause
   // (the shared uploadFileToPage() below is only reached when the menu
@@ -106,6 +106,16 @@ export async function uploadFileToGemini(page, filePath) {
       logger.info(
         `[Gemini] Uploaded file via sub-menu file chooser (${filePath}) — attachment confirmed`,
       );
+      // T-053: this bespoke path never calls the shared uploadFileToPage(),
+      // so it has to record its own evidence. Presence-only, same as
+      // uploadFileToPage's own requireGrowth:false default (this call site
+      // does not pass requireGrowth either) — `grew` stays null because it
+      // was never checked, not because it was false.
+      if (evidenceOut) {
+        evidenceOut.strategy = "gemini_submenu";
+        evidenceOut.requireGrowth = false;
+        evidenceOut.grew = null;
+      }
       return true;
     }
     // T-038: this branch used to `return false` here — a second,
@@ -127,6 +137,7 @@ export async function uploadFileToGemini(page, filePath) {
       'button[aria-label*="attach" i], button[aria-label*="image" i], [aria-label="Add image"], [aria-label="Add file"]',
     timeoutMs: 10000,
     verifySelector: GEMINI_ATTACHMENT_EVIDENCE,
+    evidenceOut,
   });
 }
 

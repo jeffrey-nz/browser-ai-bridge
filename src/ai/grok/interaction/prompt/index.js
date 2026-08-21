@@ -25,8 +25,10 @@ export async function sendPromptWithFile(
   logger.info(`[Grok] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
+  // T-053: see uploadFile.js's evidenceOut comment.
+  const evidenceOut = {};
   try {
-    imageAttached = await uploadFileToGrok(page, filePath);
+    imageAttached = await uploadFileToGrok(page, filePath, evidenceOut);
   } catch (err) {
     imageAttachedCause = classifyUploadError(err);
     logger.warn(
@@ -42,6 +44,8 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached ? {} : { imageAttachedCause }),
+    ...(imageAttached
+      ? { imageAttachedEvidence: evidenceOut }
+      : { imageAttachedCause }),
   };
 }

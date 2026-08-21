@@ -74,6 +74,7 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         sessionAgeMs,
         imageAttached,
         imageAttachedCause,
+        imageAttachedEvidence,
         selfHealEscape,
       } = await executeAskTurn(
         session,
@@ -117,6 +118,9 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         if (!imageAttached) {
           result.imageAttachedCause = imageAttachedCause;
           result.warning = describeUploadFailure(imageAttachedCause);
+        } else if (imageAttachedEvidence) {
+          // T-053: see ask.js's identical block — `true` gets its cause too.
+          result.imageAttachedEvidence = imageAttachedEvidence;
         }
       }
       return result;

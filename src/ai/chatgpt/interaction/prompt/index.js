@@ -18,8 +18,13 @@ export async function sendPromptWithFile(
   logger.info(`[ChatGPT] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
+  // T-053: populated by uploadFileToChatGpt only on a successful verify() —
+  // see uploadFile.js's own evidenceOut comment for why (matchedAlternatives,
+  // requireGrowth/grew, elapsedMs, strategy). `false` still carries a cause
+  // via imageAttachedCause (T-038); this is the same thing for `true`.
+  const evidenceOut = {};
   try {
-    imageAttached = await uploadFileToChatGpt(page, filePath);
+    imageAttached = await uploadFileToChatGpt(page, filePath, evidenceOut);
   } catch (err) {
     imageAttachedCause = classifyUploadError(err);
     logger.warn(
@@ -35,7 +40,9 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached ? {} : { imageAttachedCause }),
+    ...(imageAttached
+      ? { imageAttachedEvidence: evidenceOut }
+      : { imageAttachedCause }),
   };
 }
 

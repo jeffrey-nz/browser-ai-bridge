@@ -213,6 +213,9 @@ export function makeInteraction(spec) {
     logger.info(`[${spec.name}] Uploading ${filePath}`);
     let imageAttached = false;
     let imageAttachedCause;
+    // T-053: see uploadFile.js's evidenceOut comment — a `true` gets a
+    // cause the same way T-038 gave `false` one.
+    const evidenceOut = {};
     try {
       imageAttached = await uploadFileToPage(page, filePath, {
         attachmentBtnSelector: spec.attachBtn,
@@ -224,6 +227,7 @@ export function makeInteraction(spec) {
         ...(spec.verifyTimeoutMs != null
           ? { verifyTimeoutMs: spec.verifyTimeoutMs }
           : {}),
+        evidenceOut,
       });
     } catch (err) {
       imageAttachedCause = classifyUploadError(err);
@@ -240,7 +244,9 @@ export function makeInteraction(spec) {
     return {
       ...result,
       imageAttached,
-      ...(imageAttached ? {} : { imageAttachedCause }),
+      ...(imageAttached
+        ? { imageAttachedEvidence: evidenceOut }
+        : { imageAttachedCause }),
     };
   }
 

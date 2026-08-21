@@ -30,8 +30,10 @@ export async function sendPromptWithFile(
   logger.info(`[Copilot] Uploading image for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
+  // T-053: see uploadFile.js's evidenceOut comment.
+  const evidenceOut = {};
   try {
-    imageAttached = await attachFileToCopilot(page, filePath);
+    imageAttached = await attachFileToCopilot(page, filePath, evidenceOut);
   } catch (err) {
     imageAttachedCause = classifyUploadError(err);
     logger.warn(
@@ -50,6 +52,8 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached ? {} : { imageAttachedCause }),
+    ...(imageAttached
+      ? { imageAttachedEvidence: evidenceOut }
+      : { imageAttachedCause }),
   };
 }

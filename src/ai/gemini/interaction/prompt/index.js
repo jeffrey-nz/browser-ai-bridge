@@ -15,8 +15,10 @@ export async function sendPromptWithFile(
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
+  // T-053: see uploadFile.js's evidenceOut comment.
+  const evidenceOut = {};
   try {
-    imageAttached = await uploadFileToGemini(page, filePath);
+    imageAttached = await uploadFileToGemini(page, filePath, evidenceOut);
   } catch (err) {
     imageAttachedCause = classifyUploadError(err);
     logger.warn(
@@ -32,7 +34,9 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached ? {} : { imageAttachedCause }),
+    ...(imageAttached
+      ? { imageAttachedEvidence: evidenceOut }
+      : { imageAttachedCause }),
   };
 }
 

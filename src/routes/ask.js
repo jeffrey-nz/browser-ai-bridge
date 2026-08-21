@@ -152,6 +152,7 @@ router.post("/", async (req, res, next) => {
           htmlSnapshot,
           imageAttached,
           imageAttachedCause,
+          imageAttachedEvidence,
         } = await executeAskTurn(
           session,
           prompt,
@@ -232,6 +233,11 @@ router.post("/", async (req, res, next) => {
           if (!imageAttached) {
             payload.imageAttachedCause = imageAttachedCause;
             payload.warning = describeUploadFailure(imageAttachedCause);
+          } else if (imageAttachedEvidence) {
+            // T-053: the same reasoning as imageAttachedCause above, for the
+            // opposite value — `true` has multiple distinguishable producing
+            // conditions and used to record none of them.
+            payload.imageAttachedEvidence = imageAttachedEvidence;
           }
         }
         return {

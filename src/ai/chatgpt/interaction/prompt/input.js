@@ -19,7 +19,7 @@ export async function injectChatGptText(page, text) {
   );
 }
 
-export async function uploadFileToChatGpt(page, filePath) {
+export async function uploadFileToChatGpt(page, filePath, evidenceOut = null) {
   // Claude.ai / ChatGPT: attachment button is a paperclip icon near the input.
   // Selector targets the attachment/file button in the composer toolbar.
   const chatgptAttachSelector =
@@ -59,6 +59,7 @@ export async function uploadFileToChatGpt(page, filePath) {
     // T-034 shipped for it: require the count to grow past whatever was
     // already on the page when THIS call started, not merely be present.
     requireGrowth: true,
+    evidenceOut,
   });
 }
 
