@@ -12,6 +12,7 @@ import { resolveSelector } from "#ai/shared/locatorEngine.js";
 import { DEEPSEEK_LOCATORS } from "../../locators.js";
 import { logger } from "#utils/logger.js";
 import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
+import { selectDeepSeekVisionMode } from "../mode.js";
 
 export async function sendPromptWithFile(
   page,
@@ -20,6 +21,12 @@ export async function sendPromptWithFile(
   label = "Visual QA",
   sessionId = null,
 ) {
+  // T-048: the default "Instant" mode cannot read an attached image at all
+  // — see mode.js's own comment on selectDeepSeekVisionMode for the live
+  // evidence. Every image turn needs this, not just ones that ask for a
+  // specific mode, so it runs unconditionally here rather than through the
+  // caller-facing setMode() path.
+  await selectDeepSeekVisionMode(page);
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
