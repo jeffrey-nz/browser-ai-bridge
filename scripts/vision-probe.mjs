@@ -260,7 +260,14 @@ export function classifyServerProvenance(serverStale, serverTreeDirty) {
 
 async function gradingProvenance(baseUrl) {
   const src = await readFile(__filename, "utf8");
-  const probeSha256 = createHash("sha256")
+  // T-074: this hashes THIS FILE'S OWN SOURCE — "which classify()/prompt/
+  // fixture-generation code produced this run" — not the fixture image.
+  // It used to be named probeSha256 and read across this board as fixture
+  // identity ("same probeSha256 means same picture"); it never could mean
+  // that, since two runs sharing this same source file draw a fresh random
+  // fixture each time. See fixtureSha256 in main()'s own write, below,
+  // for the field that actually hashes the PNG bytes sent.
+  const graderSha256 = createHash("sha256")
     .update(src)
     .digest("hex")
     .slice(0, 16);
@@ -344,7 +351,7 @@ async function gradingProvenance(baseUrl) {
   );
 
   return {
-    probeSha256,
+    graderSha256,
     bridgeCommit,
     treeDirty,
     ...(treeDirty ? { dirtyPaths } : {}),
@@ -1025,11 +1032,29 @@ async function main() {
         `for the selector actually in effect, not just this note.\n`,
     );
   }
+  // T-074: the actual fixture image's own hash — full sha256, not
+  // truncated, over the exact PNG bytes this run sent. This is the field
+  // "same picture across two runs" actually needs; graderSha256 above
+  // (this SCRIPT's own source) never answered that, despite reading like
+  // it did. Unlike graderSha256, this DOES read as "same fixture" safely:
+  // renderPng (below) is a pure function of (count, colour) — no
+  // randomness in square placement — so two runs at the SAME pinned truth
+  // genuinely do produce byte-identical PNGs (confirmed repeatedly on this
+  // board's own corpus: T-050, T-048's five count=5/crimson runs, this
+  // ticket's own count=4/crimson demonstration below, all one sha256 per
+  // truth). What varies run to run is which truth gets drawn when it
+  // ISN'T pinned (generateTestImage's own random count+colour draw), not
+  // the rendering of a given truth.
+  const fixtureSha256 = createHash("sha256")
+    .update(await readFile(imagePath))
+    .digest("hex");
+
   await writeFile(
     outPath,
     JSON.stringify(
       {
         ...provenance,
+        fixtureSha256,
         ...(opts.plantedBreak ? { plantedBreak: opts.plantedBreak } : {}),
         endpoint: opts.endpoint,
         truth: { count, color },
