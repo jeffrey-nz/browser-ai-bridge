@@ -1,0 +1,19 @@
+# T-033: on this machine, core.autocrlf=true + no .gitattributes meant a
+# fresh `git clone` of this repo materialised every tracked text file as
+# CRLF, one byte per line heavier than the LF blob actually stored — while
+# a working tree that never round-tripped through an actual checkout (e.g.
+# a file written by a script and `git add`ed directly) stayed LF. Same
+# commit, same clean `git status` in both, byte-for-byte different files.
+# scripts/ia-grade.mjs's corpus digest (a raw sha256 over file bytes, by
+# design — see that file's own comments on why rates are graded from
+# JSON.parse, which does not care about line endings, while the digest that
+# claims "same corpus" deliberately does) surfaced it first, but the same
+# mismatch applies to every tracked text file, not just the corpus.
+#
+# `eol=lf` makes a checkout emit LF regardless of core.autocrlf, so a fresh
+# clone now materialises the same bytes the repository already stores — no
+# blob content changes (T-033 measured the stored blobs as already LF; only
+# the checkout step was converting), so this is a checkout-policy file, not
+# a renormalisation.
+* text=auto eol=lf
+*.png binary
