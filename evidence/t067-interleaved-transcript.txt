@@ -1,0 +1,166 @@
+=== create copilot session ===
+{"success":true,"sessionId":"308571bb-f5fb-4895-bcb8-5dcd956888ca","maxPromptChars":9500}
+
+=== turn1-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn1-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 27557,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 1,
+    "sessionAgeMs": 30,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "71b00f6b-cb03-4a61-9b3f-e491d12bf3a0"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn2-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn2-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 26042,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 2,
+    "sessionAgeMs": 27581,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "15e94f23-7364-4f45-af60-e1b9408e1b73"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn3-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn3-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25434,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 3,
+    "sessionAgeMs": 53623,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "c1761775-d849-4677-8408-48a5a21c55e5"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn4-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn4-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25868,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 4,
+    "sessionAgeMs": 79057,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "3b2dafcf-6343-46c1-9127-136cd0a406f6"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn5-9t: {"count":9,"color":"teal"} ===
+{
+  "turnLabel": "turn5-9t",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25394,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 5,
+    "sessionAgeMs": 104924,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "7e1f8b6c-5c78-459a-9823-1890d29785c6"
+  },
+  "shape": "SEES_NO"
+}
+
+=== turn6-4c: {"count":4,"color":"crimson"} ===
+{
+  "turnLabel": "turn6-4c",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "httpStatus": 200,
+  "elapsedMs": 25406,
+  "fullResponse": {
+    "success": true,
+    "response": "SEES=no\n\nEdit in a page",
+    "data": null,
+    "turnIndex": 6,
+    "sessionAgeMs": 130317,
+    "provider": "copilot",
+    "imageAttached": true,
+    "imageAttachedEvidence": {
+      "strategy": "hidden_input"
+    },
+    "requestId": "83bbcdc6-a109-4a26-83c5-9d2991bf8474"
+  },
+  "shape": "SEES_NO"
+}
+
+
+=== SUMMARY ===
+turn1-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+turn2-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+turn3-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+turn4-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+turn5-9t       9/teal     shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+turn6-4c       4/crimson  shape=SEES_NO imageAttached=true evidence={"strategy":"hidden_input"}
+9/teal: SEES_NO 3/3
+4/crimson: SEES_NO 3/3
+
+=== cleanup ===
+delete status 200
