@@ -90,17 +90,31 @@ found a _registered_ session's page already closed without this process itself
 having asked for that close (a GC sweep or a session-access self-prune discovering
 `page.isClosed()`), or `null` if none is outstanding. This is a sticky edge detector,
 not a level: it is set the moment a collapse is _discovered_ and stays set — surviving
-the registry drain that erases `attachedPages`'s evidence — until a brand-new session
-finishes initializing, which is treated as confirmed proof the browser can still open
-and drive a live page. A caller polling before a batch, with `sessions: 0` and
-`attachedPages: 0` on both a healthy idle bridge and one whose pages were just killed
-underneath it, can tell the two apart here: `null` on the healthy bridge, a timestamp
-on the collapsed one. Costs nothing per poll — both values `/api/ping` reads for this
-field are already maintained synchronously elsewhere; the endpoint makes no new
-`await` against the browser. Blind spot: it can only fire once a dead session is
-actually _discovered_ (GC tick or an access attempt) — a collapse nothing has touched
-yet is invisible here too, same as `attachedPages`, until something touches it or the
-next GC tick runs.
+the registry drain that erases `attachedPages`'s evidence — until the flag is reset.
+"Without this process itself having asked" is enforced, not assumed: the two places
+this bridge deliberately closes a registered (non-auto-created) session's own stuck
+tab — `ask.js` and `askOne.js`, both on a "Failed to submit prompt" error, to keep a
+broken page out of the pool — mark that session `closedByBridge` immediately before
+closing it, and the GC sweep / self-prune skip recording anything so marked. Without
+that mark, retiring a stuck tab after an ordinary submission failure would read as a
+browser-side collapse, which crew board T-023's review round caught live.
+
+Reset condition, stated exactly because a vague one is worse than none: any session —
+pool hit or cold boot — that finishes `SessionManager.createSession()` successfully,
+which includes running `startNewChat()` against its page. Not "a brand-new session" —
+a **pool hit** resets it too, deliberately, because a session handed back out of the
+warm pool never touches the cold-boot path (`Creator.js`) at all, and a caller cannot
+be left reading "collapsed" while the bridge is already serving working turns from
+the pool underneath it.
+
+A caller polling before a batch, with `sessions: 0` and `attachedPages: 0` on both a
+healthy idle bridge and one whose pages were just killed underneath it, can tell the
+two apart here: `null` on the healthy bridge, a timestamp on the collapsed one. Costs
+nothing per poll — both values `/api/ping` reads for this field are already
+maintained synchronously elsewhere; the endpoint makes no new `await` against the
+browser. Blind spot: it can only fire once a dead session is actually _discovered_
+(GC tick or an access attempt) — a collapse nothing has touched yet is invisible here
+too, same as `attachedPages`, until something touches it or the next GC tick runs.
 
 **Response (starting up)**
 

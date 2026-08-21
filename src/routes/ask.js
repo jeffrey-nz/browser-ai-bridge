@@ -231,6 +231,9 @@ router.post("/", async (req, res, next) => {
         // modal, auth wall, DOM in bad state). Close the page so _recycleOrClose
         // doesn't put a broken tab back into the pool for the next request.
         if (err.message?.includes("Failed to submit prompt")) {
+          // T-023: mark this as OUR close, not a browser-side collapse — see
+          // the matching comment in askOne.js.
+          session.closedByBridge = true;
           session.page?.close().catch(() => {});
         }
 

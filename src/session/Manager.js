@@ -4,7 +4,10 @@ import { sessionLogger } from "./Logger.js";
 import { sessionPool } from "./Pool.js";
 import { logger } from "#utils/logger.js";
 import { getSessionState, cleanupSession as cleanupStalls } from "../stalls.js";
-import { recordUnexpectedPageClose } from "./collapseDetector.js";
+import {
+  recordUnexpectedPageClose,
+  recordFreshSessionCreated,
+} from "./collapseDetector.js";
 
 // Per-provider lock: prevents two concurrent createSession() calls from
 // both doing a cold boot and opening duplicate tabs for the same provider.
@@ -39,7 +42,11 @@ export class SessionManager {
         logger.info(
           `[SessionManager] GC sweeping session with closed tab: ${session.id}`,
         );
-        recordUnexpectedPageClose();
+        // T-023: a close THIS PROCESS asked for (ask.js/askOne.js closing a
+        // stuck tab after "Failed to submit prompt", marked via
+        // closedByBridge before calling page.close()) is not evidence of a
+        // browser-side collapse — skip recording it as one.
+        if (!session.closedByBridge) recordUnexpectedPageClose();
         await this.closeSession(session.id);
         continue;
       }
@@ -151,6 +158,13 @@ export class SessionManager {
       `[SessionManager] Session ${session.id} created for provider ${providerId} with mode ${mode || "none"}`,
     );
 
+    // T-023: reset here, not only in Creator.js's cold-boot path — a POOL
+    // HIT never touches Creator.js at all, so a collapse's sticky flag would
+    // otherwise stay set while the bridge is already back to handing out
+    // working sessions from the pool. startNewChat() above just proved this
+    // session's page is alive and drivable, cold-booted or not.
+    recordFreshSessionCreated();
+
     this.registry.add(session.id, {
       ...session,
       locked: false,
@@ -172,7 +186,9 @@ export class SessionManager {
     if (!session) return null;
 
     if (!session.page || session.page.isClosed()) {
-      recordUnexpectedPageClose();
+      // T-023: see the matching comment in _cleanupStaleSessions — a close we
+      // asked for ourselves isn't a collapse.
+      if (!session.closedByBridge) recordUnexpectedPageClose();
       this.closeSession(sessionId);
       return null;
     }

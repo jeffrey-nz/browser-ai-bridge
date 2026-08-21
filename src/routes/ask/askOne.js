@@ -123,6 +123,10 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         requestId,
       });
       if (err.message?.includes("Failed to submit prompt")) {
+        // T-023: mark this as OUR close, not a browser-side collapse —
+        // Manager.js's GC sweep / getSession self-prune would otherwise
+        // record retiring a stuck tab as an unexpected page death.
+        session.closedByBridge = true;
         session.page?.close().catch(() => {});
       }
       return {

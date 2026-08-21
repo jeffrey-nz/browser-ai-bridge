@@ -4,11 +4,17 @@
  * already established: connect to the SAME running Chrome the live bridge
  * uses, and close pages underneath it without telling the bridge. Unlike
  * break-demo.mjs (which opens its OWN blank pages to probe uploadFileToPage),
- * this closes every page the bridge itself currently owns — reproducing the
- * 03:12 shape (T-003's incident record): every provider tab dies at once,
- * CDP connection and browser process untouched.
+ * this closes pages the bridge itself currently owns — reproducing the 03:12
+ * shape (T-003's incident record): a provider tab dies with the CDP
+ * connection and browser process untouched. Closing literally EVERY page
+ * (no filter) was tried first and quits the whole Chrome process instead —
+ * a different, already-handled failure mode (browser flips to
+ * "disconnected") — so pass a URL substring (see below) to close only the
+ * page(s) matching it, leaving at least one other tab open.
  *
- * Usage: node scripts/t023-kill-pages.mjs
+ * Usage: node scripts/t023-kill-pages.mjs [urlSubstring]
+ *   no argument: closes every page (reproduces the whole-Chrome-quits case)
+ *   urlSubstring: closes only pages whose url() includes it
  */
 import { chromium } from "playwright-core";
 
