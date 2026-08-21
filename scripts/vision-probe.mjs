@@ -119,8 +119,19 @@ async function gradingProvenance() {
   // report/fixture files (untracked until a later commit) as tree dirt —
   // the question this field answers is "does HEAD's checked-in code match
   // what ran", not "is the working directory clean of any new file".
-  let treeDirty = false;
-  let dirtyPaths = [];
+  // T-046 review: this used to initialise treeDirty to `false` — meaning a
+  // caught git failure (no checkout, git missing, REPO_ROOT wrong, or `git
+  // rev-parse` succeeding but `git diff` throwing) silently wrote
+  // `treeDirty: false` next to a report that was never actually measured,
+  // which is the exact absence/false conflation the comment two paragraphs
+  // up warns readers about for T-038's cause field. `null` is a THIRD,
+  // distinct state from both "absent key" (a pre-T-046 file, per clause 3's
+  // reader contract below) and a genuinely measured true/false — it says
+  // this ticket's logic ran but could not complete the measurement, so a
+  // reader must not read it as "verified clean". Only ever set to a real
+  // boolean once `git diff` has actually returned.
+  let treeDirty = null;
+  let dirtyPaths = null;
   try {
     bridgeCommit = execSync("git rev-parse HEAD", {
       cwd: REPO_ROOT,
