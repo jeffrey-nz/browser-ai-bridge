@@ -169,6 +169,17 @@ export class SessionManager {
       ...session,
       locked: false,
       lastUsedAt: Date.now(),
+      // T-028: closedByBridge must not ride along into a session that is
+      // about to be handed out for a fresh turn. session.page?.close() at
+      // the two ask.js/askOne.js mark sites is fire-and-forget (not
+      // awaited), so _recycleOrClose's !session.page?.isClosed() check can
+      // race it and push a marked-but-not-yet-closed session back into the
+      // pool — the pool hit above would then acquire it, its `...session`
+      // spread would carry closedByBridge:true forward, and every future
+      // genuine page death on THIS registry entry would be silently
+      // skipped from then on. Explicit false here, after the spread, so it
+      // always wins over whatever the source session carried.
+      closedByBridge: false,
     });
 
     return session.id;
