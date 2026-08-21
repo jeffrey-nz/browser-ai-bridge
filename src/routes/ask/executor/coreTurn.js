@@ -35,6 +35,25 @@ export async function executeCoreTurn(
       }
       return result;
     }
+    if (attachmentPaths.length > 0) {
+      // The caller sent an image, but this engine has no file-upload path at
+      // all — sendPromptAndWait below has no attachment argument to give it,
+      // so the image would otherwise be silently dropped and the turn come
+      // back success:true with no way to tell it from a text-only answer
+      // (T-004 on the crew board, found inside T-001's own fix). Run the
+      // turn as text — there is nothing else to try — but mark it honestly
+      // rather than let a caller mistake this for "no image was sent."
+      logger.warn(
+        `[Ask] ${session.providerId} has no sendPromptWithFile — the image cannot be sent; running as text-only.`,
+      );
+      const result = await session.engine.sendPromptAndWait(
+        promptText,
+        label,
+        session.id,
+        pollTimeoutMs,
+      );
+      return result ? { ...result, imageAttached: false } : result;
+    }
     return await session.engine.sendPromptAndWait(
       promptText,
       label,

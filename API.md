@@ -192,11 +192,15 @@ the page — an attachment thumbnail or chip — before calling itself done, and
 carries that verdict:
 
 - `imageAttached: true` — evidence of the attachment appeared on the page.
-- `imageAttached: false`, plus a `warning` field — no evidence appeared, or a retry inside
+- `imageAttached: false`, plus a `warning` field — no evidence appeared, a retry inside
   the turn (a stall retry, a rate-limit retry, a chat rotation) re-sent the prompt as text
-  only and the original attachment did not survive it. **Treat the response as text-only
-  in this case** — the model may answer fluently about an image it never received.
-- Field absent — the turn carried no image at all (nothing to confirm).
+  only and the original attachment did not survive it, or the provider has no
+  file-upload path at all and the image could not be sent by any means. **Treat the
+  response as text-only in this case** — the model may answer fluently about an image
+  it never received.
+- Field absent — the turn carried no image at all (nothing to confirm). A request that
+  included an image never gets a bare `success: true` with this field absent — one of
+  the two states above always applies instead (crew board T-004).
 
 As of the T-001 measurement, `chatgpt`, `gemini`, `deepseek`, `grok` and `copilot` can be
 verified as receiving an image on a given turn; `kimi` and `zai` could not complete an
