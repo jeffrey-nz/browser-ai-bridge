@@ -1,0 +1,34 @@
+{
+  "providerId": "kimi",
+  "note": "T-034: requireGrowth's pre-fix verify() waited for FIRST-VISIBLE (satisfied instantly by a stale node) then sampled the match count once, instead of polling for count > baseline. Reproduced live with a real, valid image through the real uploadFileToPage(), with the network throttled (Network.emulateNetworkConditions, ~20kbps up, 1.5s latency) so the real upload's own round trip reliably lands after the pre-verify mechanical steps -- a genuine race that, unthrottled, could go either way run to run (observed both true and false on unthrottled runs before adding this).",
+  "scriptUsed": "scripts/t034-growth-timing-check.mjs",
+  "beforeFix": {
+    "description": "git-stashed src/ai/shared/uploadFile.js back to its pre-T-034 state, ran against kimi with a synthetic stale .image-thumbnail.success node present (baseline=1) and a real, valid image (reports/vision-probe/probe-1787313682148.png, the same file T-030's t030-kimi-run1.json confirmed reaching .success on kimi).",
+    "result": false,
+    "returnedAtMs": 10359,
+    "countAtReturnInstant": 1,
+    "baseline": 1,
+    "realGrowthObservedAtMs": 14107,
+    "finalCount": 2,
+    "conclusion": "uploadFileToPage returned false at 10359ms. The real upload's own thumbnail did not actually appear until 14107ms -- 3748ms AFTER verify() had already decided. This is the proof it is a timing bug, not a selector bug: the upload was genuinely valid and did land, just after the one-shot count sample."
+  },
+  "afterFix": {
+    "description": "same setup (fresh navigation, synthetic stale node, same real valid image, same network throttle), git stash popped to restore the T-034 fix, verifyTimeoutMs raised to 20000 for this run specifically (production keeps each spec's own default/option) so the fix's poll window comfortably covers the throttled delay.",
+    "result": true,
+    "returnedAtMs": 14656,
+    "countAtReturnInstant": 2,
+    "baseline": 1,
+    "conclusion": "uploadFileToPage correctly waited for and returned true once the real upload's own thumbnail appeared. Count at return was baseline+1 (2), not baseline+2 -- one new thumbnail, confirming no double-attach from strategy 1/2 fallback."
+  },
+  "regressionCheck": {
+    "description": "re-ran scripts/t031-growth-check.mjs (T-031's own probe: malformed file + stale node, and fresh-page negative control) against the T-034-fixed code, unthrottled.",
+    "malformedFileWithStaleNode_result": false,
+    "freshPageNegativeControl_count": 0,
+    "conclusion": "no regression -- T-031's own passing cases still pass under T-034's fix."
+  },
+  "requireGrowthUnset": {
+    "description": "not live-run separately -- proved by code inspection instead, since this repo has no unit tests over browser-facing code (see CLAUDE.md) and every other provider spec already leaves requireGrowth unset in production.",
+    "reasoning": "pre-fix verify(): `appeared = await waitForAttachmentEvidence(...); if (!appeared || !requireGrowth) return appeared;` -- when requireGrowth is false this returns `appeared` directly. Post-fix verify(): `if (!requireGrowth) return await waitForAttachmentEvidence(...);` -- same call, same return value, reached without ever touching the new poll loop. Byte-for-byte equivalent behaviour for every provider except kimi."
+  },
+  "checkedAt": "2026-08-21T13:35:16Z"
+}

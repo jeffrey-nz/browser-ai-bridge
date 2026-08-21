@@ -103,13 +103,25 @@ export async function uploadFileToPage(page, filePath, options = {}) {
     : 0;
 
   const verify = async () => {
-    const appeared = await waitForAttachmentEvidence(page, {
-      selector: evidenceSelector,
-      timeoutMs: verifyTimeoutMs,
-    });
-    if (!appeared || !requireGrowth) return appeared;
-    const currentCount = await page.locator(evidenceSelector).count();
-    return currentCount > baselineCount;
+    if (!requireGrowth) {
+      return await waitForAttachmentEvidence(page, {
+        selector: evidenceSelector,
+        timeoutMs: verifyTimeoutMs,
+      });
+    }
+    // T-034: waitForAttachmentEvidence resolves on the FIRST visible match —
+    // a stale node already satisfies that instantly, which let this turn's
+    // own upload be judged (count sampled once, immediately) before a real
+    // network round trip had any time to land. Poll for the condition
+    // requireGrowth actually names — count > baseline — instead of waiting
+    // for visibility and sampling once.
+    const deadline = Date.now() + verifyTimeoutMs;
+    while (Date.now() < deadline) {
+      const currentCount = await page.locator(evidenceSelector).count();
+      if (currentCount > baselineCount) return true;
+      await page.waitForTimeout(300);
+    }
+    return false;
   };
 
   // Strategy 1: Direct setInputFiles on existing hidden file input
