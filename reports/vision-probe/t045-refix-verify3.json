@@ -1,0 +1,23 @@
+{
+  "probeSha256": "74dce7771bd9c43c",
+  "bridgeCommit": "7d3f8d1c7c1d7160cf80b7582e3809dcf6c0605b",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/routes/ask/executor/index.js"
+  ],
+  "gradedAt": "2026-08-21T18:15:22.644Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 9,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787335822507.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 300014,
+      "shape": "ERROR",
+      "detail": "timeout"
+    }
+  ]
+}
