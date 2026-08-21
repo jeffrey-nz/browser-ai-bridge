@@ -70,11 +70,26 @@
  *   means editing its real selector (e.g. the `attachBtn` entry in
  *   src/ai/generic/specs.js, or a bespoke provider's uploadFileTo* selector)
  *   to something that cannot match, then starting a bridge instance on a
- *   spare port so the live server (and anyone else's sessions on it) is
- *   never touched, and running this probe against that instance with
+ *   spare port and running this probe against that instance with
  *   --providers pointed at just the broken one. `--break <providerId>`
  *   below only prints the exact steps — it does not edit code or start a
  *   server for you, so the failure is demonstrated deliberately.
+ *
+ *   T-060: the live server's OWN process is not killed by this anymore —
+ *   startup used to key its stale-instance check off one pid file shared
+ *   by every port, so a spare-port launch would read the live instance's
+ *   pid and SIGTERM it (measured live: a bridge on 3333 killed by a
+ *   launch on 3334). The pid file is now scoped by port, so that no
+ *   longer happens. What a spare-port launch still touches: the shared
+ *   "where is the bridge" discovery files (browser-ai-bridge-config.json
+ *   and its legacy alias, read by copilot-helper/launcher.js and
+ *   agent-core/bridgeClient.js) — the spare instance overwrites those with
+ *   ITS OWN port while it runs, and deletes them on its own exit, so
+ *   anything that discovers "the bridge" through those files during the
+ *   spare instance's lifetime finds the wrong one, and finds nothing for a
+ *   moment after it exits (until the live instance is itself restarted).
+ *   The live server keeps running and answering on its own port
+ *   throughout either way.
  */
 
 import zlib from "node:zlib";
@@ -820,8 +835,9 @@ async function main() {
         `  1. Edit its attach-button selector (src/ai/generic/specs.js for a generic\n` +
         `     provider, or the bespoke uploadFileTo* selector otherwise) to something\n` +
         `     that cannot match, e.g. "input[type='file'].NONEXISTENT-PROBE-BREAK".\n` +
-        `  2. Start a bridge instance on a spare port so the live server (and\n` +
-        `     anyone else's sessions on it) is never touched:\n` +
+        `  2. Start a bridge instance on a spare port (T-060: the live server's\n` +
+        `     own process is not killed by this — see the file header for what a\n` +
+        `     spare-port launch still touches):\n` +
         `       PORT=3334 node --env-file=.env src/index.js\n` +
         `  3. Re-run this probe against just that instance and provider:\n` +
         `       node scripts/vision-probe.mjs --base-url http://localhost:3334 --providers ${opts.breakProvider}\n` +

@@ -61,28 +61,54 @@ export function removePidFile(port) {
   );
 }
 
+// T-060 clause 5: the DECISION — given what the pid file says and whether
+// that pid is actually alive right now, is there anything to kill — pulled
+// out of killZombieProcess's fs/signal side effects so it is unit-testable
+// without a live process, same reasoning as compareServerCommit /
+// classifyServerProvenance in scripts/vision-probe.mjs. Covers the three
+// tri-state cases the pid file can be in:
+//   pid === null    no readable pid — either no file at all, or a file that
+//                    exists but is empty/garbled. Both mean the same thing
+//                    to this decision (nothing to act on), so the caller is
+//                    not required to tell them apart before calling this.
+//   isAlive === false   a pid WAS recorded, but that process is gone —
+//                    `process.kill(pid, 0)` already threw, measured by the
+//                    caller (a pure function cannot do that check itself).
+//   isAlive === true    the recorded pid is genuinely alive right now, and
+//                    (having already survived the pid !== currentPid check)
+//                    it is not this process — the only case this ticket
+//                    exists to make correctly port-scoped.
+// `pid === currentPid` (a pid file somehow recording OUR OWN pid) is folded
+// into "clean" rather than treated as a fourth case: whatever wrote it, it
+// is not a second live process to kill.
+export function decidePidFileAction(pid, currentPid, isAlive) {
+  if (pid !== null && pid !== currentPid && isAlive) return "kill";
+  return "clean";
+}
+
 export async function killZombieProcess(port) {
   const pidFile = pidFilePath(port);
   if (!existsSync(pidFile)) return;
 
-  let pid;
+  let pid = null;
   try {
-    pid = parseInt(readFileSync(pidFile, "utf8").trim(), 10);
+    const parsed = parseInt(readFileSync(pidFile, "utf8").trim(), 10);
+    if (Number.isInteger(parsed) && parsed > 0) pid = parsed;
   } catch {
-    removePidFile(port);
-    return;
+    // pid stays null — file existed but couldn't be read
   }
 
-  if (!pid || pid === process.pid) {
-    removePidFile(port);
-    return;
+  let isAlive = false;
+  if (pid !== null) {
+    try {
+      process.kill(pid, 0);
+      isAlive = true;
+    } catch {
+      isAlive = false;
+    }
   }
 
-  // Check if the process is actually alive
-  try {
-    process.kill(pid, 0);
-  } catch {
-    // Process is already gone
+  if (decidePidFileAction(pid, process.pid, isAlive) === "clean") {
     removePidFile(port);
     return;
   }
