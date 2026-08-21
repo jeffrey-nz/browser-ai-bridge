@@ -1,0 +1,25 @@
+{
+  "probeSha256": "6047f7cf18c0d0e4",
+  "bridgeCommit": "886c2f14a7eedc0947fbadb2f036641d2bbb58e3",
+  "treeDirty": false,
+  "serverLoadedCommit": "886c2f14a7eedc0947fbadb2f036641d2bbb58e3",
+  "serverStale": false,
+  "gradedAt": "2026-08-21T18:45:06.640Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "..\\AppData\\Local\\Temp\\claude\\C--Users-Work-browser-ai-bridge\\1608dabc-6833-4455-81e9-db9486ad94e0\\scratchpad\\t050-pair-test\\pair-teal-4.png",
+  "results": [
+    {
+      "providerId": "copilot",
+      "elapsedMs": 28968,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=4 COLOR=teal\n\nEdit in a page"
+    }
+  ]
+}

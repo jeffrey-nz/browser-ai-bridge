@@ -1,0 +1,23 @@
+{
+  "probeSha256": "6047f7cf18c0d0e4",
+  "bridgeCommit": "886c2f14a7eedc0947fbadb2f036641d2bbb58e3",
+  "treeDirty": false,
+  "serverLoadedCommit": "886c2f14a7eedc0947fbadb2f036641d2bbb58e3",
+  "serverStale": false,
+  "gradedAt": "2026-08-21T18:43:02.450Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 9,
+    "color": "teal"
+  },
+  "imagePath": "..\\AppData\\Local\\Temp\\claude\\C--Users-Work-browser-ai-bridge\\1608dabc-6833-4455-81e9-db9486ad94e0\\scratchpad\\t050-pair-test\\pair-teal-9.png",
+  "results": [
+    {
+      "providerId": "grok",
+      "elapsedMs": 40689,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "raw": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n \nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n \n...or reply with EXACTLY this if you cannot see any image at all:\n \nSEES=no"
+    }
+  ]
+}
