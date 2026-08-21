@@ -1,0 +1,10 @@
+=== cooldownManager state (via /api/ping) ===
+{"status":"ready","loadedCommit":"42ec8541d62eaed3665a13e7a4154f448bac50ed","copilot":{"name":"Microsoft Copilot","total":0,"active":0,"awaitingOperator":0,"idle":0,"cooldown":false,"cooldownSeconds":0}}
+
+=== text-only turn (no image) ===
+{"elapsedMs":24266,"httpStatus":200,"success":true,"response":"PONG-T071\n\nEdit in a page","data":null,"turnIndex":1,"sessionAgeMs":1,"provider":"copilot","requestId":"1d16493a-246a-45d6-bbb4-e58edee380b3"}
+
+=== DOM sweep for quota/limit messaging ===
+{"success":true,"sessionId":"8f42910a-a29c-48ed-b9c0-3d611994d3f1","maxPromptChars":9500}
+{"success":true,"result":[]}
+delete status 200
