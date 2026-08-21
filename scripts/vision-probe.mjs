@@ -442,6 +442,36 @@ function parseArgs(argv) {
   return out;
 }
 
+// T-055: main() only ever recognised THREE stimulus forms as pinned —
+// --image+--count+--color (reuse a file) and --count+--color alone (T-050,
+// render the pin fresh) — and silently fell through to a RANDOM draw for
+// every other combination, including a lone --count, a lone --color, or
+// --image with no truth to grade it against at all. The run still
+// succeeded, the JSON was still well-formed, and the only trace was that
+// `truth.count`/`truth.color` were not what was typed — exactly the field
+// an operator who believes they pinned the stimulus has no reason to
+// re-read. Extracted as its own function (not inlined in main()) so the
+// rule is unit-testable without mocking the whole CLI.
+export function validateStimulusArgs({ image, count, color } = {}) {
+  const hasCount = count !== undefined;
+  const hasColor = color !== undefined;
+  const hasImage = image !== undefined;
+  if (hasCount !== hasColor) {
+    throw new Error(
+      "--count and --color must be given together (both, or neither) — " +
+        "a lone one used to fall through to a silent random draw instead " +
+        "of being rejected (T-055).",
+    );
+  }
+  if (hasImage && !hasCount) {
+    throw new Error(
+      "--image requires --count and --color too — there is nothing to " +
+        "grade the picture against otherwise, and this used to fall " +
+        "through to a silent random draw (T-055).",
+    );
+  }
+}
+
 /** Fresh PNG fixture: `count` (3-9) solid squares in a row, colour named. */
 async function generateTestImage() {
   const count = MIN_COUNT + Math.floor(Math.random() * COUNT_RANGE);
@@ -629,10 +659,14 @@ async function main() {
         "[--count N --color name [--image path]] [--out path]\n" +
         "  --count N --color name alone (T-050) renders that exact fixture fresh " +
         "(renderPng is a pure function of the pair) — add --image path to reuse an " +
-        "already-rendered file instead of re-rendering.",
+        "already-rendered file instead of re-rendering.\n" +
+        "  --count/--color must be given together (T-055) — a lone one, or " +
+        "--image with neither, is rejected rather than silently randomised.",
     );
     return;
   }
+  // T-055: fail fast, before generating anything or touching a provider.
+  validateStimulusArgs(opts);
 
   if (opts.breakProvider) {
     console.log(
