@@ -1,0 +1,28 @@
+{
+  "probeSha256": "b245fb6d760ef0a2",
+  "bridgeCommit": "439b0c1baa08c9260ea8d060dd3158e4a44410f1",
+  "treeDirty": false,
+  "serverLoadedCommit": "42ec8541d62eaed3665a13e7a4154f448bac50ed",
+  "serverStale": true,
+  "serverTreeDirty": false,
+  "serverProvenance": "stale-confirmed",
+  "gradedAt": "2026-08-21T21:33:36.639Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787347984692.png",
+  "results": [
+    {
+      "providerId": "copilot",
+      "elapsedMs": 31815,
+      "shape": "SEES_NO",
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "strategy": "plus_menu"
+      },
+      "raw": "SEES=no\n\nEdit in a page"
+    }
+  ]
+}
