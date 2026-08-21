@@ -97,6 +97,13 @@ export function auditShapes(dir) {
   // which applies here identically: a zero count here is not evidence
   // nobody fabricated, only that nobody fabricated conspicuously.
   const outOfRangeRows = [];
+  // T-078: the denominator the zero-tally line below needs — "0 of N" vs
+  // "0 of 0" are different facts and only the corpus knows which. Same
+  // population outOfRangeRows is drawn from (a structured reply, one that
+  // carried a countOk verdict at all), counted alongside countStrata's own
+  // gate rather than summed from it after the fact, so this can never drift
+  // from what countStrata actually bucketed.
+  let structuredCount = 0;
 
   for (const f of files) {
     let j;
@@ -155,6 +162,7 @@ export function auditShapes(dir) {
       // PASS/COUNT_ONLY/WRONG), keyed by the truth it was actually drawn
       // against.
       if (recomputed.countOk !== undefined && j.truth?.count !== undefined) {
+        structuredCount++;
         const bucket = (countStrata[j.truth.count] ??= {
           n: 0,
           ok: 0,
@@ -183,6 +191,7 @@ export function auditShapes(dir) {
     shapeByCount,
     exclusionByProviderBand,
     outOfRangeRows,
+    structuredCount,
   };
 }
 
@@ -281,6 +290,7 @@ function main() {
     shapeByCount,
     exclusionByProviderBand,
     outOfRangeRows,
+    structuredCount,
   } = auditShapes(dir);
 
   console.log(
@@ -439,44 +449,79 @@ function main() {
     }
   }
 
-  // T-076: an out-of-range WRONG count names a picture the generator could
-  // never have drawn — split adjacent-to-boundary (said MAX+1 at truth
-  // MAX: a miscount by a model that was looking) from everything else (not
-  // adjacent — cannot be a miscount, the shape T-068 reproduced live as
-  // Instant-mode fabrication). A single total hides that these are two
-  // different faults wearing one label.
+  for (const line of formatOutOfRangeSection(
+    outOfRangeRows,
+    structuredCount,
+    MIN_COUNT,
+    MAX_COUNT,
+  )) {
+    console.log(line);
+  }
+}
+
+// T-078: the section T-076 shipped for this could only ever print the NOTE
+// about what a zero means from inside `if (outOfRangeRows.length > 0)` —
+// exactly backwards, since the reader who most needs "0 here is not
+// evidence nobody fabricated, only that nobody fabricated conspicuously"
+// is the one running an audit that found zero, and an absent section reads
+// as "checked, nothing found" with nothing on screen to say those are
+// different claims. Pulled into a pure, return-lines function (rather than
+// console.log directly) so the zero-tally case — the one thing a
+// print-only version could never pin — is unit-testable without capturing
+// stdout. The non-zero branch is untouched line for line from what T-076
+// shipped: same strings, same order, same console.log call boundaries, so
+// a real corpus's non-zero output is byte-identical to before.
+export function formatOutOfRangeSection(
+  outOfRangeRows,
+  structuredCount,
+  minCount,
+  maxCount,
+) {
+  const lines = [];
   if (outOfRangeRows.length > 0) {
     const boundary = outOfRangeRows.filter((r) => r.onBoundary);
     const other = outOfRangeRows.filter((r) => !r.onBoundary);
-    console.log(
-      `\nOut-of-range COUNT (generator draws ${MIN_COUNT}..${MAX_COUNT} only) — ` +
+    lines.push(
+      `\nOut-of-range COUNT (generator draws ${minCount}..${maxCount} only) — ` +
         `${outOfRangeRows.length} row${outOfRangeRows.length === 1 ? "" : "s"}:`,
     );
-    console.log(
-      `  boundary miscount (said ${MAX_COUNT + 1} at truth ${MAX_COUNT}, off by one): ${boundary.length}`,
+    lines.push(
+      `  boundary miscount (said ${maxCount + 1} at truth ${maxCount}, off by one): ${boundary.length}`,
     );
     for (const r of boundary) {
-      console.log(
+      lines.push(
         `    ${r.file}  ${r.providerId}  truth=${r.truth} said=${r.said}  imageAttached=${r.imageAttached}`,
       );
     }
-    console.log(
+    lines.push(
       `  below the floor / not adjacent — cannot be a miscount: ${other.length}`,
     );
     for (const r of other) {
       const gap = r.said - r.truth;
-      console.log(
+      lines.push(
         `    ${r.file}  ${r.providerId}  truth=${r.truth} said=${r.said}  ` +
           `gap=${gap > 0 ? "+" : ""}${gap}  imageAttached=${r.imageAttached}`,
       );
     }
-    console.log(
-      `  NOTE: this check is one-directional — out of range proves the reply\n` +
-        `  is not a reading of any drawable picture; IN range proves nothing.\n` +
-        `  A total of 0 here is not evidence nobody fabricated, only that\n` +
-        `  nobody fabricated conspicuously.`,
+  } else {
+    // The line this ticket exists to add: a reader seeing NO section at all
+    // (T-076's own version) cannot tell "checked, found nothing" apart from
+    // "did not run" — this says which one happened, and by how much: "0 of
+    // N" and "0 of 0" are different facts, and structuredCount (the same
+    // structured-reply population outOfRangeRows itself is drawn from) is
+    // the N that makes that difference visible instead of assumed.
+    lines.push(
+      `\nOut-of-range COUNT (generator draws ${minCount}..${maxCount} only) — ` +
+        `0 of ${structuredCount} structured repl${structuredCount === 1 ? "y" : "ies"} examined:`,
     );
   }
+  lines.push(
+    `  NOTE: this check is one-directional — out of range proves the reply\n` +
+      `  is not a reading of any drawable picture; IN range proves nothing.\n` +
+      `  A total of 0 here is not evidence nobody fabricated, only that\n` +
+      `  nobody fabricated conspicuously.`,
+  );
+  return lines;
 }
 
 // Guarded (same pattern as vision-probe.mjs, ia-grade.mjs): importing

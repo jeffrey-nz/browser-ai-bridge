@@ -1,0 +1,59 @@
+rows with raw: 121   disagreements: 6
+   after-ask.json  mistral  SEES_NO -> ECHO
+   result-ask-qwen.json  qwen  SEES_NO -> ECHO
+   run-1787282393215.json  zai  WRONG -> COUNT_ONLY
+   run-1787282676781.json  gemini  WRONG -> COUNT_ONLY
+   run-1787282676781.json  grok  WRONG -> COUNT_ONLY
+   run-1787282676781.json  copilot  WRONG -> COUNT_ONLY
+stored histogram:     {"SEES_NO":35,"PASS":53,"NO_ANSWER":9,"WRONG":13,"ECHO":11}
+recomputed histogram: {"SEES_NO":33,"PASS":53,"ECHO":13,"NO_ANSWER":9,"COUNT_ONLY":4,"WRONG":9}
+
+COUNT right, by truth.count (T-050 — a rate on the
+stimulus, not on the provider — see the file header):
+  truth.count=3   5/6   83.3%   (5 providers)
+  truth.count=4   16/16   100.0%   (6 providers)
+  truth.count=5   21/23   91.3%   (5 providers)
+  truth.count=6   3/3   100.0%   (3 providers)
+  truth.count=7   5/5   100.0%   (3 providers)
+  truth.count=8   2/2   100.0%   (2 providers)
+  truth.count=9   5/11   45.5%   (7 providers)
+  count 3-5 (pooled, all providers): 42/45 93.3%   count 6-9 (pooled): 15/21 71.4%
+  count 3-5 (paired providers only, N=7): 42/45 93.3%   count 6-9 (paired): 11/17 64.7%
+  unpaired (rows in one band only, excluded from the paired line): kimi (hard only), perplexity (hard only)
+
+Excluded from COUNT (SEES_NO/ECHO/NO_ANSWER), by truth.count —
+checking whether the exclusion itself tracks count:
+  truth.count=3   2/8 excluded   25.0%
+  truth.count=4   13/29 excluded   44.8%
+  truth.count=5   20/43 excluded   46.5%
+  truth.count=6   6/9 excluded   66.7%
+  truth.count=7   2/7 excluded   28.6%
+  truth.count=8   5/7 excluded   71.4%
+  truth.count=9   7/18 excluded   38.9%
+  overall: 55/121 excluded   45.5%   spread across counts: 46.4 points
+
+Same exclusion, by band vs by provider (T-065 — by-count spread
+above is the provider mix again, not a count effect):
+  by band:      easy 3-5 35/80 43.8%   hard 6-9 20/41 48.8%   spread: 5.0 points
+  by provider:  chatgpt 11/13 84.6%   copilot 1/16 6.3%   deepseek 12/26 46.2%   gemini 0/14 0.0%   grok 6/14 42.9%   kimi 4/7 57.1%   mistral 8/15 53.3%   perplexity 1/2 50.0%   qwen 7/7 100.0%   zai 5/7 71.4%
+  provider spread: 100.0 points
+  fully excluded (0 surviving rows, contribute nothing to any COUNT rate above): qwen
+  unpaired providers, classified:
+    kimi (easy): 2 rows, all excluded
+    perplexity (easy): no rows — genuinely absent
+
+Out-of-range COUNT (generator draws 3..9 only) — 8 rows:
+  boundary miscount (said 10 at truth 9, off by one): 6
+    t030-mistral-run1.json  mistral  truth=9 said=10  imageAttached=true
+    t030-mistral-run2.json  mistral  truth=9 said=10  imageAttached=true
+    t040-post-t039-sweep.json  copilot  truth=9 said=10  imageAttached=true
+    t040-post-t039-sweep.json  mistral  truth=9 said=10  imageAttached=true
+    t050-copilot-count9-run1.json  copilot  truth=9 said=10  imageAttached=true
+    t050-copilot-count9-run2.json  copilot  truth=9 said=10  imageAttached=true
+  below the floor / not adjacent — cannot be a miscount: 2
+    t045-fix-verify.json  deepseek  truth=5 said=1  gap=-4  imageAttached=true
+    t045-refix-verify2.json  deepseek  truth=5 said=1  gap=-4  imageAttached=true
+  NOTE: this check is one-directional — out of range proves the reply
+  is not a reading of any drawable picture; IN range proves nothing.
+  A total of 0 here is not evidence nobody fabricated, only that
+  nobody fabricated conspicuously.

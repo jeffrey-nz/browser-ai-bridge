@@ -8,6 +8,7 @@ import {
   bandStats,
   exclusionStats,
   classifyAbsence,
+  formatOutOfRangeSection,
 } from "../scripts/shape-audit.mjs";
 
 /**
@@ -337,4 +338,91 @@ test("auditShapes collects outOfRangeRows, split by onBoundary", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// T-078: structuredCount is the denominator the zero-tally line needs — the
+// same structured-reply population outOfRangeRows is drawn from (a row that
+// carried a countOk verdict at all: PASS/COUNT_ONLY/WRONG), not every row on
+// disk. A SEES_NO row here must not inflate it.
+test("auditShapes counts structuredCount — the structured-reply population, not every row", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "mixed.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }, // structured
+          { providerId: "b", raw: "SEES=yes COUNT=10 COLOR=teal" }, // structured (out of range)
+          { providerId: "c", raw: "SEES=no" }, // NOT structured — excluded
+        ],
+      },
+    });
+
+    const { structuredCount, outOfRangeRows } = auditShapes(dir);
+
+    assert.equal(structuredCount, 2);
+    assert.equal(outOfRangeRows.length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-078: this section could previously only print the caveat about what a
+// zero means from INSIDE `if (outOfRangeRows.length > 0)` — the one reader
+// who most needs "0 here is not evidence nobody fabricated, only that
+// nobody fabricated conspicuously" (someone seeing a clean audit) was
+// guaranteed never to see it. This is the test that pins the fix: the zero
+// case must still produce the caveat, stating a real denominator so "0 of
+// 65" and "0 of 0" read as the different facts they are.
+test("formatOutOfRangeSection: zero tally still prints the caveat, with the real denominator", () => {
+  const lines = formatOutOfRangeSection([], 65, 3, 9);
+  const joined = lines.join("\n");
+  assert.match(joined, /0 of 65 structured repl(y|ies) examined/);
+  assert.match(joined, /NOTE: this check is one-directional/);
+  assert.match(
+    joined,
+    /A total of 0 here is not evidence nobody fabricated, only that/,
+  );
+});
+
+test("formatOutOfRangeSection: zero of zero is not read as reassuring as zero of many", () => {
+  const lines = formatOutOfRangeSection([], 0, 3, 9);
+  const joined = lines.join("\n");
+  assert.match(joined, /0 of 0 structured repl(y|ies) examined/);
+});
+
+// T-078 clause 3: the non-zero branch must stay byte-for-byte what T-076
+// shipped — same strings, same order — since a live diff against the real
+// corpus (evidence/t078-realcorpus-output.txt, if committed) depends on it.
+test("formatOutOfRangeSection: non-zero tally format is unchanged from T-076", () => {
+  const outOfRangeRows = [
+    {
+      file: "boundary.json",
+      providerId: "a",
+      truth: 9,
+      said: 10,
+      imageAttached: true,
+      onBoundary: true,
+    },
+    {
+      file: "floor.json",
+      providerId: "b",
+      truth: 5,
+      said: 1,
+      imageAttached: true,
+      onBoundary: false,
+    },
+  ];
+  const lines = formatOutOfRangeSection(outOfRangeRows, 999, 3, 9);
+  assert.deepEqual(lines, [
+    "\nOut-of-range COUNT (generator draws 3..9 only) — 2 rows:",
+    "  boundary miscount (said 10 at truth 9, off by one): 1",
+    "    boundary.json  a  truth=9 said=10  imageAttached=true",
+    "  below the floor / not adjacent — cannot be a miscount: 1",
+    "    floor.json  b  truth=5 said=1  gap=-4  imageAttached=true",
+    "  NOTE: this check is one-directional — out of range proves the reply\n" +
+      "  is not a reading of any drawable picture; IN range proves nothing.\n" +
+      "  A total of 0 here is not evidence nobody fabricated, only that\n" +
+      "  nobody fabricated conspicuously.",
+  ]);
 });

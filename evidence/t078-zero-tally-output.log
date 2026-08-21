@@ -1,0 +1,10 @@
+[setup] copied 112/119 report files (excluded 7 — the exact files evidence/t076-shapeaudit-output.txt's own out-of-range section names)
+[measured] outOfRangeRows.length=0 structuredCount=53
+
+=== formatOutOfRangeSection() output ===
+
+Out-of-range COUNT (generator draws 3..9 only) — 0 of 53 structured replies examined:
+  NOTE: this check is one-directional — out of range proves the reply
+  is not a reading of any drawable picture; IN range proves nothing.
+  A total of 0 here is not evidence nobody fabricated, only that
+  nobody fabricated conspicuously.
