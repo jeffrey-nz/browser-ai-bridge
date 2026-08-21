@@ -191,21 +191,32 @@ async function uploadViaPlusMenu(page, filePath) {
 /**
  * Attach an arbitrary file (e.g. a sheet-music PNG for an image-ask) to
  * Copilot's composer and wait for the upload to settle. Reuses the same two
- * strategies as the long-prompt path — direct setInputFiles on the hidden
- * composer-file-input, then the "+" menu → file chooser. Returns true if a
- * file was attached.
+ * strategies as the long-prompt path — the "+" menu → file chooser first,
+ * then direct setInputFiles on the hidden composer-file-input. Returns true
+ * if a file was attached.
+ *
+ * T-069: used to try uploadViaHiddenInput FIRST, opposite of
+ * sendPromptAsFile below — which already prefers the menu, precisely
+ * because of the decoy waitForUploadComplete's own comment describes:
+ * setInputFiles renders a real attachment chip without the server ever
+ * registering the file. T-067 measured this live on the image-ask path
+ * this function serves: 6/6 interleaved turns (a known-good control
+ * fixture included, so not a fixture or model effect) came back SEES=no,
+ * every one with evidenceOut.strategy "hidden_input". Swapped to match
+ * sendPromptAsFile's order; live-reverified (see this ticket's own
+ * evidence) that the SAME turns pass once the menu path is what lands.
  */
 export async function attachFileToCopilot(page, filePath, evidenceOut = null) {
-  let attached = await uploadViaHiddenInput(page, filePath);
+  let attached = await uploadViaPlusMenu(page, filePath);
   // T-053: which of the two strategies actually landed it is already
   // distinguishable here (this if/else IS the distinction) — record it
   // rather than inventing anything uploadViaHiddenInput/uploadViaPlusMenu
   // don't themselves report (their own return shape stays untouched, same
   // scope boundary the T-038 comment above already drew for this file).
-  let strategy = "hidden_input";
+  let strategy = "plus_menu";
   if (!attached) {
-    attached = await uploadViaPlusMenu(page, filePath);
-    strategy = "plus_menu";
+    attached = await uploadViaHiddenInput(page, filePath);
+    strategy = "hidden_input";
   }
   if (!attached) {
     log(colors.yellow("  [Copilot] Could not attach file for image-ask."));
