@@ -1,0 +1,22 @@
+{
+  "probeSha256": "5c0b92dcdddbed69",
+  "bridgeCommit": "bb43d6866d304777e97a945ddae766a54fc44232",
+  "gradedAt": "2026-08-21T12:03:39.952Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 7,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787313808141.png",
+  "results": [
+    {
+      "providerId": "mistral",
+      "elapsedMs": 11752,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    }
+  ]
+}

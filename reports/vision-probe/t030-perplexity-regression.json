@@ -1,0 +1,13 @@
+{
+  "note": "T-030 clause 4: text-only turn through the generic path for a provider that does NOT declare attachMenuItem (perplexity), confirming the second-click option is a no-op when unset.",
+  "provider": "perplexity",
+  "requestId": "f1ce4b12-08b5-47e8-a9cb-0d455d7344ea",
+  "response": {
+    "success": true,
+    "response": "T-030 regression check OK",
+    "turnIndex": 1,
+    "sessionAgeMs": 715,
+    "provider": "perplexity"
+  },
+  "checkedAt": "2026-08-21T12:18:48.000Z"
+}

@@ -1,0 +1,7 @@
+{
+  "providerId": "kimi",
+  "note": "T-030 negative control: fresh chat, NOTHING uploaded — same waitForAttachmentEvidence() call and same selector uploadFileToPage uses in production, run with no upload attempted.",
+  "selectorUsed": "DEFAULT_ATTACHMENT_EVIDENCE",
+  "imageAttached": false,
+  "checkedAt": "2026-08-21T12:04:26.872Z"
+}

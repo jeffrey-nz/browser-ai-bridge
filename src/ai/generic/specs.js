@@ -81,7 +81,16 @@ export const GENERIC_SPECS = {
     // The composer placeholder says "Ask anything. Images work too.", but no
     // input[type=file] exists until the toolkit is opened; the shared uploader's
     // click-then-chooser strategy is the one that applies here.
+    //
+    // T-030, LIVE-VERIFIED: opening the toolkit is only the FIRST click — it
+    // reveals a `.toolkit-popover` menu ("Add files & photos", Plugins,
+    // Skills, Web search), and no file input or chooser exists until the
+    // "Add files & photos" item is ALSO clicked. That item is a
+    // `<label class="toolkit-item">` wrapping the real hidden input, so
+    // clicking it fires a native `filechooser` event directly — confirmed via
+    // CDP against the live kimi.ai composer (attach-diagnose-style probe).
     attachBtn: ".icon-button.toolkit-trigger-btn, input[type='file']",
+    attachMenuItem: "label.toolkit-item:has-text('Add files & photos')",
     rateLimit: "Too many people are chatting with Kimi",
     dismiss: ["Got it", "Close"],
   },
@@ -209,7 +218,27 @@ export const GENERIC_SPECS = {
       responseBlock: "[class*='group/message']:not(:has([class*='ms-auto']))",
       doneSignal: null,
     },
-    attachBtn: "input[type='file']",
+    //[[ T-030, LIVE-VERIFIED: the composer's leftmost "+" icon is a real
+    //   button — misleadingly `aria-label="Open settings menu"`, not
+    //   anything attach-shaped, which is why the generic button-guessing
+    //   fallback in uploadFile.js never found it — that opens a dropdown
+    //   ("Upload Files", Connectors, Tools, Projects, Libraries, Workflows,
+    //   Agents). No input[type="file"] exists anywhere in the DOM until
+    //   its "Upload Files" item is ALSO clicked; that click fires a native
+    //   `filechooser` event directly. Confirmed via CDP against the live
+    //   chat.mistral.ai composer. ]]
+    attachBtn: "button[aria-label='Open settings menu']",
+    attachMenuItem: "button:has-text('Upload Files')",
+    //[[ T-030: DEFAULT_ATTACHMENT_EVIDENCE never matches here — the uploaded
+    //   image renders as `<img src="data:image/...">`, not `blob:`, with no
+    //   "attachment"/"thumbnail"/"preview"/"chip"/"file" class of its own.
+    //   Its nearest distinguishing ancestor is `.group/zoomable-image`
+    //   (Mistral's own hover-to-zoom wrapper). NEGATIVE CONTROL RUN, same
+    //   standard T-014's zai revert set: on a fresh chat with nothing
+    //   uploaded, `[class*="zoomable-image" i]` matches 0 elements — unlike
+    //   zai's `.chip-scroll`, this does not persist a stuck draft across a
+    //   reload. ]]
+    attachEvidence: "[class*='zoomable-image' i]",
     rateLimit: null,
     dismiss: [],
     //[[ The message group carries the turn timestamp and the feedback row, so a

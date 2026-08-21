@@ -5,6 +5,11 @@
  *   1. Direct setInputFiles on any hidden input[type="file"] on the page.
  *   2. Click an attachment/upload button to trigger a file chooser dialog,
  *      then intercept it with Playwright's waitForEvent("filechooser").
+ *      Some sites (kimi, mistral — T-030) don't put a real chooser behind
+ *      that first click at all: it only opens a menu, and a SECOND,
+ *      site-specific click on a menu item is what actually triggers the
+ *      chooser. `options.secondClickSelector` names that menu item; when
+ *      unset, strategy 2 is exactly the one-click behaviour above.
  *
  * Returns true on success, throws on failure.
  * Always call this BEFORE injectText so the attachment is ready when text is sent.
@@ -57,6 +62,11 @@ export async function waitForAttachmentEvidence(page, options = {}) {
 export async function uploadFileToPage(page, filePath, options = {}) {
   const {
     attachmentBtnSelector = null,
+    // Some sites (kimi, mistral) put the real file input/chooser behind a
+    // SECOND click — the attachment button only opens a menu, and this
+    // names the menu item that actually triggers the chooser. Left unset,
+    // strategy 2 clicks attachmentBtnSelector once, exactly as before.
+    secondClickSelector = null,
     timeoutMs = 8000,
     verifySelector = null,
     verifyTimeoutMs = 6000,
@@ -112,9 +122,25 @@ export async function uploadFileToPage(page, filePath, options = {}) {
       .catch(() => false);
 
     if (btnVisible) {
+      // The click that actually opens the chooser is either the button
+      // itself (one click, the default — unchanged below) or a menu item
+      // the button reveals (two clicks, when secondClickSelector is set).
+      // Only THAT last click may race the filechooser event; an earlier
+      // click that merely opens a menu must be awaited plainly first, or
+      // the listener registers after the button's own (non-chooser) click
+      // has already resolved.
+      let chooserClick;
+      if (secondClickSelector) {
+        await btn.click();
+        const menuItem = page.locator(secondClickSelector).first();
+        await menuItem.waitFor({ state: "visible", timeout: timeoutMs });
+        chooserClick = () => menuItem.click();
+      } else {
+        chooserClick = () => btn.click();
+      }
       const [fileChooser] = await Promise.all([
         page.waitForEvent("filechooser", { timeout: timeoutMs }),
-        btn.click(),
+        chooserClick(),
       ]);
       await fileChooser.setFiles(filePath);
       await page.waitForTimeout(500);

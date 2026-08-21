@@ -95,6 +95,11 @@ for (const [id, spec] of Object.entries(GENERIC_SPECS)) {
     urlMatch: spec.urlMatch,
     attachmentBtnSelector: spec.attachBtn,
     attachEvidence: spec.attachEvidence || null,
+    // T-030: forwarded so this script models the SAME call
+    // src/ai/generic/interaction.js makes — without it, a provider whose
+    // attach button only opens a menu (kimi, mistral) fails here even
+    // though the real /api/ask path (which does pass this) succeeds.
+    secondClickSelector: spec.attachMenuItem || null,
   };
 }
 
@@ -191,6 +196,7 @@ async function main() {
       ? await target.upload(page, filePath)
       : await uploadFileToPage(page, filePath, {
           attachmentBtnSelector: target.attachmentBtnSelector,
+          secondClickSelector: target.secondClickSelector,
         });
   } catch (err) {
     attached = false;
