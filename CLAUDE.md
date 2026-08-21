@@ -150,6 +150,13 @@ ticket's artifact quoted only into the crew log is a transcription a
 reviewer has to trust; the same file committed under `evidence/` is one
 they can open.
 
+Don't name a `.mjs` evidence script so it matches `node --test`'s own
+default discovery glob (`*.test.mjs`, `*-test.mjs`, `test-*.mjs`, …) —
+`npm test` will pick it up and actually RUN it, main() and all. T-043
+committed one as `t043-constraint-test.mjs`; the suite silently started
+making six live provider calls on every `npm test`, adding ~155s and
+depending on live login state, until the name was caught and changed.
+
 ## When something breaks
 
 1. Hit `/api/ping` — confirms server is alive and reports memory.
