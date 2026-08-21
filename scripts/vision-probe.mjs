@@ -165,7 +165,7 @@ const ALL_PROVIDERS = [
 // "yellow" across future runs, that becomes a rate and the fix (accept
 // synonyms, or swap the palette for names with no common alternative) can
 // be chosen from real numbers instead of one image's outcome.
-const COLORS = {
+export const COLORS = {
   crimson: [220, 20, 60],
   teal: [0, 128, 128],
   goldenrod: [218, 165, 32],
@@ -177,14 +177,33 @@ const COLORS = {
 // that wants the true odds) is derived, not typed (T-012: "1-in-45" was
 // typed once and never checked against COLORS or this range, and was wrong
 // from the commit that introduced it).
-const MIN_COUNT = 3;
-const COUNT_RANGE = 7; // draws MIN_COUNT .. MIN_COUNT + COUNT_RANGE - 1
+export const MIN_COUNT = 3;
+export const COUNT_RANGE = 7; // draws MIN_COUNT .. MIN_COUNT + COUNT_RANGE - 1
 
 const KEY_SPACE = {
   countChoices: COUNT_RANGE,
   colorChoices: Object.keys(COLORS).length,
   total: COUNT_RANGE * Object.keys(COLORS).length,
 };
+
+// T-026: square/gap were locals inside renderPng, invisible to the one call
+// site (generateTestImage) that picks the canvas size — so nothing ever
+// checked whether MIN_COUNT+COUNT_RANGE-1 squares actually fit the 900px
+// literal there. They didn't: count=9 needs 960px, and the 60px overflow
+// was drawn anyway, silently clipping the first and last square into two
+// 50x80 bars on every count=9 fixture ever generated (6 of 6, measured by
+// decoding every fixture on disk — see scripts/fixture-audit.mjs). Hoisted
+// to module scope and exported so the canvas width below, renderPng itself,
+// and anything that wants to verify a fixture (fixture-audit.mjs,
+// tests/renderPng.test.js) all compute from the SAME numbers instead of
+// three separately-typed copies.
+export const SQUARE = 80;
+export const GAP = 30;
+const MAX_COUNT = MIN_COUNT + COUNT_RANGE - 1;
+const CANVAS_MARGIN = 25; // clear space each side, outside the widest layout
+export const CANVAS_WIDTH =
+  MAX_COUNT * SQUARE + (MAX_COUNT - 1) * GAP + CANVAS_MARGIN * 2;
+export const CANVAS_HEIGHT = 400;
 
 // --- Minimal PNG encoder: raw RGB buffer -> .png bytes, no dependencies. ---
 
@@ -215,17 +234,24 @@ function pngChunk(type, data) {
 }
 
 /** width x height white canvas with `count` solid squares of `rgb` in a row. */
-function renderPng(width, height, count, rgb) {
+export function renderPng(width, height, count, rgb) {
   const px = Buffer.alloc(width * height * 3, 255); // white background
-  const square = 80;
-  const gap = 30;
-  const totalW = count * square + (count - 1) * gap;
+  const totalW = count * SQUARE + (count - 1) * GAP;
+  // T-026: refuse to draw a layout that doesn't fit, rather than silently
+  // clipping it — this is exactly how count=9 came to render as 7 full
+  // squares and 2 clipped 50x80 bars on every count=9 fixture ever recorded.
+  if (totalW > width) {
+    throw new Error(
+      `renderPng: count=${count} needs totalW=${count}*${SQUARE} + ${count - 1}*${GAP} = ${totalW}px, ` +
+        `which overflows the ${width}px canvas by ${totalW - width}px`,
+    );
+  }
   const startX = Math.round((width - totalW) / 2);
-  const y0 = Math.round((height - square) / 2);
+  const y0 = Math.round((height - SQUARE) / 2);
   for (let i = 0; i < count; i++) {
-    const x0 = startX + i * (square + gap);
-    for (let y = y0; y < y0 + square; y++) {
-      for (let x = x0; x < x0 + square; x++) {
+    const x0 = startX + i * (SQUARE + GAP);
+    for (let y = y0; y < y0 + SQUARE; y++) {
+      for (let x = x0; x < x0 + SQUARE; x++) {
         const idx = (y * width + x) * 3;
         px[idx] = rgb[0];
         px[idx + 1] = rgb[1];
@@ -293,7 +319,7 @@ async function generateTestImage() {
   const count = MIN_COUNT + Math.floor(Math.random() * COUNT_RANGE);
   const colorNames = Object.keys(COLORS);
   const color = colorNames[Math.floor(Math.random() * colorNames.length)];
-  const png = renderPng(900, 400, count, COLORS[color]);
+  const png = renderPng(CANVAS_WIDTH, CANVAS_HEIGHT, count, COLORS[color]);
 
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });

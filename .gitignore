@@ -7,6 +7,13 @@ reports/*
 !reports/vision-probe/
 reports/vision-probe/*
 !reports/vision-probe/*.json
+# T-026: fixture PNGs ARE tracked (unlike everything else under reports/) —
+# they're this probe's evidence, not disposable runtime output: small
+# (~4KB each, ~230KB total as of this ticket), and a clone that doesn't
+# have them can never re-run scripts/fixture-audit.mjs or otherwise verify
+# what a historical run actually showed a provider. *.log files under
+# reports/vision-probe/ stay ignored — those are disposable.
+!reports/vision-probe/*.png
 snapshots/
 
 # Environment & secrets
