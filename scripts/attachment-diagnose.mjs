@@ -26,6 +26,8 @@ import {
   DEFAULT_ATTACHMENT_EVIDENCE,
 } from "../src/ai/shared/uploadFile.js";
 import { GENERIC_SPECS } from "../src/ai/generic/specs.js";
+import { uploadFileToDeepSeek } from "../src/ai/deepseek/interaction/prompt/input.js";
+import { uploadFileToGrok } from "../src/ai/grok/interaction/prompt/input.js";
 
 const CDP_URL = process.env.CDP_URL || "http://127.0.0.1:9222";
 const providerId = process.argv[2];
@@ -40,6 +42,20 @@ const TARGETS = {
     url: "https://chatgpt.com/",
     urlMatch: (u) => u.includes("chatgpt.com"),
     attachmentBtnSelector: CHATGPT_ATTACH_SELECTOR,
+  },
+  deepseek: {
+    url: "https://chat.deepseek.com/",
+    urlMatch: (u) => u.includes("deepseek.com"),
+    // Use the real exported function rather than re-declaring its selector —
+    // this is the only target here that also names a real upload() call so
+    // a caller can compare "call the real function" vs "call the shared
+    // helper with the selector copied out of it" if the two ever diverge.
+    upload: uploadFileToDeepSeek,
+  },
+  grok: {
+    url: "https://grok.com/",
+    urlMatch: (u) => u.includes("grok.com"),
+    upload: uploadFileToGrok,
   },
 };
 for (const [id, spec] of Object.entries(GENERIC_SPECS)) {
@@ -85,9 +101,11 @@ async function main() {
   let attached;
   let uploadErr = null;
   try {
-    attached = await uploadFileToPage(page, filePath, {
-      attachmentBtnSelector: target.attachmentBtnSelector,
-    });
+    attached = target.upload
+      ? await target.upload(page, filePath)
+      : await uploadFileToPage(page, filePath, {
+          attachmentBtnSelector: target.attachmentBtnSelector,
+        });
   } catch (err) {
     attached = false;
     uploadErr = err.message;
@@ -117,9 +135,7 @@ async function main() {
   console.log(`\n=== ${providerId} ===`);
   console.log(`uploadFileToPage() returned: ${attached}`);
   if (uploadErr) console.log(`  (threw: ${uploadErr})`);
-  console.log(
-    `DEFAULT_ATTACHMENT_EVIDENCE count right now: ${evidenceCount}`,
-  );
+  console.log(`DEFAULT_ATTACHMENT_EVIDENCE count right now: ${evidenceCount}`);
   console.log(`screenshot: ${screenshotPath}`);
   console.log(`broader candidate sweep:`);
   for (const [sel, count] of Object.entries(candidateCounts)) {

@@ -81,7 +81,7 @@ import zlib from "node:zlib";
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -552,7 +552,10 @@ async function main() {
         ...provenance,
         endpoint: opts.endpoint,
         truth: { count, color },
-        imagePath,
+        // Repo-relative, not absolute — these files are tracked (T-017) and
+        // this repo is public; an absolute path bakes the local username
+        // into every recorded run.
+        imagePath: relative(REPO_ROOT, imagePath),
         results,
       },
       null,

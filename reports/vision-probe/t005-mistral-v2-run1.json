@@ -1,0 +1,18 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "indigo"
+  },
+  "imagePath": "reports/vision-probe/probe-1787292073929.png",
+  "results": [
+    {
+      "providerId": "mistral",
+      "elapsedMs": 7613,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

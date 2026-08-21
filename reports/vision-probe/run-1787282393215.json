@@ -1,0 +1,17 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 6,
+    "color": "crimson"
+  },
+  "imagePath": "reports/vision-probe/probe-1787282379252.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 13957,
+      "shape": "WRONG",
+      "detail": "got COUNT=6 COLOR=red, expected COUNT=6 COLOR=crimson",
+      "raw": "SEES=yes COUNT=6 COLOR=red"
+    }
+  ]
+}

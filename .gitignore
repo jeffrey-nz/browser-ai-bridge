@@ -3,7 +3,10 @@ node_modules/
 
 # Runtime output
 logs/
-reports/
+reports/*
+!reports/vision-probe/
+reports/vision-probe/*
+!reports/vision-probe/*.json
 snapshots/
 
 # Environment & secrets

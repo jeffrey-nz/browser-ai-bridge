@@ -1,0 +1,19 @@
+{
+  "probeSha256": "1702fb4eb7267275",
+  "bridgeCommit": "05e5a1393ed1643012d00c261a7cc147200d02a6",
+  "gradedAt": "2026-08-21T09:34:01.827Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 8,
+    "color": "indigo"
+  },
+  "imagePath": "reports/vision-probe/probe-1787304802239.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 39527,
+      "shape": "ERROR",
+      "detail": "HTTP 500: Failed to submit prompt: input did not clear and generation did not start."
+    }
+  ]
+}

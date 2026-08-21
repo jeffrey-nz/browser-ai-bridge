@@ -1,0 +1,18 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports/vision-probe/shared-fixture.png",
+  "results": [
+    {
+      "providerId": "qwen",
+      "elapsedMs": 25408,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no"
+    }
+  ]
+}

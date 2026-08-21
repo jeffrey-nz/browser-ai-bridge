@@ -1,0 +1,21 @@
+{
+  "probeSha256": "1702fb4eb7267275",
+  "bridgeCommit": "7403b151874585dea3609a06165fe662863c2123",
+  "gradedAt": "2026-08-21T09:48:37.770Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 8,
+    "color": "crimson"
+  },
+  "imagePath": "reports/vision-probe/probe-1787305674459.png",
+  "results": [
+    {
+      "providerId": "grok",
+      "elapsedMs": 43262,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

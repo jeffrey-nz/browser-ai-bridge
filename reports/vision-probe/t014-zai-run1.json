@@ -1,0 +1,21 @@
+{
+  "probeSha256": "1702fb4eb7267275",
+  "bridgeCommit": "05e5a1393ed1643012d00c261a7cc147200d02a6",
+  "gradedAt": "2026-08-21T09:26:22.357Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "indigo"
+  },
+  "imagePath": "reports/vision-probe/probe-1787304367860.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 14435,
+      "shape": "NO_ANSWER",
+      "detail": "Thinking...",
+      "imageAttached": true,
+      "raw": "Thinking..."
+    }
+  ]
+}

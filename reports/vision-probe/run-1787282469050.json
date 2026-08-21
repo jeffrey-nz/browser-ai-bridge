@@ -1,0 +1,16 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports/vision-probe/probe-1787282420892.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 48151,
+      "shape": "ERROR",
+      "detail": "HTTP 500: Failed to submit prompt: input did not clear and generation did not start."
+    }
+  ]
+}

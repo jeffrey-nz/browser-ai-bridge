@@ -1,0 +1,55 @@
+{
+  "probeSha256": "1702fb4eb7267275",
+  "bridgeCommit": "ab3a8ecc28b362bf74fe7c4a962c557d60538dd6",
+  "gradedAt": "2026-08-21T08:58:13.706Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports/vision-probe/t011-fixed.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 65317,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "gemini",
+      "elapsedMs": 16708,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=5 COLOR=crimson"
+    },
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 53087,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "raw": "No text extracted\n[FORMAT REQUIREMENT — READ CAREFULLY]\nYou MUST wrap ALL JSON tool call arrays in a ```json code block. This is critical: the automation harness parses your response by looking for code blocks first. Raw JSON outside a code block will NOT be detected.\nCORRECT format:\n```json\n[{\"tool\": \"write_file\", \"path\": \"$YOUR_FILE_PATH\", \"content\": \"complete file content here\"}]\n```\n⚠️ The path in the example above is a placeholder — use the ACTUAL absolute path from your task instructions.\nIf you have completed your analysis and have no further tool calls to make, respond with an empty array:\n```json\n[]\n```\nDo NOT respond with prose when you have nothing more to do — always use the JSON format.\nIMPORTANT: When file content contains double-quote characters (\"), escape them as \\\" inside the JSON string.\n\nLook at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no"
+    },
+    {
+      "providerId": "grok",
+      "elapsedMs": 43497,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=5 COLOR=crimson"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 29139,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=5 COLOR=crimson\n\nEdit in a page"
+    }
+  ]
+}

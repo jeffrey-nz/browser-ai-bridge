@@ -1,0 +1,17 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports/vision-probe/shared-fixture.png",
+  "results": [
+    {
+      "providerId": "grok",
+      "elapsedMs": 50697,
+      "shape": "PASS",
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=4 COLOR=teal"
+    }
+  ]
+}

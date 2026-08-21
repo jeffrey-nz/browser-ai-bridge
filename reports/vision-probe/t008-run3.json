@@ -1,0 +1,16 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports/vision-probe/probe-1787293934300.png",
+  "results": [
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 200756,
+      "shape": "ERROR",
+      "detail": "HTTP 500: Perplexity page was closed during submission — caller must recreate session"
+    }
+  ]
+}

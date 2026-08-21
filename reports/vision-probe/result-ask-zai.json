@@ -1,0 +1,16 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports/vision-probe/shared-fixture.png",
+  "results": [
+    {
+      "providerId": "zai",
+      "elapsedMs": 85,
+      "shape": "ERROR",
+      "detail": "HTTP 500: Failed to create session: page.waitForTimeout: Target page, context or browser has been closed"
+    }
+  ]
+}

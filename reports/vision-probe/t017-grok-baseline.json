@@ -1,0 +1,20 @@
+{
+  "probeSha256": "1702fb4eb7267275",
+  "bridgeCommit": "7403b151874585dea3609a06165fe662863c2123",
+  "gradedAt": "2026-08-21T09:45:03.552Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports/vision-probe/probe-1787305435277.png",
+  "results": [
+    {
+      "providerId": "grok",
+      "elapsedMs": 68226,
+      "shape": "SEES_NO",
+      "imageAttached": true,
+      "raw": "SEES=no"
+    }
+  ]
+}

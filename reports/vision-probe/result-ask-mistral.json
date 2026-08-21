@@ -1,0 +1,19 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 4,
+    "color": "teal"
+  },
+  "imagePath": "reports/vision-probe/shared-fixture.png",
+  "results": [
+    {
+      "providerId": "mistral",
+      "elapsedMs": 10324,
+      "shape": "NO_ANSWER",
+      "detail": "1:26pm",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "1:26pm"
+    }
+  ]
+}

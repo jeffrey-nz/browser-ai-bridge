@@ -1,0 +1,74 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 3,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports/vision-probe/probe-1787282150016.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 50971,
+      "shape": "SEES_NO",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "gemini",
+      "elapsedMs": 20597,
+      "shape": "WRONG",
+      "detail": "got COUNT=3 COLOR=yellow, expected COUNT=3 COLOR=goldenrod",
+      "raw": "SEES=yes COUNT=3 COLOR=yellow"
+    },
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 42943,
+      "shape": "WRONG",
+      "detail": "got COUNT=6 COLOR=black, expected COUNT=3 COLOR=goldenrod",
+      "raw": "SEES=yes COUNT=6 COLOR=black"
+    },
+    {
+      "providerId": "grok",
+      "elapsedMs": 41786,
+      "shape": "WRONG",
+      "detail": "got COUNT=3 COLOR=yellow, expected COUNT=3 COLOR=goldenrod",
+      "raw": "SEES=yes COUNT=3 COLOR=yellow"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 30567,
+      "shape": "WRONG",
+      "detail": "got COUNT=3 COLOR=yellow, expected COUNT=3 COLOR=goldenrod",
+      "raw": "SEES=yes COUNT=3 COLOR=yellow\n\nEdit in a page"
+    },
+    {
+      "providerId": "kimi",
+      "elapsedMs": 299906,
+      "shape": "ERROR",
+      "detail": "fetch failed"
+    },
+    {
+      "providerId": "qwen",
+      "elapsedMs": 14323,
+      "shape": "SEES_NO",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "zai",
+      "elapsedMs": 25648,
+      "shape": "ERROR",
+      "detail": "fetch failed"
+    },
+    {
+      "providerId": "mistral",
+      "elapsedMs": 5,
+      "shape": "ERROR",
+      "detail": "fetch failed"
+    },
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 5,
+      "shape": "ERROR",
+      "detail": "fetch failed"
+    }
+  ]
+}

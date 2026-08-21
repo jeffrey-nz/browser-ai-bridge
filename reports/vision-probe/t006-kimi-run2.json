@@ -1,0 +1,21 @@
+{
+  "probeSha256": "e92565c259529180",
+  "bridgeCommit": "ce02d4f03fe320a97d1e516d60fda2a93c1fe49d",
+  "gradedAt": "2026-08-21T08:27:53.674Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 6,
+    "color": "indigo"
+  },
+  "imagePath": "reports/vision-probe/probe-1787300835246.png",
+  "results": [
+    {
+      "providerId": "kimi",
+      "elapsedMs": 38369,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

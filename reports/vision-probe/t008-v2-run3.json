@@ -1,0 +1,16 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "teal"
+  },
+  "imagePath": "reports/vision-probe/probe-1787294754819.png",
+  "results": [
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 286227,
+      "shape": "ERROR",
+      "detail": "HTTP 500: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('div#ask-input[contenteditable=\\'true\\'], div#ask-input, textarea#ask-input').first() to be visible\u001b[22m\n"
+    }
+  ]
+}

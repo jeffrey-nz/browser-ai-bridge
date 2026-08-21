@@ -1,0 +1,18 @@
+{
+  "endpoint": "ask",
+  "truth": {
+    "count": 7,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports/vision-probe/probe-1787293316666.png",
+  "results": [
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 67869,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "warning": "The image could not be confirmed as attached to the provider's composer — this response may be text-only and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

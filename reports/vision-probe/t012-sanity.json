@@ -1,0 +1,22 @@
+{
+  "probeSha256": "e92565c259529180",
+  "bridgeCommit": "8ad134b5af755e6e131974345b8d26afb13051ce",
+  "gradedAt": "2026-08-21T08:01:42.229Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 6,
+    "color": "indigo"
+  },
+  "imagePath": "reports/vision-probe/probe-1787299282535.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 19612,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "raw": "SEES=yes COUNT=6 COLOR=indigo"
+    }
+  ]
+}
