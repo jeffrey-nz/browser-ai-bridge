@@ -77,10 +77,14 @@ export function classifyUploadError(err) {
  * was ever offered to a composer to be confirmed. Each cause below asserts
  * only what that branch actually knows.
  */
+function indefiniteArticleFor(label) {
+  return /^[aeiou]/i.test(label) ? "an" : "a";
+}
+
 export function describeUploadFailure(cause, mediaLabel = "image") {
   switch (cause) {
     case UPLOAD_CAUSES.NO_UPLOAD_PATH:
-      return `This provider has no way to attach an ${mediaLabel} at all — the ${mediaLabel} was never sent, and this response is text-only.`;
+      return `This provider has no way to attach ${indefiniteArticleFor(mediaLabel)} ${mediaLabel} at all — the ${mediaLabel} was never sent, and this response is text-only.`;
     case UPLOAD_CAUSES.TEXT_ONLY_RETRY:
       return `This turn was retried as text-only inside the bridge (a stall, rate-limit, rotation, or cooldown retry) — the original ${mediaLabel} did not survive the resend, and this response is text-only.`;
     case UPLOAD_CAUSES.NOT_OFFERED:

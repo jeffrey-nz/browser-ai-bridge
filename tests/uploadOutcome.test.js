@@ -158,3 +158,22 @@ test("describeUploadFailure never claims a composer was involved for the two cau
   assert.ok(!/composer/i.test(retry));
   assert.ok(/composer/i.test(unconfirmed));
 });
+
+test("describeUploadFailure picks the right indefinite article for every mediaLabel callers actually pass (T-039)", () => {
+  const cases = [
+    { label: "image", article: "an" },
+    { label: "audio file", article: "an" },
+    { label: "screenshot", article: "a" },
+  ];
+  for (const { label, article } of cases) {
+    const message = describeUploadFailure(UPLOAD_CAUSES.NO_UPLOAD_PATH, label);
+    assert.ok(
+      message.includes(`no way to attach ${article} ${label} at all`),
+      `expected "${article} ${label}" in: ${message}`,
+    );
+    assert.ok(
+      !message.includes("an screenshot"),
+      `message must not contain the wrong article: ${message}`,
+    );
+  }
+});
