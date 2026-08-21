@@ -210,6 +210,16 @@ function buildPrompt(truth) {
 
 function classify(replyText, truth) {
   const text = (replyText || "").trim();
+
+  // Prompt-echo MUST be checked first: the prompt's own text contains the
+  // literal string "SEES=no" (in its "...or reply with EXACTLY this" clause),
+  // so an echoed prompt matches the SEES_NO regex below and would otherwise
+  // be misclassified as an honest "I see nothing" answer instead of the
+  // turn having malfunctioned and reflected the prompt back unread.
+  if (/Look at the attached image ONLY/i.test(text) && text.length > 80) {
+    return { shape: "ECHO" };
+  }
+
   const seesNo = /\bSEES\s*=\s*no\b/i.test(text);
   if (seesNo) return { shape: "SEES_NO" };
 
@@ -225,12 +235,6 @@ function classify(replyText, truth) {
       shape: "WRONG",
       detail: `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}`,
     };
-  }
-
-  // Prompt-echo: the reply contains a large fraction of the prompt's own
-  // distinctive wording rather than an answer shaped like one.
-  if (/Look at the attached image ONLY/i.test(text) && text.length > 80) {
-    return { shape: "ECHO" };
   }
 
   if (!text) return { shape: "NO_ANSWER", detail: "empty response" };
