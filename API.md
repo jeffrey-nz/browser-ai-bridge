@@ -280,7 +280,10 @@ scan, and sending less is worth preferring since the image leaves the machine.
 ```json
 {
   "success": true,
-  "response": "AI response text"
+  "response": "AI response text",
+  "provider": "gemini",
+  "turnIndex": 1,
+  "sessionAgeMs": 289
 }
 ```
 
@@ -337,14 +340,16 @@ the caller adjudicates.
       "answered": true,
       "response": "PONG",
       "data": null,
-      "messageCount": 0
+      "turnIndex": 1,
+      "sessionAgeMs": 289
     },
     {
       "provider": "chatgpt",
       "answered": true,
       "response": "PONG",
       "data": null,
-      "messageCount": 0
+      "turnIndex": 1,
+      "sessionAgeMs": 26
     },
     {
       "provider": "zai",
@@ -357,9 +362,17 @@ the caller adjudicates.
 ```
 
 Every entry names its provider. `answered: true` entries carry `response` /
-`data` / `messageCount` (and `imageAttached` / `warning` when the request
-included an image — same honesty contract as `/api/ask`, see above).
-`answered: false` entries carry a `reason` instead — `"cooldown"`,
+`data` / `turnIndex` / `sessionAgeMs` (and `imageAttached` / `warning` when
+the request included an image — same honesty contract as `/api/ask`, see
+above). `turnIndex` is the session's own turn counter (1 on a fresh
+session, incrementing on repeat turns against the same `sessionId`) and
+`sessionAgeMs` is how long the session had existed when the turn finished —
+together they let a caller collecting a corpus over an unattended run order
+its own answers by run position, without a second call to `/api/ping` or
+joining `createdAt` back in by wall clock (crew board T-011; replaces a
+former `messageCount` field that was computed for one provider of ten,
+hardcoded to 0 for the rest, and read by nothing). `answered: false`
+entries carry a `reason` instead — `"cooldown"`,
 `"rate_limited"`, `"stalled"`, or the underlying error — and are how a
 provider that timed out or never started is distinguished from one that
 disagreed: an absence is not a vote against, and nothing about the shape of

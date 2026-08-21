@@ -54,6 +54,16 @@ async function runAskTurn(
 ) {
   sessionManager.logTranscript(session.id, "USER", prompt, { requestId });
 
+  // T-011: how far into this session's life this turn was taken. Computed
+  // once per turn rather than per return point so every exit from this
+  // function — short-circuit, reviewer-empty, or the normal path — reports
+  // the same pair. A caller collecting answers over an unattended run (e.g.
+  // mmg's per-bar sweep) can order them without a second call to /api/ping
+  // or joining session createdAt back in by wall clock.
+  session.turnCount = (session.turnCount || 0) + 1;
+  const turnIndex = session.turnCount;
+  const sessionAgeMs = Date.now() - session.createdAt.getTime();
+
   // --- [PARSE ERROR] short-circuit ---
   // If the calling system is re-sending a parse-error complaint about our last
   // response, attempt to repair that cached response server-side rather than
@@ -73,10 +83,10 @@ async function runAskTurn(
       );
       sessionManager.logTranscript(session.id, "AI", normalizedText, {
         requestId,
-        messageCount: 0,
+        turnIndex,
         repairedShortCircuit: true,
       });
-      return { response: normalizedText, data, messageCount: 0 };
+      return { response: normalizedText, data, turnIndex, sessionAgeMs };
     }
 
     // If repair failed and the label suggests a read-only phase (researcher/scoper),
@@ -90,10 +100,10 @@ async function runAskTurn(
       );
       sessionManager.logTranscript(session.id, "AI", "[]", {
         requestId,
-        messageCount: 0,
+        turnIndex,
         proseTerminalShortCircuit: true,
       });
-      return { response: "[]", data: [], messageCount: 0 };
+      return { response: "[]", data: [], turnIndex, sessionAgeMs };
     }
 
     logger.warn(
@@ -226,7 +236,7 @@ async function runAskTurn(
     logger.warn(
       `[Ask] Reviewer turn '${label}' failed - returning empty (no stall).`,
     );
-    return { response: "", data: null, messageCount: 0 };
+    return { response: "", data: null, turnIndex, sessionAgeMs };
   }
 
   // On a content-filter refusal, retry with the bare prompt (no constraint prefix).
@@ -244,7 +254,7 @@ async function runAskTurn(
     logger.warn(
       `[Ask] Reviewer turn '${label}' failed after rotation - returning empty.`,
     );
-    return { response: "", data: null, messageCount: 0 };
+    return { response: "", data: null, turnIndex, sessionAgeMs };
   }
 
   const stallResult = await handleStalls(session, response, activePrompt);
@@ -254,7 +264,7 @@ async function runAskTurn(
   // short-circuit using a server-side repair rather than re-querying the model.
   session.lastAiResponse = stallResult.response;
 
-  const { messageCount, data, normalizedText } = await gatherMetrics(
+  const { data, normalizedText } = await gatherMetrics(
     session,
     stallResult.response,
   );
@@ -266,13 +276,14 @@ async function runAskTurn(
 
   sessionManager.logTranscript(session.id, "AI", responseText, {
     requestId,
-    messageCount,
+    turnIndex,
   });
 
   return {
     response: responseText,
     data,
-    messageCount,
+    turnIndex,
+    sessionAgeMs,
     imageAttached: stallResult.imageAttached,
   };
 }

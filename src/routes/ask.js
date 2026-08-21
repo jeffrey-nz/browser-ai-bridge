@@ -145,7 +145,8 @@ router.post("/", async (req, res, next) => {
         const {
           response,
           data,
-          messageCount,
+          turnIndex,
+          sessionAgeMs,
           selfHealEscape,
           htmlSnapshot,
           imageAttached,
@@ -176,7 +177,6 @@ router.post("/", async (req, res, next) => {
                   htmlSnapshot: htmlSnapshot || "",
                   response: "",
                   data: null,
-                  messageCount: 0,
                   provider: session.providerId,
                 },
                 requestId,
@@ -194,10 +194,21 @@ router.post("/", async (req, res, next) => {
         //   the HTTP turn completed, but a caller that asked a question about
         //   a picture and gets imageAttached:false is looking at a text-only
         //   answer wearing a confident face (T-001 on the crew board).
+        //
+        //   turnIndex/sessionAgeMs replace the old messageCount field
+        //   (T-011): messageCount was computed for one provider (copilot) of
+        //   ten and hardcoded 0 for the rest, and nothing read it, but it
+        //   LOOKED like it told a caller how far into a session an answer
+        //   was taken — the actual thing a corpus collected over an
+        //   unattended run needs to order its own answers by. These two
+        //   fields say that honestly instead: turnIndex is this session's
+        //   own turn counter (1 on a fresh session), sessionAgeMs is how
+        //   long the session has existed at the moment this turn finished.
         const payload = {
           response,
           data,
-          messageCount,
+          turnIndex,
+          sessionAgeMs,
           provider: session.providerId,
         };
         if (imageAttached !== undefined) {

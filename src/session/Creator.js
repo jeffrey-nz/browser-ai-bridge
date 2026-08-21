@@ -39,5 +39,11 @@ export async function createNewSession(providerId) {
     page: engineSession.page,
     logPath: activeLogger,
     createdAt: new Date(),
+    // T-011: how far into this session's life a given answer was taken —
+    // incremented once per turn in runAskTurn (executor/index.js). Exposed
+    // on the response as turnIndex/sessionAgeMs so a caller collecting a
+    // corpus over time doesn't have to join it back from /api/ping's uptime
+    // or session createdAt by wall clock, or worse, not have it at all.
+    turnCount: 0,
   };
 }

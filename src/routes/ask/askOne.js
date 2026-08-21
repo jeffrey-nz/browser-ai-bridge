@@ -25,7 +25,7 @@ import { logger } from "#utils/logger.js";
 
 /**
  * @returns {Promise<object>} always one of:
- *   { provider, answered: true, response, data, messageCount, imageAttached?, warning? }
+ *   { provider, answered: true, response, data, turnIndex, sessionAgeMs, imageAttached?, warning? }
  *   { provider, answered: false, reason, retryAfter? }
  */
 export async function askOne(providerId, prompt, requestId, opts = {}) {
@@ -66,8 +66,20 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
 
   return withSessionLock(session, autoCreated, async () => {
     try {
-      const { response, data, messageCount, imageAttached, selfHealEscape } =
-        await executeAskTurn(session, prompt, requestId, label, pollTimeoutMs, {
+      const {
+        response,
+        data,
+        turnIndex,
+        sessionAgeMs,
+        imageAttached,
+        selfHealEscape,
+      } = await executeAskTurn(
+        session,
+        prompt,
+        requestId,
+        label,
+        pollTimeoutMs,
+        {
           skipConstraint: !!skipConstraint,
           mode,
           images,
@@ -79,7 +91,8 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
           // and a silent straggler is exactly what clause C (wall-clock ~=
           // the slowest single provider) rules out.
           yieldOnRateLimit: true,
-        });
+        },
+      );
 
       if (selfHealEscape) {
         return {
@@ -94,7 +107,8 @@ export async function askOne(providerId, prompt, requestId, opts = {}) {
         answered: true,
         response,
         data,
-        messageCount,
+        turnIndex,
+        sessionAgeMs,
       };
       if (imageAttached !== undefined) {
         result.imageAttached = imageAttached;
