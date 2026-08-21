@@ -90,6 +90,12 @@ if (
     .readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
     .sort();
+  // T-033: this is a RAW BYTE hash, deliberately — see the file loop below,
+  // which grades on JSON.parse and does not care about line endings. The
+  // digest does, on purpose, which is exactly what let it catch a checkout
+  // producing different bytes than the tree it came from (root cause and fix
+  // in .gitattributes at the repo root — read that file before assuming two
+  // different digests mean two different corpora).
   const h = crypto.createHash("sha256");
   for (const f of files) h.update(fs.readFileSync(path.join(dir, f)));
   const rows = [];
