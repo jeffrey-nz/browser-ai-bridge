@@ -1,0 +1,37 @@
+{
+  "probeSha256": "7e8c355553c13175",
+  "bridgeCommit": "831746b4ec63442b0037f4cf93578b55e81e142e",
+  "treeDirty": false,
+  "serverLoadedCommit": "29d10902e0dfa3e5b0c595aace489362729e009e",
+  "serverStale": true,
+  "serverTreeDirty": true,
+  "serverProvenance": "stale-ambiguous",
+  "gradedAt": "2026-08-21T19:27:50.483Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 3,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787340460329.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 10037,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": true,
+        "grew": true,
+        "elapsedMs": 28,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=yes COUNT=3 COLOR=indigo"
+    }
+  ]
+}

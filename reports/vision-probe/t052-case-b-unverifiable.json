@@ -1,0 +1,28 @@
+{
+  "probeSha256": "7e8c355553c13175",
+  "bridgeCommit": "29d10902e0dfa3e5b0c595aace489362729e009e",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "scripts/vision-probe.mjs",
+    "src/routes/health.js"
+  ],
+  "serverLoadedCommit": "29d10902e0dfa3e5b0c595aace489362729e009e",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-21T19:27:11.095Z",
+  "endpoint": "ask",
+  "truth": {
+    "count": 6,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787340400953.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 30021,
+      "shape": "ERROR",
+      "detail": "timeout"
+    }
+  ]
+}
