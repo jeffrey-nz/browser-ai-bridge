@@ -1,0 +1,46 @@
+{
+  "endpoint": "/api/ask-all",
+  "bridgeCommit": null,
+  "serverLoadedCommit": "ebf57db6bece71e51bee0ddae8846bcb4c2cfce7",
+  "serverLoadedTreeDirty": false,
+  "truth": {
+    "count": 4,
+    "color": "goldenrod"
+  },
+  "fixtureSha256": "e09040b3a14044b8ad5318a9010dea07580baf7b0bbc264b1777079caacf978b",
+  "httpStatus": 200,
+  "elapsedMs": 51408,
+  "raw": {
+    "success": true,
+    "answers": [
+      {
+        "provider": "deepseek",
+        "answered": true,
+        "response": "[{\"tool\": \"write_file\", \"path\": \"/tmp/answer.txt\", \"content\": \"SEES=yes COUNT=4 COLOR=goldenrod\"}]",
+        "data": [
+          {
+            "tool": "write_file",
+            "path": "/tmp/answer.txt",
+            "content": "SEES=yes COUNT=4 COLOR=goldenrod"
+          }
+        ],
+        "turnIndex": 1,
+        "sessionAgeMs": 4,
+        "imageAttached": true,
+        "imageAttachedEvidence": {
+          "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+          "matchedAlternatives": [
+            "img[src^=\"blob:\" i]"
+          ],
+          "requireGrowth": false,
+          "grew": true,
+          "elapsedMs": 27,
+          "strategy": "direct_input"
+        },
+        "visionModeVerdict": "clicked-and-confirmed-on"
+      }
+    ],
+    "elapsedMs": 51393,
+    "requestId": "cd6b26f1-244b-4cf6-9630-afaba513d3bc"
+  }
+}
