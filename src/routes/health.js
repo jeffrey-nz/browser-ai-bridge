@@ -1,5 +1,8 @@
 import express from "express";
 import process from "node:process";
+import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { assertBrowserReady, getBrowserState } from "../browser.js";
 import { sessionManager } from "../session/index.js";
 import { cooldownManager } from "../session/CooldownManager.js";
@@ -13,6 +16,29 @@ import { getLastUnexpectedPageCloseAt } from "../session/collapseDetector.js";
 const router = express.Router();
 
 const ALL_PROVIDER_IDS = Object.keys(PROVIDER_CONFIG);
+
+// T-049: what commit this PROCESS actually loaded, not what HEAD says right
+// now. Node does not hot-reload — every module this server imported was
+// read from disk once, at startup, and stays in memory unchanged until the
+// process restarts, however far HEAD moves after that. Read exactly once,
+// at module load (this file is imported once per process lifetime), and
+// cached in this module-level constant — a per-request `git rev-parse` would
+// just re-answer "what does HEAD say right now" and reproduce the exact bug
+// this field exists to catch (T-042/T-045 both verified live against a
+// bridge that had silently drifted commits behind the fix under test).
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const LOADED_COMMIT = (() => {
+  try {
+    return execSync("git rev-parse HEAD", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    // Not fatal — a caller running this outside a git checkout still gets a
+    // working health endpoint, just without a commit to compare against.
+    return null;
+  }
+})();
 
 function buildProvidersPayload(sessions) {
   const byProvider = {};
@@ -71,6 +97,7 @@ router.get("/", (_req, res) => {
     res.json({
       status: "ready",
       browser: getBrowserState(),
+      loadedCommit: LOADED_COMMIT,
       uptime: process.uptime(),
       sessions: sessions.length,
       activeSessions: sessions.filter((s) => s.state === "active").length,

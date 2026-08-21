@@ -101,8 +101,47 @@ const REPO_ROOT = join(__dirname, "..");
  * convert an honest unknown into a confident falsehood. Absence of these
  * fields on an old file is the correct signal that its grading vintage is
  * unrecorded; only new runs get them.
+ *
+ * READER CONTRACT for every field this function can emit — the "reader
+ * contract below" T-046's own commit promised and never wrote (caught in
+ * T-049's review; written here, once, for every field instead of one at a
+ * time as each gets added):
+ *
+ *   KEY ABSENT ENTIRELY  — report predates the field's own ticket. Its true
+ *                          value was never measured and never will be;
+ *                          absence IS the "unrecorded" signal, not a form
+ *                          of false.
+ *   treeDirty: null       — this ticket's logic ran but a git call inside it
+ *                          threw (no checkout, git missing, REPO_ROOT wrong,
+ *                          rev-parse ok but diff threw). NOT "verified
+ *                          clean" — unmeasured, same shape as key-absent but
+ *                          distinguishable from a pre-T-046 file because the
+ *                          key is present.
+ *   treeDirty: false      — measured, HEAD matched the working tree.
+ *   treeDirty: true        — measured, dirtyPaths names what differed.
+ *   serverLoadedCommit: null,
+ *   serverStale: null      — T-049: the /api/ping call this needed either
+ *                          failed outright (bridge down, network error) or
+ *                          reached a bridge old enough to not carry
+ *                          `loadedCommit` yet. Unmeasured, not "fresh" —
+ *                          same non-negotiable rule as treeDirty: null above,
+ *                          and for the same reason (T-045/T-042 both had
+ *                          live evidence silently invalidated by a stale
+ *                          bridge process before this field existed to catch
+ *                          it — see the T-049 ticket this shipped from).
+ *   serverStale: false     — measured: the bridge's own `loadedCommit`
+ *                          (cached once at ITS startup, not re-read per
+ *                          request — see health.js) matches this probe's own
+ *                          `bridgeCommit`. The code that answered this run's
+ *                          HTTP calls is the code at that commit.
+ *   serverStale: true      — measured and DIFFERENT. Every result in this
+ *                          report came from whatever the bridge actually
+ *                          loaded at `serverLoadedCommit`, not from
+ *                          `bridgeCommit`. Printed loudly to the console
+ *                          when this happens (see main()) — the report
+ *                          itself carries it either way, console or not.
  */
-async function gradingProvenance() {
+async function gradingProvenance(baseUrl) {
   const src = await readFile(__filename, "utf8");
   const probeSha256 = createHash("sha256")
     .update(src)
@@ -125,11 +164,11 @@ async function gradingProvenance() {
   // `treeDirty: false` next to a report that was never actually measured,
   // which is the exact absence/false conflation the comment two paragraphs
   // up warns readers about for T-038's cause field. `null` is a THIRD,
-  // distinct state from both "absent key" (a pre-T-046 file, per clause 3's
-  // reader contract below) and a genuinely measured true/false — it says
-  // this ticket's logic ran but could not complete the measurement, so a
-  // reader must not read it as "verified clean". Only ever set to a real
-  // boolean once `git diff` has actually returned.
+  // distinct state from both "absent key" (a pre-T-046 file — see the
+  // reader contract above this function) and a genuinely measured
+  // true/false — it says this ticket's logic ran but could not complete the
+  // measurement, so a reader must not read it as "verified clean". Only
+  // ever set to a real boolean once `git diff` has actually returned.
   let treeDirty = null;
   let dirtyPaths = null;
   try {
@@ -149,11 +188,40 @@ async function gradingProvenance() {
     // Not fatal — a caller running this outside a git checkout still gets
     // the probe's own sha and a timestamp, just not the bridge commit.
   }
+
+  // T-049: bridgeCommit (above) answers "what does HEAD say" — it says
+  // nothing about what the SERVER PROCESS actually has loaded in memory,
+  // because Node does not hot-reload. T-042's and T-045's live verification
+  // both silently ran against a bridge process that predated their own
+  // fixes; nothing in a report or a gate caught it. Independent of every
+  // provider result (clause 5 — a probe that only ever ERRORs must still
+  // carry a correct answer here), fetch the bridge's own cached startup
+  // commit and compare.
+  let serverLoadedCommit = null;
+  let serverStale = null;
+  try {
+    const res = await fetch(`${baseUrl}/api/ping`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const json = await res.json();
+    if (typeof json.loadedCommit === "string") {
+      serverLoadedCommit = json.loadedCommit;
+      if (bridgeCommit !== null) {
+        serverStale = serverLoadedCommit !== bridgeCommit;
+      }
+    }
+  } catch {
+    // Not fatal — see the reader contract above: serverStale stays null
+    // (unmeasured), never false, when the ping itself couldn't be read.
+  }
+
   return {
     probeSha256,
     bridgeCommit,
     treeDirty,
     ...(treeDirty ? { dirtyPaths } : {}),
+    serverLoadedCommit,
+    serverStale,
     gradedAt: new Date().toISOString(),
   };
 }
@@ -624,7 +692,27 @@ async function main() {
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });
   const outPath = opts.outPath || join(outDir, `run-${Date.now()}.json`);
-  const provenance = await gradingProvenance();
+  const provenance = await gradingProvenance(opts.baseUrl);
+  // T-049: warn loudly and continue, not refuse — chosen over an override
+  // flag because this tool's whole purpose is diagnosis, and refusing to
+  // run against a bridge whose staleness you are trying to SEE (e.g. "does
+  // the old code still misbehave this way") would make the tool useless for
+  // exactly the situation that most needs it. Every other provenance field
+  // in this file (dirtyPaths, the absent-field convention T-012 set up)
+  // already follows "record the truth, let the reader decide" over
+  // "refuse" — consistent with that, and the field is now impossible to
+  // miss: console AND every report, every time, not an opt-in check.
+  if (provenance.serverStale) {
+    console.log(
+      `\n${"!".repeat(70)}\n` +
+        `STALE BRIDGE: this run's results came from a server process\n` +
+        `running commit ${provenance.serverLoadedCommit}, not this checkout's\n` +
+        `HEAD (${provenance.bridgeCommit}). Node does not hot-reload — restart\n` +
+        `the bridge before trusting this run as a live verification of\n` +
+        `anything committed after ${provenance.serverLoadedCommit}.\n` +
+        `${"!".repeat(70)}\n`,
+    );
+  }
   await writeFile(
     outPath,
     JSON.stringify(
