@@ -31,18 +31,60 @@ Returns liveness and browser state information.
 ```json
 {
   "status": "ready",
-  "browser": { "connected": true },
+  "browser": "connected",
   "uptime": 1234.56,
-  "sessions": 2
+  "sessions": 2,
+  "activeSessions": 1,
+  "awaitingOperatorSessions": 0,
+  "longRunningSessions": 0,
+  "longRunningThresholdMs": 120000,
+  "attachedPages": 2,
+  "devServers": 0,
+  "providers": {
+    "gemini": {
+      "name": "Google Gemini",
+      "total": 1,
+      "active": 1,
+      "awaitingOperator": 0,
+      "idle": 0,
+      "cooldown": false,
+      "cooldownSeconds": 0
+    }
+  }
 }
 ```
+
+**`awaitingOperatorSessions`** (crew board T-003, renamed from `stalledSessions`) — a
+session's turn is paused waiting for a HUMAN to choose retry/skip/manual (`registerStall`
+in `src/stalls.js`). That path is only ever reached when a TTY operator is attached
+(`src/routes/ask/executor/stallLoop.js`); a non-interactive turn that fails instead
+auto-skips and throws. **This field is always `0` for an unattended/API caller** — that is
+its structural range, not a health signal, and it should not be read as "nothing is
+stuck." Poll `longRunningSessions` for that instead.
+
+**`longRunningSessions`** — sessions that have been mid-turn (actively awaiting a
+response) for longer than `longRunningThresholdMs` (120000ms by default — measured
+against this repo's own recorded turn-time corpus, `reports/vision-probe/*.json`: 64
+healthy turns ranged 7.6s–68.2s, so 120s clears the whole observed range with margin
+while still flagging well before a poll's own 300s ceiling). This is the field an
+unattended caller can actually act on — no operator required, pure elapsed time.
+Override the threshold with the `LONG_RUNNING_THRESHOLD_MS` env var for testing.
+
+**`attachedPages`** — how many currently-registered sessions have a live (not-closed)
+browser page right now, read directly rather than inferred from `sessions`. `uptime`
+only tells you the Node process is up; a browser-side collapse that leaves the CDP
+connection itself intact (every page/context closed underneath it, `status` still
+`"ready"`) can climb `uptime` the entire time. Compare `attachedPages` against
+`sessions` — a caller about to commit to a long batch should not proceed if `sessions`
+is non-zero but `attachedPages` is far lower, or if `attachedPages` is `0` while turns
+are supposedly in flight.
 
 **Response (starting up)**
 
 ```json
 {
   "status": "initialising",
-  "browser": { "connected": false },
+  "browser": "connected",
   "error": "Browser not connected"
 }
 ```

@@ -254,6 +254,10 @@ export class SessionManager {
       createdAt: s.createdAt,
       lastUsedAt: s.lastUsedAt ?? null,
       state: getSessionState(s.id),
+      // T-003: read directly, not through getSession() — that call self-prunes
+      // a dead-page session on access, which is exactly the state a health
+      // check needs to see rather than have hidden from it.
+      pageAttached: !!(s.page && !s.page.isClosed()),
     }));
   }
 }
