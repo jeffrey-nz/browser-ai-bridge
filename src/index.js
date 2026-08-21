@@ -54,19 +54,28 @@ async function init() {
 
   applyProviderFilter();
 
+  // T-060: resolved before the kill-stale calls below, not after — the pid
+  // file killZombieProcess() checks is scoped BY this port (see
+  // pidManager.js), so it has to be known before that call, not just
+  // before startServer().
+  let port = Number(process.env.PORT);
+  if (isNaN(port)) port = 3333;
+  else if (port <= 0) throw new Error("PORT must be a positive integer");
+
   // Kill stale processes first so the port is free before we start the server.
   await killBrowserProcess();
-  await killZombieProcess();
+  await killZombieProcess(port);
 
   // Start the HTTP server early — before browser connect and login sequence —
   // so that /api/setup is reachable while setup is in progress. The VS Code
   // extension polls this endpoint to drive provider confirmations from the UI.
-  let port = Number(process.env.PORT);
-  if (isNaN(port)) port = 3333;
-  else if (port <= 0) throw new Error("PORT must be a positive integer");
   const server = await startServer(port);
   const boundPort = server.address().port;
-  writePidFile();
+  // Written under `port` (not `boundPort`) so a future restart's
+  // killZombieProcess(port) — resolved the same way, from the same env var,
+  // before it knows what actually got bound — looks in the same place this
+  // wrote to.
+  writePidFile(port);
   writeApiConfig(boundPort);
 
   const { context } = await connectToBrowser();
@@ -85,7 +94,7 @@ async function init() {
     process.stdout.write("\n");
     stopKeys();
     logger.info("[Shutdown] Closing server and active AI sessions...");
-    removePidFile();
+    removePidFile(port);
     try {
       await sessionManager.closeAllSessions();
     } catch (e) {
