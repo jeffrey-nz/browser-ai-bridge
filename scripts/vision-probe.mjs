@@ -4,9 +4,22 @@
  *
  * "Describe this image" passes even when no image ever arrived, because a
  * model will happily improvise a plausible-sounding description. This probe
- * asks a question ONLY the picture can answer: a random COUNT (3-9) of
- * solid-colour squares in a random named COLOR, freshly generated every run
- * — nothing an LLM could guess its way into (1-in-45 by chance, if it did).
+ * asks a question with TWO parts, and the parts are not equally hard to
+ * guess (T-012 on the crew board, correcting this file's own earlier claim):
+ *
+ *   COUNT   a random 3-9 count of solid-colour squares. Nowhere in the
+ *           prompt. This is the arrival test — 1-in-7 by chance.
+ *   COLOR   one of four named colours. Its four legal answers are PRINTED
+ *           IN THE PROMPT verbatim ("pick the closest match from exactly
+ *           this list: ..."), so this is a closed-vocabulary compliance
+ *           test, 1-in-4 by chance, and does not carry the "nothing an LLM
+ *           could guess its way into" claim the way COUNT does.
+ *
+ * The key space the generator actually draws from is derived below (see
+ * KEY_SPACE) rather than typed as a number, so this comment cannot drift
+ * out of sync with COLORS or the count range the way "1-in-45" already had
+ * by the time T-012 checked it (the true figure was 28, and was 28 in the
+ * commit that introduced this file).
  *
  * The image is a hand-rolled PNG (raw pixel buffer + zlib deflate, no font
  * or canvas library) so this script has no dependency beyond Node itself —
@@ -16,17 +29,29 @@
  * one provider pinned per request via `providers: [id]` — and classifies
  * every reply into one of:
  *
- *   PASS        correct COUNT and COLOR
- *   WRONG       answered SEES=yes but got the count and/or colour wrong —
- *               the model saw *something* and was confidently mistaken
- *               about it (this is not an upload bug and no upload fix will
- *               ever catch it — see Copilot's STAVES=2 finding on T-001)
+ *   PASS        correct COUNT and correct COLOR
+ *   COUNT_ONLY  correct COUNT, COLOR off the printed list — the arrival
+ *               test passed; the compliance test did not. NOT evidence of
+ *               a misread (T-012: on the one goldenrod image in this
+ *               probe's recorded history, three of four healthy providers
+ *               counted correctly and named the colour "yellow" instead of
+ *               "goldenrod" — a vocabulary miss, not a vision failure)
+ *   WRONG       COUNT itself is wrong — the model saw *something* and was
+ *               confidently mistaken about it (this is not an upload bug
+ *               and no upload fix will ever catch it — see Copilot's
+ *               STAVES=2 finding on T-001)
  *   SEES_NO     the model explicitly said it saw no image
  *   ECHO        the reply looks like the prompt read back, not an answer
  *   NO_ANSWER   turn completed but the reply matched none of the expected
  *               shapes (garbled / off-format)
  *   ERROR       the HTTP call itself failed, or the server reported a
  *               non-2xx status, or the turn timed out
+ *
+ * The summary line reports COUNT and COLOR as separate numbers, with COUNT
+ * — the arrival test — as the headline, rather than only the AND of both
+ * (T-012: over this probe's recorded history, 12 of 13 structured answers
+ * had the right count; only 8 of 13 satisfied the AND, because 4 of the
+ * other 5 were a count-right/colour-off-list COUNT_ONLY wearing WRONG).
  *
  * It also prints the bridge's own `imageAttached` field next to the
  * classification, so a mismatch (imageAttached:true but SEES_NO, or
@@ -53,12 +78,52 @@
  */
 
 import zlib from "node:zlib";
-import { writeFile, mkdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { execSync } from "node:child_process";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const REPO_ROOT = join(__dirname, "..");
+
+/**
+ * What graded this run (T-012): a run JSON on disk carried no version of
+ * anything — not this script's sha, not the bridge's, not even a
+ * timestamp — so when the classifier changed (c30e73a) there was no way to
+ * tell which of the 30 already-recorded runs predate the fix short of
+ * comparing commit times against file mtimes by hand. Two rows were graded
+ * by a classifier that no longer exists and the record did not say so.
+ *
+ * Deliberately NOT backfilled onto existing reports/vision-probe/*.json —
+ * stamping today's shas on a run graded by yesterday's classify() would
+ * convert an honest unknown into a confident falsehood. Absence of these
+ * fields on an old file is the correct signal that its grading vintage is
+ * unrecorded; only new runs get them.
+ */
+async function gradingProvenance() {
+  const src = await readFile(__filename, "utf8");
+  const probeSha256 = createHash("sha256")
+    .update(src)
+    .digest("hex")
+    .slice(0, 16);
+  let bridgeCommit = null;
+  try {
+    bridgeCommit = execSync("git rev-parse HEAD", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    }).trim();
+  } catch {
+    // Not fatal — a caller running this outside a git checkout still gets
+    // the probe's own sha and a timestamp, just not the bridge commit.
+  }
+  return {
+    probeSha256,
+    bridgeCommit,
+    gradedAt: new Date().toISOString(),
+  };
+}
 
 const ALL_PROVIDERS = [
   "chatgpt",
@@ -73,11 +138,37 @@ const ALL_PROVIDERS = [
   "perplexity",
 ];
 
+// LEFT AS-IS, MEASURED RATHER THAN GUESSED (T-012): the only evidence that
+// "goldenrod" is a synonym trap is 3 of 3 healthy providers naming one
+// goldenrod image's squares "yellow" — a lead on ONE image, not a rate on
+// the colour in general (4 distinct images have been drawn from this
+// palette in this probe's recorded history; only one was goldenrod).
+// COUNT_ONLY already keeps that miss from reading as a vision failure, which
+// was the actual problem. Not adding a synonym-acceptance list here: a typed
+// set of "close enough" colour names is a guess wearing a unit, same shape
+// as the "1-in-45" this ticket just corrected. If goldenrod keeps drawing
+// "yellow" across future runs, that becomes a rate and the fix (accept
+// synonyms, or swap the palette for names with no common alternative) can
+// be chosen from real numbers instead of one image's outcome.
 const COLORS = {
   crimson: [220, 20, 60],
   teal: [0, 128, 128],
   goldenrod: [218, 165, 32],
   indigo: [75, 0, 130],
+};
+
+// COUNT range the generator draws from — named here rather than left as
+// literals in generateTestImage() so KEY_SPACE below (and anything else
+// that wants the true odds) is derived, not typed (T-012: "1-in-45" was
+// typed once and never checked against COLORS or this range, and was wrong
+// from the commit that introduced it).
+const MIN_COUNT = 3;
+const COUNT_RANGE = 7; // draws MIN_COUNT .. MIN_COUNT + COUNT_RANGE - 1
+
+const KEY_SPACE = {
+  countChoices: COUNT_RANGE,
+  colorChoices: Object.keys(COLORS).length,
+  total: COUNT_RANGE * Object.keys(COLORS).length,
 };
 
 // --- Minimal PNG encoder: raw RGB buffer -> .png bytes, no dependencies. ---
@@ -184,7 +275,7 @@ function parseArgs(argv) {
 
 /** Fresh PNG fixture: `count` (3-9) solid squares in a row, colour named. */
 async function generateTestImage() {
-  const count = 3 + Math.floor(Math.random() * 7);
+  const count = MIN_COUNT + Math.floor(Math.random() * COUNT_RANGE);
   const colorNames = Object.keys(COLORS);
   const color = colorNames[Math.floor(Math.random() * colorNames.length)];
   const png = renderPng(900, 400, count, COLORS[color]);
@@ -208,6 +299,23 @@ function buildPrompt(truth) {
   );
 }
 
+/**
+ * classify() grades TWO different conjuncts and they are not the same kind
+ * of test (T-012). COUNT is nowhere in the prompt — the arrival test this
+ * probe exists to be, 1-in-7 by chance. COLOR's four legal answers are
+ * printed in the prompt verbatim ("pick the closest match from exactly this
+ * list: ..."), so it is a closed-vocabulary compliance test, 1-in-4 by
+ * chance, and a "wrong" colour there often means the model saw the right
+ * thing and reached for an everyday word instead of the prompt's specific
+ * one (measured: three independent providers called one image's goldenrod
+ * squares "yellow", all three having counted its squares correctly).
+ *
+ * So a count-right/colour-off-list reply is its own outcome — COUNT_ONLY —
+ * and is NOT "the model saw *something* and was confidently mistaken about
+ * it", which is what WRONG means and COUNT_ONLY must never be folded into,
+ * on pain of a grader that under-reports arrival exactly when this ticket's
+ * board is inclined to believe that story anyway.
+ */
 function classify(replyText, truth) {
   const text = (replyText || "").trim();
 
@@ -220,9 +328,13 @@ function classify(replyText, truth) {
     return { shape: "ECHO" };
   }
 
-  const seesNo = /\bSEES\s*=\s*no\b/i.test(text);
-  if (seesNo) return { shape: "SEES_NO" };
-
+  // A STRUCTURED answer is checked BEFORE the bare SEES=no test, and must
+  // win when both are present (T-012). The prompt's fallback clause is not
+  // the only way "SEES=no" can appear in a reply that also contains a
+  // complete, correct answer — a model hedging around its own answer
+  // ("...so not SEES=no. SEES=yes COUNT=3 COLOR=goldenrod") would otherwise
+  // be graded as reporting no image at all. Checking structure first means
+  // a real answer is graded as one regardless of what else is in the reply.
   const m = text.match(
     /SEES\s*=\s*yes[\s\S]*?COUNT\s*=\s*(\d+)[\s\S]*?COLOR\s*=\s*([a-zA-Z]+)/i,
   );
@@ -230,12 +342,25 @@ function classify(replyText, truth) {
     const [, count, color] = m;
     const countOk = Number(count) === truth.count;
     const colorOk = color.toLowerCase() === truth.color.toLowerCase();
-    if (countOk && colorOk) return { shape: "PASS" };
+    if (countOk && colorOk) return { shape: "PASS", countOk, colorOk };
+    if (countOk) {
+      return {
+        shape: "COUNT_ONLY",
+        countOk,
+        colorOk,
+        detail: `COUNT=${count} correct, COLOR=${color} not on the list (expected ${truth.color})`,
+      };
+    }
     return {
       shape: "WRONG",
+      countOk,
+      colorOk,
       detail: `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}`,
     };
   }
+
+  const seesNo = /\bSEES\s*=\s*no\b/i.test(text);
+  if (seesNo) return { shape: "SEES_NO" };
 
   if (!text) return { shape: "NO_ANSWER", detail: "empty response" };
   return { shape: "NO_ANSWER", detail: text.slice(0, 200) };
@@ -347,7 +472,11 @@ async function main() {
     ({ path: imagePath, count, color } = await generateTestImage());
   }
   console.log(`  ground truth: COUNT=${count} COLOR=${color}`);
-  console.log(`  image: ${imagePath}\n`);
+  console.log(`  image: ${imagePath}`);
+  console.log(
+    `  key space: COUNT is 1-in-${KEY_SPACE.countChoices} (not in the prompt) x ` +
+      `COLOR is 1-in-${KEY_SPACE.colorChoices} (printed in the prompt) = ${KEY_SPACE.total} combined\n`,
+  );
 
   const results = [];
   for (const providerId of opts.providers) {
@@ -361,8 +490,12 @@ async function main() {
         : r.imageAttached
           ? "attached"
           : "NOT attached";
+    const halves =
+      r.countOk !== undefined
+        ? `COUNT=${r.countOk ? "ok" : "NO"} COLOR=${r.colorOk ? "ok" : "NO"}  `
+        : "";
     console.log(
-      `${r.shape.padEnd(9)} ${secs.padStart(5)}  imageAttached=${attached}  ${r.detail || ""}`,
+      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${attached}  ${halves}${r.detail || ""}`,
     );
   }
 
@@ -370,20 +503,43 @@ async function main() {
     acc[r.shape] = (acc[r.shape] || 0) + 1;
     return acc;
   }, {});
+
+  // COUNT / COLOR / PASS are reported out of the STRUCTURED subset — replies
+  // that carried a countOk/colorOk verdict at all (PASS, COUNT_ONLY, WRONG)
+  // — not out of every result, because a SEES_NO or an ERROR has no verdict
+  // on either half to report (T-012: this mirrors the ticket's own
+  // reclassify script, which grades "structured SEES=yes answers" as its
+  // own denominator rather than the full run).
+  const structured = results.filter((r) => r.countOk !== undefined);
+  const countRight = structured.filter((r) => r.countOk).length;
+  const colorRight = structured.filter((r) => r.colorOk).length;
+  const passCount = structured.filter((r) => r.countOk && r.colorOk).length;
+
   console.log(
-    `\n${results.filter((r) => r.shape === "PASS").length} of ${results.length} PASS. ` +
+    `\nCOUNT right ${countRight}/${structured.length}   ` +
+      `COLOR right ${colorRight}/${structured.length}   ` +
+      `PASS ${passCount}/${structured.length}   ` +
+      `(${results.length} total: ` +
       Object.entries(counts)
         .map(([k, v]) => `${k}=${v}`)
-        .join(" "),
+        .join(" ") +
+      ")",
   );
 
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });
   const outPath = opts.outPath || join(outDir, `run-${Date.now()}.json`);
+  const provenance = await gradingProvenance();
   await writeFile(
     outPath,
     JSON.stringify(
-      { endpoint: opts.endpoint, truth: { count, color }, imagePath, results },
+      {
+        ...provenance,
+        endpoint: opts.endpoint,
+        truth: { count, color },
+        imagePath,
+        results,
+      },
       null,
       2,
     ),
