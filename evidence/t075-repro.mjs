@@ -1,47 +1,32 @@
-// T-075: live A/B reproduction — a bridge sharing another's Chrome via
-// CDP_URL must NOT kill it on its own clean shutdown.
+// T-075 redo: live A/B reproduction — a bridge sharing another's Chrome
+// via CDP_URL must NOT kill it on its own clean shutdown.
 //
 // Never the real logged-in Chrome (port 9222) — both bridges here use a
 // throwaway profile on a spare CDP port, same safety rule T-064 used.
 //
-// PLATFORM FINDING, disclosed rather than worked around silently: on this
-// Windows box, there is no automatable way to deliver a real, handler-
-// invoking SIGINT to an EXTERNAL Node process. Two independent attempts
-// both resulted in forceful termination instead:
-//   - bridgeB.kill("SIGINT") (ChildProcess method): exited in ~15ms, no
-//     "[Shutdown]" log line at all.
-//   - process.kill(bridgeB.pid, "SIGINT") (matches killZombieProcess's own
-//     API): exited code=1 signal=null in ~12ms, still no "[Shutdown]" log.
-//   - A detached-child + process.kill(pid, "SIGINT") variant (the usual
-//     workaround for Windows console process groups) was also tried
-//     standalone and behaved identically: no handler invocation.
-// A REAL interactive Ctrl+C or the app's own "Q" hotkey both go through
-// Windows' console-control-event mechanism (GenerateConsoleCtrlEvent),
-// which Node's SetConsoleCtrlHandler correctly translates to a genuine
-// 'SIGINT' JS event — that path is what index.js's shutdown() is written
-// for, and what a human operator actually triggers. It is not something a
-// script can fire at an unattended external process without attaching to
-// its console, which is not available in this headless environment.
+// PLATFORM FINDING (kept from the first attempt, still true): on this
+// Windows box there is no automatable way to deliver a real, handler-
+// invoking SIGINT to an EXTERNAL Node process — both
+// ChildProcess.kill("SIGINT") and process.kill(externalPid, "SIGINT")
+// forcefully terminate the target instead. T-060's own committed
+// evidence/t060-instanceA.log shows the same signature (no "[Shutdown]"
+// log on the process it SIGTERM'd) — a prior summary of that ticket had
+// assumed it proved signal delivery works; it didn't.
 //
-// Given that, this script proves the two things that together add up to
-// the same guarantee, without needing to trigger the OS-level event:
-//   1. LIVE, not hypothetical: a real bridge B, genuinely sharing a real
-//      bridge A's Chrome via CDP_URL, genuinely has chromePid === null —
-//      proven by B's own boot log never printing "No existing Chrome
-//      found... Launching fresh instance" (the only place chromePid is
-//      ever assigned is inside autoLaunchChrome, which only runs after
-//      that log line — B's first connectOverCDP attempt succeeds instead,
-//      so autoLaunchChrome never runs for B).
-//   2. The EXACT shipped decision function, imported from the same file
-//      shutdown() imports, evaluated against that real, live-observed
-//      chromePid value, returns false — the same "skip the kill" result
-//      shutdown()'s own `if (shouldKillOwnChromeOnShutdown(...))` branch
-//      would take if it ran.
-// Then A's Chrome is checked to still be running throughout, as the
-// baseline this whole scenario is protecting.
+// WHAT THE FIRST ATTEMPT AT THIS EVIDENCE GOT WRONG, per review: it
+// worked around the platform limit by asserting a hardcoded `null` into
+// shouldKillOwnChromeOnShutdown() and calling that "the real chromePid" —
+// an instrument that cannot register any other reading isn't a
+// measurement. The actual fix is one layer up: src/index.js:204's
+// `process.on("SIGINT", shutdown)` is a plain EventEmitter listener, and
+// init() is exported. evidence/t075-bridge-b-selfshutdown.mjs (spawned
+// below as bridge B) calls that same init() in its own process, reads
+// internalState.chromePid AFTER boot (a real runtime read, not an
+// assertion), and then calls `process.emit("SIGINT")` in-process — no OS
+// event, console, TTY, or pty needed, and shutdown() actually runs.
 import { spawn, execSync } from "node:child_process";
+import { writeFile } from "node:fs/promises";
 import process from "node:process";
-import { shouldKillOwnChromeOnShutdown } from "../src/browser/launcher/killer.js";
 
 const REPO = "C:/Users/Work/browser-ai-bridge";
 const A_PORT = 3347;
@@ -65,22 +50,22 @@ async function waitForReady(port, timeoutMs = 30000) {
   throw new Error(`bridge on port ${port} never became ready`);
 }
 
-function spawnBridge(env, label) {
-  const child = spawn("node", ["src/index.js"], {
+function spawnBridge(scriptPath, env, label) {
+  const child = spawn("node", [scriptPath], {
     cwd: REPO,
     env: { ...process.env, ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
-  let bootLog = "";
+  let combinedLog = "";
   child.stdout.on("data", (d) => {
-    bootLog += d.toString();
+    combinedLog += d.toString();
     process.stdout.write(`[${label}] ${d}`.replace(/\n$/, "\n"));
   });
   child.stderr.on("data", (d) => {
-    bootLog += d.toString();
+    combinedLog += d.toString();
     process.stderr.write(`[${label}] ${d}`.replace(/\n$/, "\n"));
   });
-  return { child, getBootLog: () => bootLog };
+  return { child, getLog: () => combinedLog };
 }
 
 function findChromeMainPid(cdpPort) {
@@ -114,6 +99,7 @@ function chromeAlive(pid) {
 async function main() {
   log("Spawning bridge A (victim) — spawns its OWN throwaway Chrome");
   const a = spawnBridge(
+    "src/index.js",
     {
       PORT: String(A_PORT),
       CDP_URL,
@@ -132,9 +118,12 @@ async function main() {
   if (!aChromePid) throw new Error("could not find bridge A's Chrome PID");
 
   log(
-    "Spawning bridge B (sharer) — points at A's Chrome via matching CDP_URL/CDP_PORT",
+    "Spawning bridge B (sharer) — evidence/t075-bridge-b-selfshutdown.mjs, " +
+      "points at A's Chrome via matching CDP_URL/CDP_PORT, and will call " +
+      "the real init() + emit its own SIGINT once ready",
   );
   const b = spawnBridge(
+    "evidence/t075-bridge-b-selfshutdown.mjs",
     {
       PORT: String(B_PORT),
       CDP_URL,
@@ -145,80 +134,79 @@ async function main() {
     "B",
   );
 
-  const pingB = await waitForReady(B_PORT);
-  log(`Bridge B ready: loadedCommit=${pingB.loadedCommit}`);
+  const bExit = await new Promise((resolve) => {
+    b.child.on("exit", (code, signal) => resolve({ code, signal }));
+  });
+  log(`Bridge B process exited: code=${bExit.code} signal=${bExit.signal}`);
 
-  const bBootLog = b.getBootLog();
-  const bSpawnedOwnChrome = bBootLog.includes(
-    "No existing Chrome found. Launching fresh instance",
-  );
+  const bLog = b.getLog();
+
+  const chromePidMatch = bLog.match(/B_CHROME_PID=(\S+)/);
+  const bChromePidRaw = chromePidMatch ? chromePidMatch[1] : null;
   log(
-    `Bridge B's boot log shows it spawning its own Chrome: ${bSpawnedOwnChrome} (must be false — chromePid is only ever set inside autoLaunchChrome, which only runs after that exact log line)`,
+    `Bridge B's real, live internalState.chromePid (read AFTER boot, not asserted): ${bChromePidRaw}`,
   );
-  if (bSpawnedOwnChrome) {
-    throw new Error(
-      "reproduction invalid: bridge B spawned its own Chrome instead of reusing A's — chromePid would be genuinely set, not the null case this ticket is about",
+  // This is the assertion the first attempt at this evidence was missing —
+  // capable of actually failing if a future change ever sets chromePid on
+  // the Chrome-reuse path.
+  const chromePidWasNull = bChromePidRaw === "null";
+  if (!chromePidWasNull) {
+    log(
+      `FAIL: expected bridge B's chromePid to be null (it never spawned its own Chrome) — got "${bChromePidRaw}"`,
     );
   }
 
-  // Bridge B's real, live chromePid is therefore still its initial value:
-  // null (src/browser/state.js's internalState.chromePid starts null and
-  // is set nowhere except inside autoLaunchChrome). Feed that real,
-  // observed value into the exact shipped decision function.
-  const bChromePid = null;
-  const decision = shouldKillOwnChromeOnShutdown(bChromePid);
+  const emittedSigint = bLog.includes("B_EMITTING_SIGINT");
+  const shutdownLogLine =
+    "[Shutdown] No Chrome process owned by this bridge — leaving a shared/borrowed Chrome running.";
+  const shutdownRanCorrectBranch = bLog.includes(shutdownLogLine);
+  log(`Bridge B emitted its own SIGINT: ${emittedSigint}`);
   log(
-    `shouldKillOwnChromeOnShutdown(bridge B's real chromePid=${bChromePid}) = ${decision} (must be false: this is the branch shutdown()'s "if" gate takes for a real bridge B right now)`,
+    `Bridge B's shutdown() printed the "skip the kill" log line: ${shutdownRanCorrectBranch}`,
   );
 
-  const aChromeAliveBefore = chromeAlive(aChromePid);
-  log(
-    `Bridge A's Chrome (PID ${aChromePid}) alive before cleanup: ${aChromeAliveBefore}`,
-  );
-
-  log("Cleaning up both bridges (force — teardown, not part of the test)");
-  a.child.kill("SIGKILL");
-  b.child.kill("SIGKILL");
+  // Give the OS a moment in case anything async (taskkill's own process
+  // teardown, etc.) is still landing.
   await new Promise((r) => setTimeout(r, 1000));
 
   const aChromeAliveAfter = chromeAlive(aChromePid);
   log(
-    `Bridge A's Chrome (PID ${aChromePid}) alive after teardown: ${aChromeAliveAfter} (still alive here just means the bridge processes' own force-kill didn't cascade-kill it — the shutdown() code path was never reached in this run, by design; see the platform-finding comment at the top of this file)`,
+    `Bridge A's Chrome (PID ${aChromePid}) alive AFTER bridge B's real shutdown(): ${aChromeAliveAfter}`,
   );
+
+  log("Cleaning up bridge A (force — teardown, not part of the test)");
+  a.child.kill("SIGKILL");
+  await new Promise((r) => setTimeout(r, 500));
+  try {
+    const pid = findChromeMainPid(CDP_PORT);
+    if (pid) execSync(`taskkill /F /PID ${pid} /T`, { stdio: "ignore" });
+  } catch {}
+
+  const pass =
+    chromePidWasNull &&
+    emittedSigint &&
+    shutdownRanCorrectBranch &&
+    aChromeAliveAfter;
+
+  const result = {
+    pingA: { loadedCommit: pingA.loadedCommit, status: pingA.status },
+    aChromePid,
+    bExit,
+    bChromePidRaw,
+    chromePidWasNull,
+    emittedSigint,
+    shutdownRanCorrectBranch,
+    aChromeAliveAfter,
+    pass,
+  };
 
   console.log("\n=== RESULT ===");
-  console.log(
-    JSON.stringify(
-      {
-        pingA: { loadedCommit: pingA.loadedCommit, status: pingA.status },
-        pingB: { loadedCommit: pingB.loadedCommit, status: pingB.status },
-        bSpawnedOwnChrome,
-        bChromePid,
-        shouldKillOwnChromeOnShutdown_decision: decision,
-        aChromePid,
-        aChromeAliveBefore,
-        aChromeAliveAfter,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 
-  const pass = !bSpawnedOwnChrome && decision === false && aChromeAliveBefore;
   process.exitCode = pass ? 0 : 1;
 }
 
-main()
-  .catch((e) => {
-    console.error("FATAL:", e);
-    process.exitCode = 2;
-  })
-  .finally(() => {
-    // Best-effort cleanup of the throwaway Chrome so it doesn't linger.
-    // Note: this runs regardless of pass/fail — it is teardown, not part
-    // of what the RESULT block above asserts.
-    try {
-      const pid = findChromeMainPid(CDP_PORT);
-      if (pid) execSync(`taskkill /F /PID ${pid} /T`, { stdio: "ignore" });
-    } catch {}
-  });
+main().catch((e) => {
+  console.error("FATAL:", e);
+  process.exitCode = 2;
+});
