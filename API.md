@@ -288,9 +288,25 @@ the caller adjudicates.
 {
   "success": true,
   "answers": [
-    { "provider": "gemini", "answered": true, "response": "PONG", "data": null, "messageCount": 0 },
-    { "provider": "chatgpt", "answered": true, "response": "PONG", "data": null, "messageCount": 0 },
-    { "provider": "zai", "answered": false, "reason": "Polling timed out (Timeout after 300000ms)" }
+    {
+      "provider": "gemini",
+      "answered": true,
+      "response": "PONG",
+      "data": null,
+      "messageCount": 0
+    },
+    {
+      "provider": "chatgpt",
+      "answered": true,
+      "response": "PONG",
+      "data": null,
+      "messageCount": 0
+    },
+    {
+      "provider": "zai",
+      "answered": false,
+      "reason": "Polling timed out (Timeout after 300000ms)"
+    }
   ],
   "elapsedMs": 43828
 }
