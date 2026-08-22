@@ -12,6 +12,7 @@
 // buildPrompt() text (not exported, so duplicated here verbatim).
 import { writeFile, readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import {
   renderPng,
   COLORS,
@@ -48,6 +49,31 @@ function buildPrompt() {
   );
 }
 
+// T-095: pulled out of `main()` so a test can pin the SHAPE THAT ACTUALLY
+// GETS WRITTEN into the committed record — see t075-repro.mjs's
+// buildPingASummary for why this is a different guarantee than
+// tests/serverProvenance.test.js already covers.
+export function buildRecord({
+  bridgeCommit,
+  provenance,
+  truth,
+  fixtureSha256,
+  httpStatus,
+  elapsedMs,
+  raw,
+}) {
+  return {
+    endpoint: "/api/ask-all",
+    bridgeCommit,
+    serverProvenance: provenance,
+    truth,
+    fixtureSha256,
+    httpStatus,
+    elapsedMs,
+    raw,
+  };
+}
+
 async function main() {
   const provenance = await fetchServerProvenance(BASE_URL);
   console.log(
@@ -81,17 +107,15 @@ async function main() {
   console.log(`[ask-all] HTTP ${res.status} in ${elapsedMs}ms`);
   console.log(JSON.stringify(json, null, 2));
 
-  const record = {
-    endpoint: "/api/ask-all",
+  const record = buildRecord({
     bridgeCommit: process.env.T079_BRIDGE_COMMIT || null,
-    serverLoadedCommit: provenance.loadedCommit,
-    serverLoadedTreeDirty: provenance.loadedTreeDirty,
+    provenance,
     truth: { count: COUNT, color: COLOR },
     fixtureSha256,
     httpStatus: res.status,
     elapsedMs,
     raw: json,
-  };
+  });
   await writeFile(REPORT_PATH, JSON.stringify(record, null, 2));
   console.log(`[written] ${REPORT_PATH.pathname}`);
 
@@ -101,7 +125,17 @@ async function main() {
   );
 }
 
-main().catch((e) => {
-  console.error("FATAL:", e);
-  process.exitCode = 1;
-});
+// T-095: guarded so tests/evidenceProvenanceShape.test.js can import
+// buildRecord above without triggering this file's live /api/ask-all call
+// as a side effect of the import. Not re-run by this ticket (T-079 is a
+// closed ticket — its committed reports/vision-probe/t079-askall-deepseek.json
+// stays as the historical record).
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((e) => {
+    console.error("FATAL:", e);
+    process.exitCode = 1;
+  });
+}

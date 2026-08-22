@@ -6,19 +6,24 @@
 // the shared helper (this file's own already-committed transcript,
 // evidence/t071-clause2-transcript.txt, is untouched).
 import { fetchServerProvenance } from "../scripts/serverProvenance.mjs";
+import { pathToFileURL } from "node:url";
 
 const BASE = "http://127.0.0.1:3333";
+
+// T-095: pulled out of `main()` so a test can pin the SHAPE THAT ACTUALLY
+// GETS PRINTED (and lands in this file's committed transcript) — see
+// t075-repro.mjs's buildPingASummary for why this is a different
+// guarantee than tests/serverProvenance.test.js already covers.
+export function buildStatusLine(provenance, copilotStatus) {
+  return { serverProvenance: provenance, copilot: copilotStatus };
+}
 
 async function main() {
   console.log("=== cooldownManager state (via /api/ping) ===");
   const provenance = await fetchServerProvenance(BASE);
   const providers = await fetch(`${BASE}/api/ping`).then((r) => r.json());
   console.log(
-    JSON.stringify({
-      loadedCommit: provenance.loadedCommit,
-      loadedTreeDirty: provenance.loadedTreeDirty,
-      copilot: providers.providers.copilot,
-    }),
+    JSON.stringify(buildStatusLine(provenance, providers.providers.copilot)),
   );
 
   console.log("\n=== text-only turn (no image) ===");
@@ -61,7 +66,17 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error("FATAL", e);
-  process.exit(1);
-});
+// T-095: guarded so tests/evidenceProvenanceShape.test.js can import
+// buildStatusLine above without triggering this file's live probe as a
+// side effect of the import. Not re-run by this ticket (T-071 is a closed
+// ticket — its committed evidence/t071-clause2-transcript.txt stays as the
+// historical record).
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((e) => {
+    console.error("FATAL", e);
+    process.exit(1);
+  });
+}

@@ -27,6 +27,7 @@
 import { spawn, execSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 // T-083: CLAUSE 0's provenance block, read the same way every live
 // evidence script should now read it — see scripts/serverProvenance.mjs's
 // own header for why this exists (two evidence scripts written hours
@@ -99,6 +100,17 @@ function chromeAlive(pid) {
   } catch {
     return false;
   }
+}
+
+// T-095: pulled out of `main()` so a test can pin the SHAPE THAT ACTUALLY
+// GETS WRITTEN into `result.pingA`, not just the shape
+// extractServerProvenance()/fetchServerProvenance() themselves return
+// (already covered by tests/serverProvenance.test.js) — a future edit that
+// reverts to cherry-picking loadedCommit/loadedTreeDirty back out of
+// `provenanceA` here, dropping fieldsPresent again, now fails a test
+// instead of waiting for a PM to notice on the committed JSON.
+export function buildPingASummary(pingA, provenanceA) {
+  return { status: pingA.status, ...provenanceA };
 }
 
 async function main() {
@@ -202,11 +214,7 @@ async function main() {
     aChromeAliveAfter;
 
   const result = {
-    pingA: {
-      status: pingA.status,
-      loadedCommit: provenanceA.loadedCommit,
-      loadedTreeDirty: provenanceA.loadedTreeDirty,
-    },
+    pingA: buildPingASummary(pingA, provenanceA),
     aChromePid,
     bExit,
     bChromePidRaw,
@@ -223,7 +231,15 @@ async function main() {
   process.exitCode = pass ? 0 : 1;
 }
 
-main().catch((e) => {
-  console.error("FATAL:", e);
-  process.exitCode = 2;
-});
+// T-095: guarded so tests/evidenceProvenanceShape.test.js can import
+// buildPingASummary above without triggering this file's live A/B bridge
+// reproduction as a side effect of the import.
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((e) => {
+    console.error("FATAL:", e);
+    process.exitCode = 2;
+  });
+}
