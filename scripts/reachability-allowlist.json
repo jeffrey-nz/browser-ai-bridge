@@ -68,32 +68,12 @@
     "reason": "src/audit/fix/ (T-115): same unwired subsystem."
   },
   {
-    "path": "src/ai/chatgpt/index.js",
-    "reason": "T-116: exports initChatGptProvider(), an abandoned init pathway (via #ai/shared/providerInit.js) — the live path is src/session/Creator.js's direct `new ChatGPTProvider()` from ./session.js."
-  },
-  {
     "path": "src/ai/chatgpt/locators.js",
-    "reason": "T-116: an orphaned CHATGPT_LOCATORS table nothing imports — chatgpt's live selectors are inline in interaction/prompt/*.js."
-  },
-  {
-    "path": "src/ai/grok/index.js",
-    "reason": "T-116: exports initGrokProvider(), the same abandoned init pathway as chatgpt/index.js — the live path is Creator.js's direct `new GrokProvider()`."
+    "reason": "T-119: CORRECTED from T-116's own reason (\"nothing imports it\") — src/audit/providers.js DOES import CHATGPT_LOCATORS from here, a real edge missed by only grepping inside src/ai/chatgpt/ the first time. Unreachable because src/audit/ itself is (see src/audit/ entries above), not because this file is independently orphaned. Left in place — deleting it would break the audit subsystem's own (currently unwired) selector-health check for chatgpt."
   },
   {
     "path": "src/ai/grok/locators.js",
-    "reason": "T-116: an orphaned locators table, same shape as chatgpt/locators.js."
-  },
-  {
-    "path": "src/ai/deepseek/index.js",
-    "reason": "T-116: exports initDeepSeekProvider(), the same abandoned init pathway — the live path is Creator.js's direct `new DeepSeekProvider()`."
-  },
-  {
-    "path": "src/ai/gemini/index.js",
-    "reason": "T-116: exports initGeminiProvider(), the same abandoned init pathway — the live path is Creator.js's direct `new GeminiProvider()`."
-  },
-  {
-    "path": "src/ai/shared/providerInit.js",
-    "reason": "T-116: initProvider(), the shared helper all four abandoned index.js files above call — no live caller reaches it either."
+    "reason": "T-119: same correction and same reason as chatgpt/locators.js — src/audit/providers.js imports GROK_LOCATORS from here."
   },
   {
     "path": "src/ai/copilot/client/session/tabSelector.js",
