@@ -9,6 +9,7 @@ import { runPreflightChecks } from "./setup.js";
 import { PollAbortController } from "./abortController.js";
 import { getDeepSeekDomState } from "./domState.js";
 import { evaluateDeepSeekCompletion } from "./evaluator.js";
+import { logTimeoutSnapshot } from "./timeoutSnapshot.js";
 
 export async function waitForDeepSeekCompletion(
   page,
@@ -118,7 +119,7 @@ export async function waitForDeepSeekCompletion(
       }
     }
 
-    logger.warn("[DeepSeek Poll] Timed out after 300s.");
+    await logTimeoutSnapshot(page);
     return false;
   } catch (e) {
     if (e.controlAbort || e.message.includes("Aborted")) throw e;
