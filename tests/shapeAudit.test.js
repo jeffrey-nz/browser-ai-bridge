@@ -10,6 +10,8 @@ import {
   classifyAbsence,
   formatOutOfRangeSection,
   formatWrongBucketSection,
+  computeStandardizedRates,
+  fisherExactTwoSided,
 } from "../scripts/shape-audit.mjs";
 
 /**
@@ -633,4 +635,123 @@ test("formatOutOfRangeSection: non-zero tally format is unchanged from T-076", (
       "  A total of 0 here is not evidence nobody fabricated, only that\n" +
       "  nobody fabricated conspicuously.",
   ]);
+});
+
+// T-092: providerCountCells is the cross-tab shape-audit had never
+// printed — one cell per (provider, truth.count), independent of
+// providerStrata's own summed n/ok.
+test("auditShapes tallies providerCountCells per (provider, truth.count) cell", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }, // right
+        ],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" }, // wrong
+        ],
+      },
+    });
+
+    const { providerCountCells } = auditShapes(dir);
+
+    assert.deepEqual(providerCountCells.a.get(4), { n: 1, ok: 1 });
+    assert.deepEqual(providerCountCells.a.get(9), { n: 1, ok: 0 });
+    assert.equal(providerCountCells.a.has(5), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-092: pinned against the board's own worked example (T-084/T-092's
+// goal section) so the formula is checked against a real, hand-verified
+// reading, not just internal consistency — mistral 4/7 crude (57.1%)
+// standardises to 80.6% at 83.8% corpus weight covered, over strata
+// [4,5,7,9] against a corpus mix of {3:6,4:16,5:23,6:4,7:11,8:2,9:12}.
+test.describe("computeStandardizedRates", () => {
+  test("reproduces the board's own worked mistral example", () => {
+    const countStrata = {
+      3: { n: 6 },
+      4: { n: 16 },
+      5: { n: 23 },
+      6: { n: 4 },
+      7: { n: 11 },
+      8: { n: 2 },
+      9: { n: 12 },
+    };
+    const providerCountCells = {
+      mistral: new Map([
+        [4, { n: 2, ok: 2 }],
+        [5, { n: 1, ok: 1 }],
+        [7, { n: 1, ok: 1 }],
+        [9, { n: 3, ok: 0 }],
+      ]),
+    };
+    const result = computeStandardizedRates(providerCountCells, countStrata);
+    assert.equal(result.mistral.crude, 4 / 7);
+    assert.ok(Math.abs(result.mistral.standardized - 0.806) < 0.001);
+    assert.ok(Math.abs(result.mistral.weightCovered - 0.838) < 0.001);
+    assert.deepEqual(result.mistral.strataHeld, [4, 5, 7, 9]);
+  });
+
+  test("a provider covering every stratum: standardised equals crude", () => {
+    const countStrata = { 3: { n: 2 }, 4: { n: 2 } };
+    const providerCountCells = {
+      gemini: new Map([
+        [3, { n: 2, ok: 2 }],
+        [4, { n: 2, ok: 2 }],
+      ]),
+    };
+    const result = computeStandardizedRates(providerCountCells, countStrata);
+    assert.equal(result.gemini.crude, 1);
+    assert.equal(result.gemini.standardized, 1);
+    assert.equal(result.gemini.weightCovered, 1);
+  });
+
+  test("a provider covering NO strata that exist in countStrata: weightCovered 0", () => {
+    // Defensive case — should not happen in practice (a provider's cell
+    // count always contributes to countStrata too), but the function
+    // must not divide by zero if it ever does.
+    const countStrata = { 3: { n: 2 } };
+    const providerCountCells = { ghost: new Map() };
+    const result = computeStandardizedRates(providerCountCells, countStrata);
+    assert.equal(result.ghost.weightCovered, 0);
+    assert.equal(result.ghost.standardized, null);
+  });
+});
+
+// T-092: fisherExactTwoSided pinned against a PUBLISHED value (Fisher's
+// own "lady tasting tea" 2x2, the textbook example: 3 right + 1 wrong vs
+// 1 right + 3 wrong out of 4 each way, two-sided p = 0.4857) before
+// trusting it on anything this file reports — a home-grown stats
+// function with no external check is exactly the kind of "true sentence
+// nobody verified" this board's own lessons warn about.
+test.describe("fisherExactTwoSided", () => {
+  test("reproduces the published 'lady tasting tea' p-value", () => {
+    const p = fisherExactTwoSided(3, 1, 1, 3);
+    assert.ok(Math.abs(p - 0.4857) < 0.001, `got ${p}`);
+  });
+
+  test("perfect separation (6,0 / 0,6): p is small and matches hand computation", () => {
+    // p(6) = C(6,6)*C(6,0)/C(12,6) = 1/924; two-sided doubles the
+    // symmetric tail exactly for this table.
+    const p = fisherExactTwoSided(6, 0, 0, 6);
+    assert.ok(Math.abs(p - 2 / 924) < 1e-6, `got ${p}`);
+  });
+
+  test("identical rates in both groups: p is 1 (no evidence of association)", () => {
+    const p = fisherExactTwoSided(3, 3, 3, 3);
+    assert.ok(Math.abs(p - 1) < 1e-9, `got ${p}`);
+  });
+
+  test("symmetric under swapping rows", () => {
+    const p1 = fisherExactTwoSided(6, 0, 0, 6);
+    const p2 = fisherExactTwoSided(0, 6, 6, 0); // rows swapped
+    assert.ok(Math.abs(p1 - p2) < 1e-9);
+  });
 });

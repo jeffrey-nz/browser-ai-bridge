@@ -117,6 +117,10 @@ export function auditShapes(dir) {
   // cannot be printed as a ranking without the coverage that makes it one
   // printed right beside it.
   const providerStrata = {};
+  // T-092: providerId -> Map(truth.count -> {n, ok}) — the cross-tab
+  // providerStrata's own totals cannot show. See the comment where it is
+  // populated below for why this exists.
+  const providerCountCells = {};
   // T-084 clause 4: vision-probe.mjs's header already argues WRONG is not
   // an upload bug — "the model saw *something* and was confidently mistaken
   // about it". Collected here so that argument has numbers behind it in an
@@ -240,6 +244,18 @@ export function auditShapes(dir) {
         ps.n++;
         if (recomputed.countOk) ps.ok++;
 
+        // T-092: the per-cell breakdown providerStrata's own SUMMED n/ok
+        // cannot show — "mistral 57%" and "copilot 80%" read as two
+        // providers doing differently, when six of this board's nine
+        // recorded errors are copilot's and mistral's SAME failure at the
+        // SAME stratum (count=9), and the gap between them is that 43% of
+        // mistral's rows sit there against 20% of copilot's.
+        const pc = (providerCountCells[r.providerId] ??= new Map());
+        const cell2 = pc.get(j.truth.count) ?? { n: 0, ok: 0 };
+        cell2.n++;
+        if (recomputed.countOk) cell2.ok++;
+        pc.set(j.truth.count, cell2);
+
         const band = j.truth.count <= 5 ? "easy" : "hard";
         const pb = (providerBand[r.providerId] ??= {});
         const cell = (pb[band] ??= { n: 0, ok: 0 });
@@ -262,6 +278,7 @@ export function auditShapes(dir) {
     outOfRangeRows,
     structuredCount,
     providerStrata,
+    providerCountCells,
     wrongRows,
   };
 }
@@ -349,6 +366,86 @@ export function bandStats(providerBand) {
   return { pooled, paired, pairedCount, unpaired };
 }
 
+// T-092: "gemini 100%, deepseek 79%" is a ranking over stimulus sets that
+// are not the same size or shape — five providers were shown every count,
+// deepseek was shown four, perplexity one. Direct standardisation to the
+// corpus's own stratum mix answers "if this provider had been shown the
+// SAME mix everyone else was, weighted by how much of the corpus sits at
+// each count it actually WAS shown" — renormalised over the strata a
+// provider actually holds (an unheld stratum contributes no weight, not a
+// zero), with the covered weight travelling beside the number so a reader
+// can see how much of that renormalisation is doing the work. A provider
+// at 31% covered weight has a standardised rate that is mostly an
+// assumption, and printing the number without the weight would hide that.
+export function computeStandardizedRates(providerCountCells, countStrata) {
+  const totalN = Object.values(countStrata).reduce((s, c) => s + c.n, 0);
+  const result = {};
+  for (const [providerId, cells] of Object.entries(providerCountCells)) {
+    let n = 0,
+      ok = 0,
+      numerator = 0,
+      weightCovered = 0;
+    const strataHeld = [...cells.keys()].sort((a, b) => a - b);
+    for (const [count, cell] of cells) {
+      n += cell.n;
+      ok += cell.ok;
+      const weight = totalN ? countStrata[count].n / totalN : 0;
+      numerator += weight * (cell.ok / cell.n);
+      weightCovered += weight;
+    }
+    result[providerId] = {
+      n,
+      ok,
+      crude: n ? ok / n : null,
+      standardized: weightCovered ? numerator / weightCovered : null,
+      weightCovered,
+      strataHeld,
+    };
+  }
+  return result;
+}
+
+// T-092: a plain hypergeometric two-sided Fisher exact test over a 2x2
+// table — no library, this repo has no stats dependency and one 2x2 test
+// does not justify adding one. Sums the probability of every table with
+// the SAME margins whose probability is no greater than the observed
+// table's (the standard two-sided definition), computed in log-space so
+// n up to a few hundred does not overflow. Pinned in
+// tests/shapeAudit.test.js against a table with a known published p-value
+// (Fisher's own "lady tasting tea": 3,1/1,3 -> p=0.4857) before trusting
+// it on anything this file actually reports.
+function logFactorial(n) {
+  let sum = 0;
+  for (let i = 2; i <= n; i++) sum += Math.log(i);
+  return sum;
+}
+function logChoose(n, k) {
+  if (k < 0 || k > n) return -Infinity;
+  return logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+}
+export function fisherExactTwoSided(a, b, c, d) {
+  const row1 = a + b;
+  const row2 = c + d;
+  const col1 = a + c;
+  const col2 = b + d;
+  const n = row1 + row2;
+  const minX = Math.max(0, row1 - col2);
+  const maxX = Math.min(row1, col1);
+  const logProb = (x) =>
+    logChoose(col1, x) + logChoose(col2, row1 - x) - logChoose(n, row1);
+  const observed = logProb(a);
+  // Floating-point tolerance on the "no greater than" comparison — without
+  // it, the observed table's own probability can fail to compare equal to
+  // itself due to summation-order rounding in logChoose.
+  const EPS = 1e-9;
+  let p = 0;
+  for (let x = minX; x <= maxX; x++) {
+    const lp = logProb(x);
+    if (lp <= observed + EPS) p += Math.exp(lp);
+  }
+  return p;
+}
+
 function main() {
   const dir = path.join(process.cwd(), "reports", "vision-probe");
   const {
@@ -364,6 +461,7 @@ function main() {
     outOfRangeRows,
     structuredCount,
     providerStrata,
+    providerCountCells,
     wrongRows,
   } = auditShapes(dir);
 
@@ -398,26 +496,170 @@ function main() {
     );
   }
 
-  // T-084 clause 5: "gemini 100%, deepseek 79%" reads as a ranking and is
-  // really a statement about which tickets happened to call which provider
-  // — printed here beside the stimulus range each rate actually covers so
-  // a reader cannot mistake "shown every count" for "shown one".
-  const providerIds5 = Object.keys(providerStrata).sort(
-    (a, b) =>
-      providerStrata[b].ok / providerStrata[b].n -
-      providerStrata[a].ok / providerStrata[a].n,
+  // T-092 clause 1: the cross-tab shape-audit has never printed. Mostly
+  // empty, and that emptiness IS the message — T-084's "one stratum of
+  // seven" is a statement about the pool; this is where a reader sees
+  // which PROVIDERS that stratum actually belongs to.
+  const providerIdsCT = Object.keys(providerCountCells).sort();
+  if (providerIdsCT.length > 0) {
+    console.log("\nPROVIDER x TRUTH.COUNT, ok/n (T-092 — the table the");
+    console.log(
+      "per-provider rate below has never shown; '.' = no rows at that stratum):",
+    );
+    console.log(
+      "  " +
+        "".padEnd(11) +
+        counts.map((c) => `c=${c}`.padStart(6)).join("") +
+        "  pooled",
+    );
+    for (const p of providerIdsCT) {
+      const cells = providerCountCells[p];
+      let n = 0,
+        ok = 0;
+      const row = counts
+        .map((c) => {
+          const cell = cells.get(c);
+          if (!cell) return "".padStart(6, " ").slice(0, 5) + " .";
+          n += cell.n;
+          ok += cell.ok;
+          return `${cell.ok}/${cell.n}`.padStart(6);
+        })
+        .join("");
+      console.log(`  ${p.padEnd(11)}${row}  ${ok}/${n}`);
+    }
+  }
+
+  // T-084 clause 5 / T-092 review: "gemini 100%, deepseek 79%" reads as a
+  // ranking and is really a statement about which tickets happened to
+  // call which provider — printed here beside the stimulus range each
+  // rate actually covers. T-092: the table used to SORT by that same
+  // crude rate, asserting through its own ordering exactly what this
+  // caption denies. Sorted by STANDARDISED rate instead (direct
+  // standardisation to the corpus's own stratum mix, renormalised over
+  // the strata a provider actually holds) — crude rate is still printed,
+  // unchanged, beside it; only the ORDER and the two new columns changed.
+  const standardized = computeStandardizedRates(
+    providerCountCells,
+    countStrata,
   );
+  const providerIds5 = Object.keys(providerStrata).sort((a, b) => {
+    const sa = standardized[a]?.standardized ?? -1;
+    const sb = standardized[b]?.standardized ?? -1;
+    return sb - sa;
+  });
   if (providerIds5.length > 0) {
     console.log(
       "\nPer-provider rate, WITH the strata it was actually shown (T-084 —",
     );
-    console.log("a ranking over incomparable stimulus sets is not a ranking):");
+    console.log(
+      "a ranking over incomparable stimulus sets is not a ranking; sorted",
+    );
+    console.log(
+      "by STANDARDISED rate, not crude, so the order does not assert what",
+    );
+    console.log("this caption denies — T-092):");
     for (const p of providerIds5) {
       const { n, ok, countsShown } = providerStrata[p];
       const pct = ((ok / n) * 100).toFixed(0);
       const shown = [...countsShown].sort((a, b) => a - b);
+      const std = standardized[p];
+      const stdPct =
+        std?.standardized != null ? (std.standardized * 100).toFixed(1) : "?";
+      const weightPct =
+        std?.weightCovered != null ? (std.weightCovered * 100).toFixed(1) : "?";
       console.log(
-        `  ${p.padEnd(11)} ${ok}/${n}  ${pct.padStart(3)}%   strata shown (of ${COUNT_RANGE}): ${shown.length}/${COUNT_RANGE}  [${shown.join(",")}]`,
+        `  ${p.padEnd(11)} crude ${ok}/${n} ${pct.padStart(3)}%   standardised ${stdPct}%   corpus weight covered ${weightPct}%   strata shown (of ${COUNT_RANGE}): ${shown.length}/${COUNT_RANGE}  [${shown.join(",")}]`,
+      );
+    }
+  }
+
+  // T-092 clause 4: the two within-region provider effects, stated as
+  // findings rather than left for a reader to notice in the cells above.
+  const cell9 = (p) => providerCountCells[p]?.get(MAX_COUNT);
+  const hardProviders = providerIdsCT.filter((p) => cell9(p));
+  const hardOk = hardProviders.reduce((s, p) => s + cell9(p).ok, 0);
+  const hardN = hardProviders.reduce((s, p) => s + cell9(p).n, 0);
+  const failedAtHard = hardProviders.filter((p) => cell9(p).ok === 0);
+  const heldAtHard = hardProviders.filter((p) => cell9(p).ok === cell9(p).n);
+  if (
+    hardProviders.length > 1 &&
+    failedAtHard.length > 0 &&
+    heldAtHard.length > 0
+  ) {
+    const a = heldAtHard.reduce((s, p) => s + cell9(p).ok, 0);
+    const b = heldAtHard.reduce((s, p) => s + (cell9(p).n - cell9(p).ok), 0);
+    const c = failedAtHard.reduce((s, p) => s + cell9(p).ok, 0);
+    const d = failedAtHard.reduce((s, p) => s + (cell9(p).n - cell9(p).ok), 0);
+    const p9 = fisherExactTwoSided(a, b, c, d);
+    console.log(
+      `\nAt truth.count=${MAX_COUNT}: ${heldAtHard.join("/")} ${a} right, ${b} wrong` +
+        `   vs   ${failedAtHard.join("/")} ${c} right, ${d} wrong` +
+        `   Fisher exact two-sided p = ${p9.toExponential(2)}`,
+    );
+  }
+  const lowRegion = counts.filter((c) => c !== MAX_COUNT);
+  const lowByProvider = {};
+  for (const p of providerIdsCT) {
+    let n = 0,
+      ok = 0;
+    for (const c of lowRegion) {
+      const cell = providerCountCells[p].get(c);
+      if (cell) {
+        n += cell.n;
+        ok += cell.ok;
+      }
+    }
+    if (n > 0) lowByProvider[p] = { n, ok };
+  }
+  const lowErring = Object.keys(lowByProvider).filter(
+    (p) => lowByProvider[p].ok < lowByProvider[p].n,
+  );
+  if (lowErring.length > 0) {
+    const a = lowErring.reduce((s, p) => s + lowByProvider[p].ok, 0);
+    const b = lowErring.reduce(
+      (s, p) => s + (lowByProvider[p].n - lowByProvider[p].ok),
+      0,
+    );
+    const rest = Object.keys(lowByProvider).filter(
+      (p) => !lowErring.includes(p),
+    );
+    const c = rest.reduce((s, p) => s + lowByProvider[p].ok, 0);
+    const d = rest.reduce(
+      (s, p) => s + (lowByProvider[p].n - lowByProvider[p].ok),
+      0,
+    );
+    const pLow = fisherExactTwoSided(a, b, c, d);
+    console.log(
+      `At counts ${lowRegion[0]}-${lowRegion[lowRegion.length - 1]}: ${lowErring.join("/")} ${a} right, ${b} wrong` +
+        `   vs   every other provider ${c} right, ${d} wrong` +
+        `   Fisher exact two-sided p = ${pLow.toExponential(2)}`,
+    );
+  }
+
+  // T-092 clause 5: the one coverage hole that decides whether the
+  // count=9 effect belongs to two providers or three, named rather than
+  // filled by a sweep. Computed, not asserted: true only if a provider has
+  // rows at some count but none at the top of the range AND has a
+  // recorded error somewhere it WAS shown.
+  const neverShownHard = providerIdsCT.filter(
+    (p) => !providerCountCells[p].has(MAX_COUNT),
+  );
+  const erringElsewhere = neverShownHard.filter((p) => {
+    const cells = providerCountCells[p];
+    for (const cell of cells.values()) if (cell.ok < cell.n) return true;
+    return false;
+  });
+  if (erringElsewhere.length > 0) {
+    for (const p of erringElsewhere) {
+      const std = standardized[p];
+      const weightPct =
+        std?.weightCovered != null ? (std.weightCovered * 100).toFixed(1) : "?";
+      console.log(
+        `\nCOVERAGE HOLE: ${p} has never been graded at truth.count=${MAX_COUNT} ` +
+          `(${weightPct}% of corpus weight covered) and has a recorded error at a ` +
+          `count it WAS shown — whether it fails at ${MAX_COUNT} like the providers ` +
+          `above, or holds like the rest, is unmeasured, and that single gap decides ` +
+          `whether the count=${MAX_COUNT} effect belongs to two providers or three.`,
       );
     }
   }
