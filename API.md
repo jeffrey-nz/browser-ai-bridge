@@ -610,11 +610,25 @@ the response lets a caller confuse the two.
 The current list lives in `src/session/CooldownManager.js`'s exported
 `WRITABLE_PROVIDERS`; for every other provider, `cooldownManager.check()`
 returns `{active: null}` and this `reason` can never be produced, by
-construction, not by account behaviour. A genuinely rate-limited call on one
+construction, not by account behaviour. A genuinely rate-limited call on eight
 of those nine surfaces as `reason: "rate_limited"` instead — a different code
-for a different mechanism, not the same fact under two names. Counting
-`"cooldown"` occurrences per provider to compare how often each one
-rate-limits will read nine structural zeros as nine well-behaved providers.
+for a different mechanism, not the same fact under two names — set from
+`err.rateLimited`, which chatgpt, deepseek, grok, gemini, and the generic path
+(kimi/qwen/zai/mistral/perplexity, via `runPromptWorkflow`) all set from their
+own detected throttle. **`copilot` is the ninth, and has no rate-limit
+detection of any kind** (checked: it does not go through `runPromptWorkflow`,
+and nothing under `src/ai/copilot/` sets `err.rateLimited` or matches a
+rate-limit message) — a genuine copilot throttle falls through to
+`reason: "stalled"` or the raw underlying error message, neither of which
+names it as a rate limit either. Re-check this list against the code before
+trusting it, the same way `WRITABLE_PROVIDERS` above is the thing to re-check,
+not this sentence, if either set ever changes. Counting `"cooldown"`
+occurrences per provider still reads nine structural zeros as nine
+well-behaved providers; counting `"rate_limited"` occurrences instead moves
+the same misreading onto one provider narrower — copilot's own structural
+zero on THAT code, specifically, would read as copilot never rate-limiting,
+when what it actually means is that copilot has nothing that would ever say
+so either way.
 
 **Runs in parallel**, not in series: each provider is its own already-open
 browser tab, so N requests cost close to what the slowest single one costs,
