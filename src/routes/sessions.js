@@ -130,6 +130,19 @@ router.get("/:id/snapshot", async (req, res) => {
     const { screenshotBase64, htmlSnippet } = await capturePageContext(
       session.page,
     );
+    // T-131: capturePageContext swallows its own two capture failures into
+    // the same plausible-empty values a genuinely blank page would produce
+    // (null / "") — by design, and left that way (T-125). Without these
+    // flags a caller could not tell "nothing here" from "the capture broke"
+    // from the response alone; the only signal was a server-side log line.
+    // screenshotFailed is exact: capturePageContext's screenshot only ever
+    // returns null on its own catch branch, never on success (a successful
+    // page.screenshot() always produces a real base64 string). htmlFailed is
+    // a best-effort signal, not an exact one: a truly empty htmlSnippet ""
+    // is also capturePageContext's own return on failure, but nothing stops
+    // page.content() from one day legitimately resolving to an empty string
+    // on some future degenerate page — documented as such rather than
+    // claimed airtight.
     return sendSuccess(res, {
       sessionId: id,
       providerId: session.providerId,
@@ -137,6 +150,8 @@ router.get("/:id/snapshot", async (req, res) => {
       timestamp: new Date().toISOString(),
       html: htmlSnippet || "",
       screenshotBase64: screenshotBase64 || null,
+      screenshotFailed: screenshotBase64 == null,
+      htmlFailed: !htmlSnippet,
     });
   } catch (err) {
     logger.error(
