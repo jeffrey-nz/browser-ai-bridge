@@ -96,10 +96,6 @@
     "reason": "T-116: validateBrowserConnection(), a diagnostic helper — not investigated further; no importer found."
   },
   {
-    "path": "src/heal/openai.js",
-    "reason": "The file's own first line: \"DEPRECATED: external OpenAI API removed per self-upgrade task. Use localHealer.js for selector suggestions.\""
-  },
-  {
     "path": "src/shims/utils/sleep.js",
     "reason": "T-116: a one-line sleep() shim — not investigated further; no importer found."
   },

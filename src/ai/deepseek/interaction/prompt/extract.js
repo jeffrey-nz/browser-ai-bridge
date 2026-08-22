@@ -1,5 +1,4 @@
 import { cleanAiResponse } from "#ai/shared/markdownCleaner.js";
-import { getProviderOverride } from "../../../../heal/overrides.js";
 import { resolveSelector } from "#ai/shared/locatorEngine.js";
 import { DEEPSEEK_LOCATORS } from "../../locators.js";
 
@@ -31,10 +30,16 @@ export async function extractDeepSeekResponse(page, initialAiBlockCount = 0) {
   }
 
   // Fallback: broad selector, last element (original pre-loop behavior).
-  const override = getProviderOverride("deepseek");
-  const responseChain =
-    override?.responseBlock ?? DEEPSEEK_LOCATORS.responseBlock;
-  const responseSel = await resolveSelector(page, responseChain, 500);
+  // T-126: this used to consult a runtime override from src/heal/overrides.js
+  // first — a live-selector cache the deleted (T-122) selfHeal() populated.
+  // Its only writer had zero callers since this repo's initial release
+  // (overrides.js's map was provably, permanently empty), so the override
+  // branch could only ever read null; collapsed to the plain selector.
+  const responseSel = await resolveSelector(
+    page,
+    DEEPSEEK_LOCATORS.responseBlock,
+    500,
+  );
   try {
     const lastResponse = page.locator(responseSel).last();
     await lastResponse.waitFor({ state: "attached", timeout: 5000 });
