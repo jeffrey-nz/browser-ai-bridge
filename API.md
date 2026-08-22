@@ -50,6 +50,15 @@ Returns liveness and browser state information.
       "idle": 0,
       "cooldown": false,
       "cooldownSeconds": 0
+    },
+    "copilot": {
+      "name": "Microsoft Copilot",
+      "total": 0,
+      "active": 0,
+      "awaitingOperator": 0,
+      "idle": 0,
+      "cooldown": null,
+      "cooldownSeconds": null
     }
   }
 }
@@ -62,6 +71,20 @@ in `src/stalls.js`). That path is only ever reached when a TTY operator is attac
 auto-skips and throws. **This field is always `0` for an unattended/API caller** — that is
 its structural range, not a health signal, and it should not be read as "nothing is
 stuck." Poll `longRunningSessions` for that instead.
+
+**`providers.<id>.cooldown` / `cooldownSeconds`** (crew board T-097) — tri-state, not
+boolean. `true`/a positive `cooldownSeconds` means that provider is actually on
+cooldown right now. `false`/`0` means measured and clear. **`null`/`null` means this
+provider has no code path in this repo that can EVER put it on cooldown** — not that it
+is clear, a structural absence of a writer, the same distinction the
+`awaitingOperator` note above draws for a different field. Today `gemini` is the only
+provider with a writer (`src/ai/gemini/interaction/prompt/errorHandler.js`,
+`cooldownManager.trigger("gemini", 120)` on a detected rate limit); the other nine
+`providers.<id>` keys always read `null`/`null`, as `copilot` does in the example
+above. The current writer set lives in
+`src/session/CooldownManager.js`'s exported `WRITABLE_PROVIDERS` — read that, not this
+paragraph, for whichever provider you're checking; it is the one place this changes
+if a future change gives another provider a real writer.
 
 **`longRunningSessions`** — sessions that have been mid-turn (actively awaiting a
 response) for longer than `longRunningThresholdMs` (120000ms by default — measured
