@@ -366,10 +366,15 @@ restarted again to `020a9af`, `serverProvenance: "verified"` and the same
 "unconfirmed"` (Strategy 1's `setInputFiles` did not throw, but no evidence appeared
 within the 6s verify window) — a DIFFERENT cause from T-018's one `not_offered` row
 (no input found at all), confirmed from each report's own `imageAttachedCause` rather
-than assumed. The 8th is sharper still: `imageAttached: true` (real evidence matched,
-including the `backend-api/estuary`-pattern thumbnail, `grew: true`, confirmed at 575ms
-— fast enough to be a client-side blob preview rather than a network round trip) but
-the model's own answer was `SEES=no`. Checking the account's upload-quota menu
+than assumed. The 8th is sharper still: `imageAttached: true`, `grew: true`, confirmed
+at 575ms — but `matchedAlternatives` is exactly `img[src^="blob:" i]` and
+`button[aria-label*="uploaded image" i]`; the server-hosted `backend-api/estuary`/
+`backend-api/files` alternatives were in the candidate list (`evidenceSelectorUsed`)
+and did NOT match. Both matched alternatives are exactly what a purely client-side
+preview can produce without any file reaching chatgpt's servers — fast enough (575ms)
+to be that, not a network round trip — and the model's own answer was `SEES=no`. That
+absence is evidence FOR, not against, the false-positive theory two paragraphs below.
+Checking the account's upload-quota menu
 (`[data-testid="composer-plus-btn"]`) right after this run showed a freshly-restarted
 "Get Plus for more uploads — Or wait 20 hours to upload again", where the same menu had
 read as fully open when T-018 ran minutes earlier — timing consistent with (not proven
