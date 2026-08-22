@@ -642,6 +642,19 @@ function main() {
     if (sb !== sa) return sb - sa;
     return providerSighted[b].n - providerSighted[a].n;
   });
+  // T-099: a standardised rate is only as strong as how much of the corpus
+  // weight it actually renormalises over — computeStandardizedRates()
+  // returns weightCovered/strataHeld for exactly this reason (T-087), and
+  // this block's first version (T-096) read only `.standardized` off it,
+  // discarding the number that says whether a rate is worth trusting.
+  // Measured on 9044ad7: perplexity ranked SECOND of ten at 73.8% end to
+  // end, standardised over 2 of 7 strata — 28.0% of corpus weight — with
+  // no coverage figure anywhere on the page beside it. 0.5 is the same
+  // judgement call T-087's INDEPENDENCE_MIN_IMAGE_SHARE already made for a
+  // different coverage question in this file — named and printed with the
+  // verdict it produces, not a bare literal in a condition.
+  const THIN_COVERAGE_THRESHOLD = 0.5;
+  const thinProviders = [];
   if (providerIdsAll.length > 0) {
     console.log(
       "\nPer-provider rate — GRADED (right/rows that stated a COUNT) and END",
@@ -650,13 +663,24 @@ function main() {
       "TO END (right/every SIGHTED row, a refusal scored as not right) side",
     );
     console.log(
-      "by side, both crude and STANDARDISED to the corpus's own stratum mix",
+      "by side, both crude and STANDARDISED to the corpus's own stratum mix,",
     );
     console.log(
-      "(T-096 — a ranking sorted on the graded rate is a ranking each",
+      "each standardised figure beside its OWN corpus-weight-covered and",
     );
-    console.log("provider's own exclusions built for itself; sorted here by");
-    console.log("standardised END TO END instead):");
+    console.log(
+      "strata-shown (T-096 — a ranking sorted on the graded rate is a",
+    );
+    console.log(
+      "ranking each provider's own exclusions built for itself; sorted here",
+    );
+    console.log(
+      `by standardised END TO END instead. T-099 — *THIN* marks a row ranked`,
+    );
+    console.log(
+      `on less than ${(THIN_COVERAGE_THRESHOLD * 100).toFixed(0)}% of corpus weight; read its standardised rate as`,
+    );
+    console.log("provisional, not as comparable to a fully-covered row):");
     for (const p of providerIdsAll) {
       const sighted = providerSighted[p];
       const graded = providerStrata[p];
@@ -666,6 +690,18 @@ function main() {
         e2eStd?.standardized != null
           ? (e2eStd.standardized * 100).toFixed(1)
           : "?";
+      const e2eWeightPct =
+        e2eStd?.weightCovered != null
+          ? (e2eStd.weightCovered * 100).toFixed(1)
+          : "?";
+      const e2eStrata = [...sighted.countsShown].sort((a, b) => a - b);
+      const e2eThin =
+        e2eStd?.weightCovered != null &&
+        e2eStd.weightCovered < THIN_COVERAGE_THRESHOLD;
+      if (e2eThin) thinProviders.push(p);
+      const e2eStr =
+        `end-to-end ${sighted.ok}/${sighted.n} ${e2ePct}% (std ${e2eStdPct}%, weight ${e2eWeightPct}%, strata ${e2eStrata.length}/${COUNT_RANGE} [${e2eStrata.join(",")}])` +
+        (e2eThin ? " *THIN*" : "");
       const gradedStr = graded
         ? (() => {
             const gStd = standardized[p];
@@ -674,7 +710,12 @@ function main() {
               gStd?.standardized != null
                 ? (gStd.standardized * 100).toFixed(1)
                 : "?";
-            return `${graded.ok}/${graded.n} ${gPct}% (std ${gStdPct}%)`;
+            const gWeightPct =
+              gStd?.weightCovered != null
+                ? (gStd.weightCovered * 100).toFixed(1)
+                : "?";
+            const gStrata = [...graded.countsShown].sort((a, b) => a - b);
+            return `${graded.ok}/${graded.n} ${gPct}% (std ${gStdPct}%, weight ${gWeightPct}%, strata ${gStrata.length}/${COUNT_RANGE} [${gStrata.join(",")}])`;
           })()
         : "never graded";
       const excl = providerExcludedByShape[p] || {
@@ -683,7 +724,12 @@ function main() {
         NO_ANSWER: 0,
       };
       console.log(
-        `  ${p.padEnd(11)} graded ${gradedStr.padEnd(30)} end-to-end ${sighted.ok}/${sighted.n} ${e2ePct}% (std ${e2eStdPct}%)   excluded SEES_NO=${excl.SEES_NO} ECHO=${excl.ECHO} NO_ANSWER=${excl.NO_ANSWER}`,
+        `  ${p.padEnd(11)} graded ${gradedStr.padEnd(55)} ${e2eStr}   excluded SEES_NO=${excl.SEES_NO} ECHO=${excl.ECHO} NO_ANSWER=${excl.NO_ANSWER}`,
+      );
+    }
+    if (thinProviders.length > 0) {
+      console.log(
+        `  *THIN*: ${thinProviders.join(", ")} — ranked on less than ${(THIN_COVERAGE_THRESHOLD * 100).toFixed(0)}% of corpus weight (end-to-end coverage).`,
       );
     }
     // T-096 clause 6: this board's product for every other board is "which
