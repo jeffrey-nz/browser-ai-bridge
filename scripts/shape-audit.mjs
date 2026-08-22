@@ -636,11 +636,17 @@ function main() {
     );
   }
 
-  // T-092 clause 5: the one coverage hole that decides whether the
-  // count=9 effect belongs to two providers or three, named rather than
-  // filled by a sweep. Computed, not asserted: true only if a provider has
-  // rows at some count but none at the top of the range AND has a
-  // recorded error somewhere it WAS shown.
+  // T-092 clause 5 (review round 2): the one coverage hole that decides
+  // whether the count=9 effect belongs to two providers or three, named
+  // rather than filled by a sweep. Two things this must say, both
+  // computed, neither hardcoded to "=9":
+  //   (a) the FULL run of ungraded top strata — deepseek's gap is
+  //       [7,8,9], not just 9; printing only "=9" understates how much of
+  //       the hard region is unmeasured for it.
+  //   (b) whether this provider is the ONLY one with a recorded error
+  //       outside the top stratum — the load-bearing half of the finding.
+  //       An error anywhere else would mean the hole is one gap among
+  //       several, not the single fact that decides the sentence.
   const neverShownHard = providerIdsCT.filter(
     (p) => !providerCountCells[p].has(MAX_COUNT),
   );
@@ -649,17 +655,38 @@ function main() {
     for (const cell of cells.values()) if (cell.ok < cell.n) return true;
     return false;
   });
+  // Every provider with a recorded error at any count OTHER than the top
+  // stratum — computed once so "is p the only one" is a real comparison,
+  // not an assumption baked into the sentence.
+  const erringOutsideTop = providerIdsCT.filter((p) => {
+    for (const [count, cell] of providerCountCells[p]) {
+      if (count !== MAX_COUNT && cell.ok < cell.n) return true;
+    }
+    return false;
+  });
   if (erringElsewhere.length > 0) {
     for (const p of erringElsewhere) {
       const std = standardized[p];
       const weightPct =
         std?.weightCovered != null ? (std.weightCovered * 100).toFixed(1) : "?";
+      const maxHeld = Math.max(...standardized[p].strataHeld);
+      const ungradedTop = counts.filter((c) => c > maxHeld);
+      const ungradedList =
+        ungradedTop.length > 1
+          ? ungradedTop.slice(0, -1).join(", ") +
+            " or " +
+            ungradedTop[ungradedTop.length - 1]
+          : String(ungradedTop[0]);
+      const isSole = erringOutsideTop.length === 1 && erringOutsideTop[0] === p;
+      const uniqueness = isSole
+        ? `and is the ONLY provider with a recorded error outside truth.count=${MAX_COUNT} — `
+        : `(not the only provider with an error outside truth.count=${MAX_COUNT}: also ${erringOutsideTop.filter((x) => x !== p).join(", ")}) — `;
       console.log(
-        `\nCOVERAGE HOLE: ${p} has never been graded at truth.count=${MAX_COUNT} ` +
-          `(${weightPct}% of corpus weight covered) and has a recorded error at a ` +
-          `count it WAS shown — whether it fails at ${MAX_COUNT} like the providers ` +
-          `above, or holds like the rest, is unmeasured, and that single gap decides ` +
-          `whether the count=${MAX_COUNT} effect belongs to two providers or three.`,
+        `\nCOVERAGE HOLE: ${p} has never been graded at truth.count ${ungradedList} ` +
+          `(${weightPct}% of corpus weight covered) ${uniqueness}` +
+          `whether it fails at the top like the providers above, or holds like the rest, ` +
+          `is unmeasured, and that gap decides whether the count=${MAX_COUNT} effect ` +
+          `belongs to two providers or three.`,
       );
     }
   }
