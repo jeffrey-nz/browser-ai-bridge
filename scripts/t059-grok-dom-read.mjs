@@ -67,8 +67,19 @@ export function summarizeAlignmentTrace(trace, completedAtMs) {
     (t) => t.lastAlignment === "assistant",
   );
   const tickAtCompletion = trace.find((t) => t.tMs >= completedAtMs);
+  // T-134: this used to collapse to a boolean
+  // (tickAtCompletion.lastAlignment === "user"), which folded "the
+  // ancestor was the assistant's" and "we could not read the ancestor at
+  // all" into the same `false` — the same shape T-132 fixed for the two
+  // AtAnyTick booleans above, still present here. Field NAME is unchanged;
+  // the VALUE is now three distinguishable states, not two: "user" |
+  // "assistant" | null — null covers both "no tick reached completedAtMs"
+  // and "a tick was reached but its own lastAlignment is null" (an
+  // unreadable ancestor — see classifyAlignmentClass(null) above). Neither
+  // null case is refutable back into "assistant" from this field alone,
+  // which is the point.
   const lastNodeWasUserAtCompletionTick = tickAtCompletion
-    ? tickAtCompletion.lastAlignment === "user"
+    ? tickAtCompletion.lastAlignment
     : null;
   return {
     userBubbleAtAnyTick,

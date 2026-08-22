@@ -60,7 +60,9 @@ test("summarizeAlignmentTrace reports user for a sample shaped like the user's n
 
   assert.equal(result.userBubbleAtAnyTick, true);
   assert.equal(result.assistantBubbleAtAnyTick, true);
-  assert.equal(result.lastNodeWasUserAtCompletionTick, false);
+  // T-134: the completion-tick field's value IS the alignment string, not
+  // a boolean — see summarizeAlignmentTrace's own comment.
+  assert.equal(result.lastNodeWasUserAtCompletionTick, "assistant");
 });
 
 test("summarizeAlignmentTrace's completion-tick field is null when no sample reaches completedAtMs", () => {
@@ -80,7 +82,7 @@ test("summarizeAlignmentTrace's completion-tick field is null when no sample rea
   assert.equal(result.lastNodeWasUserAtCompletionTick, null);
 });
 
-test("summarizeAlignmentTrace matches the two committed reports: both booleans false when every tick's ancestor was the assistant's", () => {
+test("summarizeAlignmentTrace matches the two committed reports: both AtAnyTick booleans false when every tick's ancestor was the assistant's", () => {
   // Reproduces the actual shape of evidence/t059-grok-inwindow-run1.json
   // and -run2.json: .last() was the assistant's node at every sampled
   // tick in both runs (T-059's finding, unchanged by this fix).
@@ -107,5 +109,41 @@ test("summarizeAlignmentTrace matches the two committed reports: both booleans f
 
   assert.equal(result.userBubbleAtAnyTick, false);
   assert.equal(result.assistantBubbleAtAnyTick, true);
-  assert.equal(result.lastNodeWasUserAtCompletionTick, false);
+  assert.equal(result.lastNodeWasUserAtCompletionTick, "assistant");
+});
+
+// T-134: the completion-tick field used to collapse "the ancestor was the
+// assistant's" and "we could not read the ancestor at all" into the same
+// `false`. These two cases must now read differently.
+test("summarizeAlignmentTrace's completion-tick field distinguishes an unreadable ancestor (matchCount 0) from a genuinely-read assistant ancestor", () => {
+  const unreadableTrace = [
+    {
+      tMs: 20,
+      matchCount: 0,
+      lastClass: null,
+      lastId: null,
+      lastText: null,
+      lastAlignment: null,
+    },
+  ];
+  const assistantTrace = [
+    {
+      tMs: 20,
+      matchCount: 18,
+      lastClass: RUN1_LAST_NODE_OWN_CLASS,
+      lastId: null,
+      lastText: "SEES=no",
+      lastAlignment: classifyAlignmentClass(RUN1_ASSISTANT_WRAPPER_CLASS),
+    },
+  ];
+
+  const unreadableResult = summarizeAlignmentTrace(unreadableTrace, 20);
+  const assistantResult = summarizeAlignmentTrace(assistantTrace, 20);
+
+  assert.equal(unreadableResult.lastNodeWasUserAtCompletionTick, null);
+  assert.equal(assistantResult.lastNodeWasUserAtCompletionTick, "assistant");
+  assert.notEqual(
+    unreadableResult.lastNodeWasUserAtCompletionTick,
+    assistantResult.lastNodeWasUserAtCompletionTick,
+  );
 });
