@@ -1,0 +1,57 @@
+T-135 clause 4 — seen-to-fail demo: the split moves while the pooled total
+does not, proving a single pooled number (23) cannot see a compensating
+pair the way the product/grader/other split can.
+
+Scratch setup for this ONE run only, both reverted immediately after
+(neither change is in this ticket's commit — `git status --short` and
+`git diff scripts/t133-grok-length-ladder.mjs` were confirmed clean/empty
+right after):
+  - added src/.t135-demo-scratch.js (one line: `const x = serverProvenance;`)
+    — a fake product consumer
+  - temporarily removed ONE matching line from
+    scripts/t133-grok-length-ladder.mjs (`let serverTreeDirty = null;`)
+    — one fewer "other" consumer
+
+Baseline (unmodified tree, committed state):
+  ... 23 (6 of them in this file, scripts\provenance-census.mjs)
+  product (src/, bin/): 0   grader (...): 4   other (rest of scripts/): 19
+
+This run (both scratch edits in place):
+  ... 23 (6 of them in this file, scripts\provenance-census.mjs)
+  product (src/, bin/): 1   grader (...): 4   other (rest of scripts/): 18
+
+Total unchanged (23 -> 23); split moved product 0->1, other 19->18,
+exactly compensating. Full output below.
+======================================================================
+tracked report json in reports/vision-probe: 157   (untracked, EXCLUDED: 0)
+
+stratum                files  rows  1-prov  planted  graded  CONF  REFUT  NEITH
+verified                  30    55      25        1      36     8      1     27
+stale-confirmed           19    20      18        0      20    11      0      9
+unverifiable              10    10      10        3       9     5      2      2
+stale-ambiguous            1     1       1        0       1     1      0      0
+KEY-ABSENT                97   135      80        1      93    39      2     52
+TOTAL                    157   221     134        5     159    64      5     90
+
+EVERY plantedBreak FILE — the positive controls, the instrument's capacity to fail:
+  run-1787366633944.json                         prov=unverifiable    serverStale=false serverTreeDirty=true
+  run-1787366852607.json                         prov=unverifiable    serverStale=false serverTreeDirty=true
+  run-1787367818592.json                         prov=unverifiable    serverStale=false serverTreeDirty=true
+  t053-mistral-deliberate-evidence-break.json    prov=KEY-ABSENT      serverStale=false serverTreeDirty=undefined
+  t130-planted-network-block.json                prov=verified        serverStale=false serverTreeDirty=false
+  -> in the 'verified' stratum: 1 of 5
+
+ia-grade's REFUTABLE DENOMINATOR, row by row, with provenance:
+  run-1787352845173.json                         zai        natural  verified
+  run-1787366852607.json                         deepseek   PLANTED  unverifiable
+  run-1787367818592.json                         gemini     PLANTED  unverifiable
+  t006-zai-r2-run1.json                          zai        natural  KEY-ABSENT
+  t053-mistral-deliberate-evidence-break.json    mistral    PLANTED  KEY-ABSENT
+  -> attributable to a named commit ('verified'): 1 of 5
+
+lines reading serverProvenance/serverStale/serverTreeDirty under src/ scripts/ bin/, excluding the two writers: 23 (6 of them in this file, scripts\provenance-census.mjs)
+  product (src/, bin/): 1   grader (ia-grade.mjs, shape-audit.mjs): 4   other (rest of scripts/): 18
+  src\.t135-demo-scratch.js (1)
+  scripts\ia-grade.mjs (4)
+  scripts\provenance-census.mjs (6)
+  scripts\t133-grok-length-ladder.mjs (12)

@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Imported from the checkout's OWN ia-grade.mjs, not a second copy of its
 // grading rule — same reason ia-grade imports classify() from vision-probe.mjs
@@ -176,13 +176,62 @@ console.log(
 // win32 and posix. Counts LINES mentioning any of the three provenance fields
 // in every .js/.mjs/.cjs under src/ scripts/ bin/, excluding the two files
 // that WRITE them.
+//
+// T-135: this walk is NOT filtered to exclude the file you are reading right
+// now, even though that file matches its own corpus rule ("every .js/.mjs/
+// .cjs under src/ scripts/ bin/") and therefore counts its own regex, its
+// own WRITERS entry, and its own report line as consumers. A self-filter
+// (`if (rel === SELF_PATH) continue`) was considered and rejected: the
+// sibling instance on the mmg board (test/check-comment-addresses.mjs,
+// T-235) is the same shape pointed the OTHER way — that gate's own header
+// carries a genuinely stale address among its worked examples, and
+// excluding its own file would have silently suppressed the one real fault
+// it ever found in itself. Filtering a corpus walk to exclude its own
+// implementation hides whichever direction that file's own instance of the
+// count happens to point, flattering or damning, for good. The fix here is
+// PARTITION AND PRINT (clauses 1-2 below), never filter — do not re-add an
+// exclusion for this file.
 const FIELDS = /serverProvenance|serverStale|serverTreeDirty/;
 const WRITERS = new Set([
   path.normalize("scripts/vision-probe.mjs"),
   path.normalize("scripts/serverProvenance.mjs"),
 ]);
+// T-135: the two files this census's own finding is ABOUT — the graders
+// that already read `raw`/`shape` off a report and could act on its
+// provenance — kept as their own bucket rather than pooled with every other
+// scripts/ file, so a grader wiring the field in is visible on its own row
+// instead of buried inside "scripts/ generally". Named, not derived from a
+// convention, because there is no naming convention that picks these two
+// out of scripts/ — see the split below for why that matters.
+const GRADERS = new Set([
+  path.normalize("scripts/ia-grade.mjs"),
+  path.normalize("scripts/shape-audit.mjs"),
+]);
+// This file's own path, relative to cwd (the header says "run from the
+// checkout root") — derived from import.meta.url, not typed as the literal
+// "scripts/provenance-census.mjs", so a rename of this file does not leave
+// a stale self-share comparison behind.
+const SELF_PATH = path.normalize(
+  path.relative(process.cwd(), fileURLToPath(import.meta.url)),
+);
+
+// T-135 clause 1: the corpus's product/grader/other split — DERIVED from
+// each consumer's own path at classification time, not typed as three
+// separate totals that could drift from the walk. "product" (src/, bin/)
+// is the population T-128/L-029 were actually about; pooling it with
+// scripts/ is what let it sit at 0 inside a non-zero 23 unnoticed.
+function classifyConsumer(rel) {
+  const norm = path.normalize(rel);
+  const top = norm.split(path.sep)[0];
+  if (top === "src" || top === "bin") return "product";
+  if (GRADERS.has(norm)) return "grader";
+  return "other";
+}
+
 let consumers = 0;
+let selfConsumers = 0;
 const consumerFiles = [];
+const bySplit = { product: 0, grader: 0, other: 0 };
 const walk = (d) => {
   if (!fs.existsSync(d)) return;
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -198,6 +247,8 @@ const walk = (d) => {
         .filter((l) => FIELDS.test(l)).length;
       if (hits) {
         consumers += hits;
+        bySplit[classifyConsumer(rel)] += hits;
+        if (path.normalize(rel) === SELF_PATH) selfConsumers += hits;
         consumerFiles.push(`${rel} (${hits})`);
       }
     }
@@ -205,6 +256,12 @@ const walk = (d) => {
 };
 for (const d of ["src", "scripts", "bin"]) walk(d);
 console.log(
-  `\nlines reading serverProvenance/serverStale/serverTreeDirty under src/ scripts/ bin/, excluding the two writers: ${consumers}`,
+  `\nlines reading serverProvenance/serverStale/serverTreeDirty under src/ scripts/ bin/, excluding the two writers: ${consumers}` +
+    (selfConsumers
+      ? ` (${selfConsumers} of them in this file, ${SELF_PATH})`
+      : ""),
+);
+console.log(
+  `  product (src/, bin/): ${bySplit.product}   grader (ia-grade.mjs, shape-audit.mjs): ${bySplit.grader}   other (rest of scripts/): ${bySplit.other}`,
 );
 if (consumerFiles.length) console.log("  " + consumerFiles.join("\n  "));
