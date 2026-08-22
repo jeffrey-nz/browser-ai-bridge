@@ -386,6 +386,23 @@ false-positive path distinct from every previously-documented `imageAttached` fa
 mode, un-confirmed here (would need a CDP network trace of a failing attempt, T-103's
 method, not run this session) and filed separately as crew board T-130 rather than
 asserted.
+
+T-130 measured the corpus rather than the live ordering it originally set out for —
+8 live attempts that session produced zero network requests to backend-api/files and
+zero evidence growth at all (a state distinct from anything in the tracked corpus,
+unexplained), so the ordering question stayed open. What DID settle: of chatgpt's 8
+tracked `imageAttached:true` rows (excluding blind turns), `img[src^="blob:" i]`
+matched WITHOUT the estuary/backend-api img on 7 — 6 of those 7 are CONFIRMED (the
+model stated the correct COUNT), the 7th is the one row where the model answered
+SEES=no anyway. The blob:-only signature is the NORMAL evidence footprint for
+chatgpt's `imageAttached:true`, present on real successes and the one denial alike —
+which means it is diagnostic of NEITHER. `imageAttached:true` on a chatgpt row says
+an evidence alternative matched, not that the model received the image; the model's
+own stated COUNT/COLOR correctness (already graded separately, `scripts/ia-grade.mjs`)
+remains the only reliable signal. Deliberately NOT tightened: requiring the
+server-hosted alternative instead would flip those same 6 CONFIRMED rows to reading
+as failures — a measured regression on rows independently proven correct, not an
+improvement.
 `kimi` and
 `zai` could not complete a turn at all in that same measurement; `kimi`'s cause was found
 and fixed (crew board T-006): its `responseBlock` selector (`.message-list`) no longer

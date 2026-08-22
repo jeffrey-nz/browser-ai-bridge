@@ -1,0 +1,75 @@
+T-130 — live-session summary, 2026-08-22, bridge commit aba41ba (serverLoadedCommit == this HEAD, treeDirty false, verified via /api/ping before starting).
+
+Purpose: measure the ORDERING of chatgpt's imageAttached evidence alternatives
+(blob:, the uploaded-image button, the estuary img, the backend-api/files img)
+relative to POST /backend-api/files's network response, on real turns that
+PASS. scripts/t130-ordering-trace.mjs is the method: a fresh composer
+(startNewChat), a read-only CDP session (Network.enable, no mutation),
+baseline counts per evidence selector taken before the turn, then a real
+turn spawned through the unmodified production path
+(scripts/vision-probe.mjs --providers chatgpt), while polling each
+selector's count every 50ms and recording the first timestamp it exceeds its
+own baseline (same requireGrowth discipline uploadFile.js itself uses, so a
+leftover match from an earlier turn can't be mistaken for this turn's own).
+
+RESULT: 7 of 7 natural attempts (count=6 color=crimson, same fixture) came
+back shape SEES_NO, imageAttachedCause "unconfirmed" — and, distinct from
+every attempt T-127 recorded minutes earlier, ALL SEVEN produced ZERO
+Network.requestWillBeSent/responseReceived events for backend-api/files and
+ZERO evidence-selector growth of any kind. Not "evidence appeared without
+server confirmation" (T-127's run2 shape) — nothing observable happened at
+all, client-side or network-side, on any of the seven.
+
+  run  report                                    networkEvents  evidenceGrowth
+  1    reports/vision-probe/t130-run1.json        []             {}
+  2    reports/vision-probe/t130-run2.json        []             {}
+  3    reports/vision-probe/t130-run3.json        []             {}
+  4    reports/vision-probe/t130-run4.json        []             {}
+  5    reports/vision-probe/t130-run5.json        []             {}
+  6    reports/vision-probe/t130-run6.json        []             {}
+  7    reports/vision-probe/t130-run7.json        []             {}
+
+(Full per-run trace JSON, all byte-identical apart from timestamps, was
+captured to evidence/t130-ordering-run{1..7}.json during the session and is
+NOT committed individually — nothing in them beyond what's summarised above.
+One representative copy is kept at evidence/t130-ordering-run1.json.)
+
+CLAUSE 3 (the deliberate control): ran scripts/t130-planted-network-block.mjs
+— CDP Network.setBlockedURLs against "*backend-api/files*" installed BEFORE
+the turn, vision-probe.mjs run with --planted-break naming the block, report
+at reports/vision-probe/t130-planted-network-block.json. Result: also
+SEES_NO/unconfirmed, zero network events. INCONCLUSIVE AS A CONTROL: since
+even UNBLOCKED natural attempts (runs 1-7) never generated a request to
+backend-api/files either, blocking that URL tested nothing this session — the
+account state already prevented the request from firing regardless of the
+block. The block itself was installed correctly (Network.setBlockedURLs
+returned without error) but its effect could not be observed. The CDP
+session/target closed before the script's own unblock call could run
+(bridge tab recycling) — verified afterward this did not leave a lingering
+block: Network.setBlockedURLs is scoped to the CDP session bound to the
+closed target, and a fresh chatgpt.com tab was already open under a
+different target when checked.
+
+CONCLUSION FOR CLAUSE 1: could not be answered. 8 consecutive live attempts
+(7 natural + 1 planted) in this session never produced a PASS, never
+produced a single network request to backend-api/files, and never produced
+any evidence-selector growth — a state qualitatively different from both
+T-018's 2/3 PASS (~07:34Z) and T-127's 1/8 partial success with real evidence
+growth (~08:00-08:07Z), roughly 20-50 minutes earlier the same day, same
+account. Whatever changed, it changed again since T-127's last observation
+and is not explained by anything this session measured. Not chased further
+(would need more live turns this ticket's own log already discourages
+spending without a specific reason to expect a different result).
+
+CLAUSE 2: could not be answered — no evidence match occurred this session to
+name an element from. The one prior artifact that HAD a match
+(t127-run2.json) only records which selector strings matched, not the
+matched element's own outerHTML/src; that DOM state no longer exists to
+inspect retroactively.
+
+What COULD be answered without new live turns — a corpus-wide count instead
+of a live ordering — is in this ticket's commit message and in the input.js/
+API.md updates: of chatgpt's 8 tracked imageAttached:true rows, 7 show the
+same blob:-only-no-server signature as t127-run2.json, and 6 of those 7 are
+CONFIRMED (correct COUNT). The signature is not diagnostic of arrival either
+way.

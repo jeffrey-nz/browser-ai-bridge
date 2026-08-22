@@ -1,0 +1,33 @@
+{
+  "graderSha256": "193fe2ae32cadc5c",
+  "bridgeCommit": "aba41ba562a4ad718cca04b8251e16683561f45a",
+  "treeDirty": false,
+  "serverLoadedCommit": "aba41ba562a4ad718cca04b8251e16683561f45a",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-22T08:37:53.291Z",
+  "fixtureSha256": "0c0cb782ec6293a464128d1ecd90f1ea6843b8088bf7e78355de8b04eba88060",
+  "plantedBreak": "T-130: blocked POST */backend-api/files* via CDP Network.setBlockedURLs BEFORE the turn — tests whether chatgpt's evidence selectors (blob:/uploaded-image button) still read imageAttached:true when the upload cannot reach the server at all",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 6,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787387819067.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 54015,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

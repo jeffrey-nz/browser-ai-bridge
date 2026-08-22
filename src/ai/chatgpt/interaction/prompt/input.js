@@ -48,11 +48,33 @@ export async function uploadFileToChatGpt(page, filePath, evidenceOut = null) {
   // storage, process_upload_stream — every time, with a real thumbnail
   // visibly rendered every time). chatgpt's thumbnail is an
   // `aria-label="Open image: User uploaded image"` button wrapping an
-  // `<img src="https://chatgpt.com/backend-api/estuary/content?...">` —
-  // never a `blob:` src, no "attachment"/"thumbnail"/"file-preview" class or
-  // testid anywhere on it, so every alternative in DEFAULT_ATTACHMENT_EVIDENCE
-  // misses it. Keep the shared defaults too (harmless if they never match,
-  // and free coverage if a future redesign happens to satisfy one of them).
+  // `<img src="https://chatgpt.com/backend-api/estuary/content?...">`.
+  //
+  // T-130 CORRECTION — "never a `blob:` src" above is WRONG, and "harmless
+  // if they never match" is backwards. Measured across the whole tracked
+  // corpus (reports/vision-probe/), not one row: of 8 chatgpt rows with
+  // imageAttached:true (excluding blind turns), `img[src^="blob:" i]`
+  // matched WITHOUT the estuary/backend-api img on 7 of them. 6 of those 7
+  // are CONFIRMED (the model stated the correct COUNT — genuinely correct
+  // by this board's strongest check); the 7th is the one row where the
+  // model answered SEES=no despite imageAttached:true.
+  //
+  // So the blob:-only signature is NOT diagnostic of failure — it is the
+  // NORMAL evidence footprint for chatgpt's imageAttached:true, present on
+  // both real successes and the one denied row alike. That means it also
+  // is NOT proof of success: `imageAttached:true` on a chatgpt row says
+  // "some evidence alternative matched", not "the image reached the
+  // model" — those are different claims, and this evidence set cannot
+  // currently tell them apart. Do NOT "fix" this by requiring the
+  // estuary/backend-api alternative instead: T-130 tried to observe the
+  // ordering live (does the estuary img ever appear, and when, relative to
+  // the blob: preview and the network response) and could not — 8
+  // consecutive live attempts that session produced zero network requests
+  // to backend-api/files and zero evidence growth at all, a state qual-
+  // itatively different from the corpus rows above and not explained.
+  // Tightening verify() to require server confirmation would flip 6 of the
+  // 7 currently-CONFIRMED rows above to reading as failures — a measured
+  // regression on rows independently proven correct, not an improvement.
   const chatgptEvidenceSelector =
     DEFAULT_ATTACHMENT_EVIDENCE +
     ', button[aria-label*="uploaded image" i], img[src*="backend-api/estuary" i], img[src*="backend-api/files" i]';

@@ -1,0 +1,13 @@
+{
+  "ts": "2026-08-22T08:29:24.877Z",
+  "visionProbeExitCode": 0,
+  "visionProbeOut": "reports/vision-probe/t130-run1.json",
+  "baseline": {
+    "blob": 0,
+    "uploadedImageBtn": 0,
+    "estuary": 0,
+    "files": 0
+  },
+  "networkEvents": [],
+  "firstEvidenceGrowthMs": {}
+}
