@@ -506,8 +506,18 @@ if (
   for (const line of formatCorpusPriorBlock(prior, COUNT_RANGE, colorChoices)) {
     console.log(line);
   }
+  // T-094: the denominator here used to be `cell(false, () => true)` —
+  // EVERY imageAttached=false row, planted ones included — while the
+  // numerator (`refutable`, above) already excludes them. Section 4's own
+  // "N imageAttached=false rows" reads the same unfiltered total, so the
+  // two agreed with each other and neither was the naturally-occurring
+  // population the line claims to report. The effect: the printed rate
+  // FALLS every time the board plants a deliberate break, for a reason
+  // the line never states. Excluding planted rows here too — the same
+  // predicate `refutable` itself already applies.
+  const naturalFalseCount = cell(false, (r) => !r.plantedBreak);
   console.log(
-    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${cell(false, () => true)} (+ ${planted.length} planted, listed separately)`,
+    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${naturalFalseCount} (+ ${planted.length} planted, listed separately)`,
   );
   for (const r of refutable)
     console.log(
@@ -554,8 +564,14 @@ if (
       colorChoices,
     ),
   );
+  // T-094 review of the same fault: this bucket is "everything that is
+  // neither confirming nor naturally-occurring refutable" — planted rows
+  // are neither (they are their own, deliberately-excluded population,
+  // same as the line above), but were never subtracted out here, so this
+  // count silently absorbed every plant, growing by exactly planted.length
+  // each time one landed.
   console.log(
-    `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length}`,
+    `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length - planted.length}`,
   );
 
   // T-038: WHICH cause a false row carries, where one was ever computed.
