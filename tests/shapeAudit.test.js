@@ -10,6 +10,7 @@ import {
   classifyAbsence,
   formatOutOfRangeSection,
   formatWrongBucketSection,
+  formatNoReplySection,
   computeStandardizedRates,
   fisherExactTwoSided,
 } from "../scripts/shape-audit.mjs";
@@ -1127,6 +1128,18 @@ test("auditShapes counts a no-reply row (no raw) separately, split into bridge-a
         truth: { count: 6, color: "teal" },
         results: [{ providerId: "a", raw: "SEES=yes COUNT=6 COLOR=teal" }],
       },
+      // T-107 review: a second provider, sighted, with NO no-reply rows at
+      // all. It must still print a "0" line in the headline block, so that
+      // its zero is distinguishable from "never swept" — the same
+      // distinction T-078 exists to preserve, and the reason the total
+      // line already prints "— none" at zero. providerSighted holds every
+      // provider a corpus ever saw; noReplyByProvider only holds the ones
+      // with at least one no-reply row — the printed block must be built
+      // from the UNION of both key sets, not from noReplyByProvider alone.
+      "normal-b.json": {
+        truth: { count: 6, color: "teal" },
+        results: [{ providerId: "b", raw: "SEES=yes COUNT=6 COLOR=teal" }],
+      },
     });
 
     const { noReplyByProvider, rowsWithRaw, providerSighted } =
@@ -1135,10 +1148,26 @@ test("auditShapes counts a no-reply row (no raw) separately, split into bridge-a
     assert.equal(noReplyByProvider.a.n, 2);
     assert.equal(noReplyByProvider.a.bridgeAttributable, 1);
     assert.equal(noReplyByProvider.a.unattributed, 1);
-    // Only the one normal row has raw at all.
-    assert.equal(rowsWithRaw, 1);
+    // Only the two normal rows have raw at all.
+    assert.equal(rowsWithRaw, 2);
     // The no-reply rows never enter the ranking population either.
     assert.equal(providerSighted.a.n, 1);
+
+    // Provider b is sighted but never appears in noReplyByProvider at all —
+    // the case the review found unprinted. Asserted against the actual
+    // printed lines (formatNoReplySection), not just the underlying data:
+    // auditShapes()'s own populations were always correct here, the bug was
+    // entirely in which keys the print loop iterated.
+    assert.ok(providerSighted.b);
+    assert.equal(noReplyByProvider.b, undefined);
+    const lines = formatNoReplySection(
+      noReplyByProvider,
+      providerSighted,
+      rowsWithRaw,
+    );
+    const bLine = lines.find((l) => l.trim().startsWith("b "));
+    assert.ok(bLine, "expected a printed line for provider b");
+    assert.match(bLine, /^\s*b\s+0\s+bridge-attributable=0\s+unattributed=0$/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -778,19 +778,12 @@ function main() {
   // attributable at all (see the drop site's own comment for the split
   // rule). NOT in the end-to-end ranking below (clause 3, option b) — this
   // is the visible accounting T-096's own caution asks for regardless.
-  const noReplyProviders = Object.keys(noReplyByProvider).sort();
-  const noReplyTotal = noReplyProviders.reduce(
-    (s, p) => s + noReplyByProvider[p].n,
-    0,
-  );
-  console.log(
-    `   no reply at all (dropped before rowsWithRaw, excluded from the ranking below): ${noReplyTotal} of ${sightedRowsWithRaw + noReplyTotal} sighted gradable rows${noReplyProviders.length ? "" : " — none"}`,
-  );
-  for (const p of noReplyProviders) {
-    const nr = noReplyByProvider[p];
-    console.log(
-      `     ${p.padEnd(11)} ${nr.n}   bridge-attributable=${nr.bridgeAttributable}  unattributed=${nr.unattributed}`,
-    );
+  for (const line of formatNoReplySection(
+    noReplyByProvider,
+    providerSighted,
+    sightedRowsWithRaw,
+  )) {
+    console.log(line);
   }
   // T-091: the headline's sighted/blind split above is decided by
   // `j.blind` (was this a --blind run); every truth-gated table below is
@@ -1372,6 +1365,49 @@ function main() {
 // true sentence in one artefact being unreadable from another. Pure/
 // testable for the same reason formatOutOfRangeSection is: the zero-tally
 // case needs to print a real "0 of 0", not silently vanish.
+// T-107 review: pulled into a pure, return-lines function (same convention
+// as formatOutOfRangeSection/formatWrongBucketSection below) rather than
+// console.log directly, so the zero-provider case is unit-testable without
+// capturing stdout — a prior version of this block iterated only
+// Object.keys(noReplyByProvider), so a provider with zero no-reply rows
+// never got a line at all, making its 0 indistinguishable from "never
+// swept", exactly the distinction T-078 exists to preserve.
+// `providerSighted` holds every provider a corpus ever saw; the union with
+// noReplyByProvider's own keys is what guarantees every sighted provider
+// gets a line, zero or not.
+export function formatNoReplySection(
+  noReplyByProvider,
+  providerSighted,
+  sightedRowsWithRaw,
+) {
+  const lines = [];
+  const noReplyProviders = Object.keys(noReplyByProvider).sort();
+  const noReplyTotal = noReplyProviders.reduce(
+    (s, p) => s + noReplyByProvider[p].n,
+    0,
+  );
+  lines.push(
+    `   no reply at all (dropped before rowsWithRaw, excluded from the ranking below): ${noReplyTotal} of ${sightedRowsWithRaw + noReplyTotal} sighted gradable rows${noReplyProviders.length ? "" : " — none"}`,
+  );
+  const allSweptProviders = Array.from(
+    new Set([
+      ...Object.keys(providerSighted),
+      ...Object.keys(noReplyByProvider),
+    ]),
+  ).sort();
+  for (const p of allSweptProviders) {
+    const nr = noReplyByProvider[p] || {
+      n: 0,
+      bridgeAttributable: 0,
+      unattributed: 0,
+    };
+    lines.push(
+      `     ${p.padEnd(11)} ${nr.n}   bridge-attributable=${nr.bridgeAttributable}  unattributed=${nr.unattributed}`,
+    );
+  }
+  return lines;
+}
+
 export function formatWrongBucketSection(wrongRows) {
   const colorRight = wrongRows.filter((r) => r.colorOk).length;
   const lines = [];
