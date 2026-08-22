@@ -1,0 +1,28 @@
+{
+  "graderSha256": "b9d92df779eb9c5a",
+  "bridgeCommit": "f209109667cd1f8555165ea31dd21f52a9e29f15",
+  "treeDirty": false,
+  "serverLoadedCommit": "f209109667cd1f8555165ea31dd21f52a9e29f15",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-22T00:45:47.575Z",
+  "fixtureSha256": "0fefcce80ed014bdf66552e10b02533bab9bdf4223c429283fe34a57dc4cb9f8",
+  "endpoint": "ask",
+  "truth": {
+    "count": 5,
+    "color": "crimson"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787359492811.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 54623,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}
