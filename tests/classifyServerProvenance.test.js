@@ -25,10 +25,7 @@ test.describe("classifyServerProvenance", () => {
   });
 
   test("stale + unmeasured tree state cannot rule the ambiguous case out", () => {
-    assert.equal(
-      classifyServerProvenance(true, null),
-      "stale-unmeasured-tree",
-    );
+    assert.equal(classifyServerProvenance(true, null), "stale-unmeasured-tree");
   });
 
   test("matching sha + clean startup is genuinely verified", () => {
