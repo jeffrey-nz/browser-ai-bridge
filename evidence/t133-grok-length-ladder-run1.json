@@ -1,0 +1,125 @@
+{
+  "ts": "2026-08-22T09:32:25.086Z",
+  "baseUrl": "http://localhost:3333",
+  "turnsPerRung": 3,
+  "bridgeCommit": "68079cecd31a53c10a260c1b62e7681191ce7162",
+  "treeDirty": false,
+  "serverLoadedCommit": "68079cecd31a53c10a260c1b62e7681191ce7162",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "rungs": [
+    {
+      "rung": "short",
+      "promptLength": 93,
+      "promptUtf8Bytes": 95,
+      "prompt": "Look at the attached image ONLY — do not guess. Reply with SEES=yes or SEES=no, nothing else.",
+      "echoCount": 0,
+      "turnCount": 3,
+      "turns": [
+        {
+          "elapsedMs": 47710,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 49894,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 43614,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        }
+      ]
+    },
+    {
+      "rung": "control",
+      "promptLength": 313,
+      "promptUtf8Bytes": 315,
+      "prompt": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no",
+      "echoCount": 0,
+      "turnCount": 3,
+      "turns": [
+        {
+          "elapsedMs": 46371,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 52693,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 46814,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        }
+      ]
+    },
+    {
+      "rung": "mid",
+      "promptLength": 2000,
+      "promptUtf8Bytes": 2002,
+      "prompt": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nThe squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squaSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no",
+      "echoCount": 0,
+      "turnCount": 3,
+      "turns": [
+        {
+          "elapsedMs": 47566,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 46678,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 44631,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        }
+      ]
+    },
+    {
+      "rung": "long",
+      "promptLength": 4500,
+      "promptUtf8Bytes": 4502,
+      "prompt": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n\nThe squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid colours only, nothing else is drawn on the canvas. The squares are solid coloSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n\n...or reply with EXACTLY this if you cannot see any image at all:\n\nSEES=no",
+      "echoCount": 0,
+      "turnCount": 3,
+      "turns": [
+        {
+          "elapsedMs": 44548,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 44909,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        },
+        {
+          "elapsedMs": 43236,
+          "shape": "SEES_NO",
+          "stated": null,
+          "raw": "SEES=no"
+        }
+      ]
+    }
+  ]
+}
