@@ -12,12 +12,24 @@ import { recordLocatorResolution } from "./locatorResolutionLog.js";
 // `div[contenteditable="true"]`), and taking the DOM-last of THAT one
 // selector's own matches is a narrower, already-reviewed idiom, distinct
 // from the cross-selector priority order this function exists to honour.
+//
+// T-108 review: no `timeoutMs` parameter — Locator.isVisible()'s own
+// `timeout` option is marked `@deprecated This option is ignored` in
+// playwright-core's own types (node_modules/playwright-core/types/
+// types.d.ts:14193-14198 — "does not wait for the element to become
+// visible and returns immediately"), confirmed empirically too (a
+// 6-selector, all-absent resolution completed in 46ms regardless of the
+// value passed). A parameter that cannot do what its name promises is
+// worse than no parameter: a caller sizing a poll budget around it would
+// be sizing around fiction. Callers that need retries poll by calling this
+// function again (gemini's upload-menu resolution already does, in its
+// own 3-attempt loop) rather than by waiting inside one call.
 export async function resolveVisibleInOrder(
   page,
   provider,
   key,
   selectors,
-  { timeoutMs = 500, logPath } = {},
+  { logPath } = {},
 ) {
   const visibleIndexes = [];
   let pickedIndex = -1;
@@ -25,7 +37,7 @@ export async function resolveVisibleInOrder(
     const isVisible = await page
       .locator(selectors[i])
       .last()
-      .isVisible({ timeout: timeoutMs })
+      .isVisible()
       .catch(() => false);
     if (isVisible) {
       visibleIndexes.push(i);

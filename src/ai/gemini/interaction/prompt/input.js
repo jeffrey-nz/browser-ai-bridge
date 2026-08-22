@@ -62,7 +62,15 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
   // check. After a fresh "new chat" the composer toolbar can take several
   // seconds to mount; if we fall through too early the generic fallback
   // (which has no Gemini-matching selector) fails and the prompt is silently
-  // sent TEXT-ONLY — fatal for image transcription. Up to ~3×(4s+1.5s).
+  // sent TEXT-ONLY — fatal for image transcription.
+  // T-108 review: this used to read "up to ~3×(4s+1.5s)", from a
+  // `menuBtn.isVisible({timeout:4000})` whose timeout option Playwright
+  // marks `@deprecated ... ignored` — that check never waited 4s regardless
+  // of the number in the comment. It's really 3 near-instant probes and up
+  // to two 1.5s sleeps between them (~3s total in the worst case, not
+  // ~16.5s) — pre-existing, not something this ticket's own resolveVisibleInOrder
+  // (which has no timeout parameter at all, for the same documented reason)
+  // introduced.
   let menuBtn = null;
   for (let attempt = 0; attempt < 3 && !menuBtn; attempt++) {
     menuBtn = await resolveVisibleInOrder(
@@ -70,7 +78,6 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
       "gemini",
       "upload_menu_button",
       UPLOAD_MENU_BUTTON_SELECTORS,
-      { timeoutMs: 4000 },
     );
     if (!menuBtn) {
       logger.warn(

@@ -1,5 +1,23 @@
-OLD CODE'S OWN BEHAVIOUR, reproduced by hand (joined selector + .first()):
-  .first() picks: "Open upload file menu"  (DOM-earliest, list position 5 of 6)
+=== Real end-to-end transcript: the ACTUAL uploadFileToGemini() function, ===
+=== both pre-fix (391127b^, fab0b10) and post-fix (this commit), run against ===
+=== a headless msedge fixture with BOTH an older-build button ('Open upload ===
+=== file menu') and a newer-build button ('Upload & tools'), older EARLIER ===
+=== in the DOM. Each button has a real onclick handler recording whether IT ===
+=== was the one actually clicked -- not inferred, observed. Both runs throw ===
+=== downstream (no real 'Upload from computer' menu exists in the fixture) ===
+=== -- expected, and irrelevant to what this transcript is checking: WHICH ===
+=== button uploadFileToGemini's menu-button resolution clicked before that. ===
+=== Reproduce: evidence/t108-verify-gemini-upload-menu.mjs (post-fix half at ===
+=== HEAD; check out 391127b^ and run the same script for the pre-fix half). ===
 
-NEW CODE (resolveVisibleInOrder, this fix):
-  picks: "Upload & tools"  (list-earliest, list position 3 of 6 — the newer build wins, as the list's own order intends)
+OLD CODE (391127b^, joined selector + .first()):
+(expected downstream throw once past menu resolution: TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for locator()
+older-build clicked=true  newer-build clicked=false
+
+NEW CODE (this fix, resolveVisibleInOrder):
+(expected downstream throw once past menu resolution: TimeoutError: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+[2m  - waiting for locator()
+older-build clicked=false  newer-build clicked=true

@@ -1,15 +1,30 @@
 import { resolveVisibleInOrder } from "#ai/shared/locatorEngine.js";
 
 export const FALLBACK_SELECTORS = {
+  // T-108 review: merging inputLocator.js's old 9-selector list into this
+  // one (clause 2) silently dropped 4 of the 9 — the four broadest
+  // catch-alls, the ones that exist to still find the box on a build none
+  // of the specific selectors above recognise: bare `textarea`,
+  // `[contenteditable="true"]` (any element, not just a div — the entry
+  // below is a strict subset), `[role="textbox"]`, and the case-
+  // INSENSITIVE `textarea[aria-label*="Copilot" i]` (upgraded in place —
+  // strictly more permissive than the case-sensitive version it replaces,
+  // loses no match). Folded back in at the END, not the old positions —
+  // now that list order actually binds (this is the whole point of this
+  // ticket), the broadest, least-specific selectors belong last, tried
+  // only once every more specific one has missed.
   input_box: [
     "#userInput",
     '[data-testid="composer-input"]',
     "#m365-chat-editor-target-element",
     '[data-lexical-editor="true"]',
-    'textarea[aria-label*="Copilot"]',
+    'textarea[aria-label*="Copilot" i]',
     'div[contenteditable="true"]',
     "#searchbox",
     ".copilot-input-box",
+    "textarea",
+    '[contenteditable="true"]',
+    '[role="textbox"]',
   ],
   submit_btn: [
     'button[aria-label="Submit"]',
