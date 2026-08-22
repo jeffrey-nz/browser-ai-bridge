@@ -51,6 +51,7 @@ import {
   classifyBlind,
   compareServerCommit,
   classifyServerProvenance,
+  resolveAnsweredBy,
 } from "./vision-probe.mjs";
 
 const BASE_URL = process.env.VISION_PROBE_BASE_URL || "http://localhost:3333";
@@ -165,6 +166,8 @@ async function pinServer() {
   };
 }
 
+const REQUESTED_PROVIDER = "grok";
+
 async function sendBlindTurn(prompt) {
   const started = Date.now();
   const controller = new AbortController();
@@ -174,7 +177,7 @@ async function sendBlindTurn(prompt) {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        providers: ["grok"],
+        providers: [REQUESTED_PROVIDER],
         prompt,
         label: TURN_LABEL,
         // No `images` key — the blind arm, same as vision-probe.mjs's
@@ -186,15 +189,23 @@ async function sendBlindTurn(prompt) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       return {
+        ...resolveAnsweredBy(REQUESTED_PROVIDER, json),
         elapsedMs,
         shape: "ERROR",
         detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
       };
     }
     const { shape, stated } = classifyBlind(json.response);
-    return { elapsedMs, shape, stated, raw: json.response };
+    return {
+      ...resolveAnsweredBy(REQUESTED_PROVIDER, json),
+      elapsedMs,
+      shape,
+      stated,
+      raw: json.response,
+    };
   } catch (err) {
     return {
+      ...resolveAnsweredBy(REQUESTED_PROVIDER, null),
       elapsedMs: Date.now() - started,
       shape: "ERROR",
       detail: err.name === "AbortError" ? "timeout" : err.message,
@@ -229,23 +240,28 @@ async function main() {
       console.log(`[t133]   turn ${i + 1}/${TURNS_PER_RUNG}...`);
       const result = await sendBlindTurn(prompt);
       console.log(
-        `[t133]     shape=${result.shape} elapsedMs=${result.elapsedMs}` +
+        `[t133]     shape=${result.shape} elapsedMs=${result.elapsedMs} answeredBy=${result.answeredBy}` +
+          (result.answeredByMismatch
+            ? ` <<< MISMATCH (asked ${REQUESTED_PROVIDER})`
+            : "") +
           (result.detail ? ` detail=${result.detail}` : ""),
       );
       turns.push(result);
     }
     const echoCount = turns.filter((t) => t.shape === "ECHO").length;
+    const mismatchCount = turns.filter((t) => t.answeredByMismatch).length;
     rungs.push({
       rung,
       promptLength: prompt.length,
       promptUtf8Bytes: Buffer.byteLength(prompt, "utf8"),
       prompt,
       echoCount,
+      mismatchCount,
       turnCount: turns.length,
       turns,
     });
     console.log(
-      `[t133] rung "${rung}" done: ECHO ${echoCount} of ${turns.length}`,
+      `[t133] rung "${rung}" done: ECHO ${echoCount} of ${turns.length}, answered by someone other than asked ${mismatchCount} of ${turns.length}`,
     );
   }
 
@@ -265,9 +281,15 @@ async function main() {
   for (const r of rungs) {
     console.log(
       `  ${r.rung.padEnd(8)} len=${String(r.promptLength).padStart(5)}  ECHO ${r.echoCount}/${r.turnCount}  ` +
+        `mismatch ${r.mismatchCount}/${r.turnCount}  ` +
         `elapsedMs=[${r.turns.map((t) => t.elapsedMs).join(", ")}]`,
     );
   }
+  const totalMismatch = rungs.reduce((a, r) => a + r.mismatchCount, 0);
+  const totalTurns = rungs.reduce((a, r) => a + r.turnCount, 0);
+  console.log(
+    `[t133] answered by someone other than asked, overall: ${totalMismatch}/${totalTurns}`,
+  );
   console.log(`[t133] report written to ${outPath}`);
 }
 

@@ -1012,6 +1012,32 @@ export function classify(replyText, truth) {
   return { shape: "NO_ANSWER", detail: text.slice(0, 200) };
 }
 
+// T-137: the response body's own `provider` field names who actually
+// ANSWERED (src/routes/ask.js: `provider: session.providerId`, ask.js's
+// own header — "The answer says who gave it") — distinct from the
+// `providerId` a caller REQUESTED. A request naming a single provider
+// (`providers: [id]`, no fallback list) resolves to a one-element tier
+// chain, so today the two always agree — but a row that only ever
+// records the REQUEST cannot prove that on its own once the routing code
+// around it changes; a reader would have to re-derive "no fallback was
+// possible" from ask.js's source the way this ticket's own review did.
+// Recording both, and flagging when they disagree, puts a future
+// fallback (or a request that forgot to pin) in the data instead of in
+// an argument. Exported so every evidence script sending a real turn —
+// not just this file's own two call sites — reads the SAME rule.
+export function resolveAnsweredBy(requestedProviderId, json) {
+  const answeredBy = typeof json?.provider === "string" ? json.provider : null;
+  return {
+    answeredBy,
+    // T-137: absence (server response carried no `provider` field, or
+    // the HTTP call never reached a body at all) records null, not the
+    // requested id — defaulting to "whoever we asked for" is exactly the
+    // by-construction agreement this field exists to avoid.
+    answeredByMismatch:
+      answeredBy !== null && answeredBy !== requestedProviderId,
+  };
+}
+
 async function askProvider(opts, providerId, imagePath, truth) {
   const prompt = buildPrompt(truth);
   const started = Date.now();
@@ -1048,6 +1074,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
     if (!res.ok) {
       return {
         providerId,
+        ...resolveAnsweredBy(providerId, json),
         elapsedMs,
         shape: "ERROR",
         detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
@@ -1069,6 +1096,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
     const cls = classify(json.response, truth);
     return {
       providerId,
+      ...resolveAnsweredBy(providerId, json),
       elapsedMs,
       ...cls,
       imageAttached: json.imageAttached,
@@ -1088,6 +1116,7 @@ async function askProvider(opts, providerId, imagePath, truth) {
     const elapsedMs = Date.now() - started;
     return {
       providerId,
+      ...resolveAnsweredBy(providerId, null),
       elapsedMs,
       shape: "ERROR",
       detail: err.name === "AbortError" ? "timeout" : err.message,
@@ -1142,6 +1171,7 @@ async function askProviderBlind(opts, providerId) {
     if (!res.ok) {
       return {
         providerId,
+        ...resolveAnsweredBy(providerId, json),
         elapsedMs,
         shape: "ERROR",
         detail: `HTTP ${res.status}: ${json?.error || "(no error field)"}`,
@@ -1151,6 +1181,7 @@ async function askProviderBlind(opts, providerId) {
     const { shape, stated } = classifyBlind(json.response);
     return {
       providerId,
+      ...resolveAnsweredBy(providerId, json),
       elapsedMs,
       shape,
       stated,
@@ -1166,6 +1197,7 @@ async function askProviderBlind(opts, providerId) {
     const elapsedMs = Date.now() - started;
     return {
       providerId,
+      ...resolveAnsweredBy(providerId, null),
       elapsedMs,
       shape: "ERROR",
       detail: err.name === "AbortError" ? "timeout" : err.message,
@@ -1217,8 +1249,11 @@ async function runBlind(opts) {
     results.push(r);
     const secs = (r.elapsedMs / 1000).toFixed(0) + "s";
     const stated = r.stated === undefined ? "" : `  stated=${r.stated}`;
+    const answeredBy = r.answeredByMismatch
+      ? `  answeredBy=${r.answeredBy} <<< MISMATCH (asked ${r.providerId})`
+      : `  answeredBy=${r.answeredBy}`;
     console.log(
-      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${r.imageAttached}${stated}  ${r.detail || ""}`,
+      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${r.imageAttached}${stated}${answeredBy}  ${r.detail || ""}`,
     );
   }
 
@@ -1226,9 +1261,13 @@ async function runBlind(opts) {
   const informative = results.filter((r) => !EXCLUDED.has(r.shape));
   const guessed = informative.filter((r) => r.stated !== null);
   const refused = informative.filter((r) => r.stated === null);
+  // T-137: how many turns were answered by someone other than who was
+  // asked — visible in the summary line without reading any row by hand.
+  const mismatched = results.filter((r) => r.answeredByMismatch);
   console.log(
     `\nblind turns sent ${results.length}   informative (not ECHO/ERROR/NO_ANSWER) ${informative.length}   ` +
-      `refused (stated no count) ${refused.length}   STATED A COUNT ${guessed.length}`,
+      `refused (stated no count) ${refused.length}   STATED A COUNT ${guessed.length}   ` +
+      `answered by someone other than asked ${mismatched.length}`,
   );
   if (guessed.length) {
     console.log(
@@ -1236,6 +1275,14 @@ async function runBlind(opts) {
     );
     for (const r of guessed) {
       console.log(`    ${r.providerId}  stated=${r.stated}  :: ${r.raw}`);
+    }
+  }
+  if (mismatched.length) {
+    console.log(
+      `\n!!! ANSWERED-BY MISMATCH — asked one provider, a different one answered:`,
+    );
+    for (const r of mismatched) {
+      console.log(`    asked=${r.providerId}  answeredBy=${r.answeredBy}`);
     }
   }
 
@@ -1376,8 +1423,11 @@ async function main() {
       r.countOk !== undefined
         ? `COUNT=${r.countOk ? "ok" : "NO"} COLOR=${r.colorOk ? "ok" : "NO"}  `
         : "";
+    const answeredBy = r.answeredByMismatch
+      ? `answeredBy=${r.answeredBy} <<< MISMATCH (asked ${r.providerId})  `
+      : `answeredBy=${r.answeredBy}  `;
     console.log(
-      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${attached}  ${halves}${r.detail || ""}`,
+      `${r.shape.padEnd(10)} ${secs.padStart(5)}  imageAttached=${attached}  ${answeredBy}${halves}${r.detail || ""}`,
     );
   }
 
@@ -1385,6 +1435,9 @@ async function main() {
     acc[r.shape] = (acc[r.shape] || 0) + 1;
     return acc;
   }, {});
+  // T-137: same "who actually answered" gap the blind arm has — see
+  // resolveAnsweredBy's own comment. Surfaced in the summary the same way.
+  const mismatchedSighted = results.filter((r) => r.answeredByMismatch);
 
   // COUNT / COLOR / PASS are reported out of the STRUCTURED subset — replies
   // that carried a countOk/colorOk verdict at all (PASS, COUNT_ONLY, WRONG)
@@ -1412,8 +1465,16 @@ async function main() {
       Object.entries(counts)
         .map(([k, v]) => `${k}=${v}`)
         .join(" ") +
-      ")",
+      `)   answered by someone other than asked ${mismatchedSighted.length}`,
   );
+  if (mismatchedSighted.length) {
+    console.log(
+      `\n!!! ANSWERED-BY MISMATCH — asked one provider, a different one answered:`,
+    );
+    for (const r of mismatchedSighted) {
+      console.log(`    asked=${r.providerId}  answeredBy=${r.answeredBy}`);
+    }
+  }
 
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });

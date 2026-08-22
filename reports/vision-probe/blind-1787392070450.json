@@ -1,0 +1,28 @@
+{
+  "graderSha256": "5c13c54685927332",
+  "bridgeCommit": "3a41d7f9c8df19499cdc98d9c40c79e8248efb0a",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "scripts/t133-grok-length-ladder.mjs",
+    "scripts/vision-probe.mjs"
+  ],
+  "serverLoadedCommit": "68079cecd31a53c10a260c1b62e7681191ce7162",
+  "serverStale": true,
+  "serverTreeDirty": false,
+  "serverProvenance": "stale-confirmed",
+  "gradedAt": "2026-08-22T09:47:50.606Z",
+  "blind": true,
+  "stimulusSource": "blind",
+  "endpoint": "ask",
+  "results": [
+    {
+      "providerId": "grok",
+      "answeredBy": "grok",
+      "answeredByMismatch": false,
+      "elapsedMs": 45237,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    }
+  ]
+}
