@@ -613,9 +613,44 @@ returns `{active: null}` and this `reason` can never be produced, by
 construction, not by account behaviour. A genuinely rate-limited call on eight
 of those nine surfaces as `reason: "rate_limited"` instead — a different code
 for a different mechanism, not the same fact under two names — set from
-`err.rateLimited`, which chatgpt, deepseek, grok, gemini, and the generic path
-(kimi/qwen/zai/mistral/perplexity, via `runPromptWorkflow`) all set from their
-own detected throttle. **`copilot` is the ninth, and has no rate-limit
+`err.rateLimited`. **Only four of those eight have a detector of their own**:
+`chatgpt`, `deepseek` and `grok` each have a dedicated poll-time check on
+their own page (`interaction/prompt/poll.js` — chatgpt, grok;
+`interaction/prompt/poll/waiter.js` — deepseek); `kimi` has a real phrase in
+its own spec (`src/ai/generic/specs.js`, `rateLimit: "Too many people are
+chatting with Kimi"`), checked by the generic path's own per-provider gate
+(`src/ai/generic/interaction.js`). (`gemini` is not one of the nine — it sets
+`err.rateLimited` from the same writer named above, `errorHandler.js` — but
+sits outside this count since it is already covered by its own `"cooldown"`
+first.)
+
+**`qwen`, `zai`, `mistral` and `perplexity` have none** — their `rateLimit`
+spec field is `null`, so that per-provider gate never runs for them. What
+covers them instead is `src/ai/shared/promptWorkflow.js`'s own shared text
+match, and it is two independent routes, not one:
+
+- **Route A** — reached only after the poll has stalled or timed out. Tests
+  an early extraction of the page against one combined regex
+  (`/messages?\s+are\s+too\s+frequent|rate\s+limit|too\s+many\s+requests/i`).
+- **Route B** — reached on a **normally-completed** response, no stall at
+  all. Tests the full extracted text against three separate regexes
+  (`/messages? are too frequent/i`, `/rate limit/i`, `/too many requests/i`).
+  A generic provider that answers promptly with a throttle notice in the
+  body produces `reason: "rate_limited"` through this route alone.
+
+**The two routes are not the same test.** Route A tolerates arbitrary
+whitespace between words (`\s+`); route B requires a literal single space.
+A notice wrapped across a line break, or padded with a non-breaking space,
+can match route A and miss route B. This is current behaviour, documented
+as-is rather than reconciled — narrowing route A or loosening route B would
+be a change to a live detection path with no captured real-world miss to
+justify either direction.
+
+For all four, a throttle notice worded outside those phrases surfaces as
+`reason: "stalled"` or the raw underlying error message — the same
+fallthrough this section already describes for copilot below.
+
+**`copilot` is the ninth, and has no rate-limit
 detection of any kind** (checked: it does not go through `runPromptWorkflow`,
 and nothing under `src/ai/copilot/` sets `err.rateLimited` or matches a
 rate-limit message) — a genuine copilot throttle falls through to

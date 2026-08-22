@@ -114,6 +114,23 @@ export function makeInteraction(spec) {
     return out;
   }
 
+  //[[ T-114: extracted from the poll loop below, unchanged, so it can be
+  //   tested without driving the whole sendPromptAndWait pipeline — same
+  //   convention src/routes/ask/tiers.js's skipTier() and anyRateLimited()
+  //   already use ("extracted from the route's loop so it can be tested").
+  //   `if (spec.rateLimit)` is the ONLY thing in src/ai/generic/ that
+  //   distinguishes kimi (a real phrase) from the other four (null) — API.md
+  //   crediting all five with "their own detected throttle" was the wrong
+  //   sentence this exists to pin against. ]]
+  async function checkRateLimitHit(page) {
+    if (!spec.rateLimit) return false;
+    return page
+      .getByText(spec.rateLimit, { exact: false })
+      .first()
+      .isVisible({ timeout: 200 })
+      .catch(() => false);
+  }
+
   async function waitForCompletion(page) {
     let aborted = false;
     const onAbort = () => {
@@ -135,17 +152,11 @@ export function makeInteraction(spec) {
           //   withdraws an already-rendered reply and restores the prompt when it
           //   is over capacity, so without this the poll would sit watching an
           //   empty composer until it timed out. ]]
-          if (spec.rateLimit) {
-            const hit = await page
-              .getByText(spec.rateLimit, { exact: false })
-              .first()
-              .isVisible({ timeout: 200 })
-              .catch(() => false);
-            if (hit) {
-              const err = new Error(`${spec.name} is over capacity`);
-              err.rateLimited = true;
-              throw err;
-            }
+          const hit = await checkRateLimitHit(page);
+          if (hit) {
+            const err = new Error(`${spec.name} is over capacity`);
+            err.rateLimited = true;
+            throw err;
           }
 
           const txt = await readAnswer(page);
@@ -260,5 +271,6 @@ export function makeInteraction(spec) {
     clickSend,
     sendPromptAndWait,
     sendPromptWithFile,
+    checkRateLimitHit,
   };
 }
