@@ -51,13 +51,22 @@ export async function uploadFileToChatGpt(page, filePath, evidenceOut = null) {
   // `<img src="https://chatgpt.com/backend-api/estuary/content?...">`.
   //
   // T-130 CORRECTION — "never a `blob:` src" above is WRONG, and "harmless
-  // if they never match" is backwards. Measured across the whole tracked
-  // corpus (reports/vision-probe/), not one row: of 8 chatgpt rows with
-  // imageAttached:true (excluding blind turns), `img[src^="blob:" i]`
-  // matched WITHOUT the estuary/backend-api img on 7 of them. 6 of those 7
-  // are CONFIRMED (the model stated the correct COUNT — genuinely correct
-  // by this board's strongest check); the 7th is the one row where the
-  // model answered SEES=no despite imageAttached:true.
+  // if they never match" is backwards. The single artifact that refutes it:
+  // reports/vision-probe/t127-run2.json, committed at bee00c5,
+  // matchedAlternatives is exactly `img[src^="blob:" i]` and
+  // `button[aria-label*="uploaded image" i]` — NEITHER
+  // `img[src*="backend-api/estuary" i]` NOR `img[src*="backend-api/files" i]`
+  // is among them, on a row where imageAttached read true.
+  //
+  // That one row generalises: measured across the whole tracked corpus
+  // (reports/vision-probe/*.json, all counted as of commit b51d086 /
+  // 2026-08-22 — re-derive from the tracked files if this reads stale), of
+  // 8 chatgpt rows with imageAttached:true (excluding blind turns),
+  // `img[src^="blob:" i]` matched WITHOUT the estuary/backend-api img on 7
+  // of them. 6 of those 7 are CONFIRMED (the model stated the correct COUNT
+  // — genuinely correct by this board's strongest check); the 7th is
+  // t127-run2.json itself, the one row where the model answered SEES=no
+  // despite imageAttached:true.
   //
   // So the blob:-only signature is NOT diagnostic of failure — it is the
   // NORMAL evidence footprint for chatgpt's imageAttached:true, present on
