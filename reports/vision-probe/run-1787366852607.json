@@ -1,0 +1,48 @@
+{
+  "graderSha256": "fa43cd4193babb81",
+  "bridgeCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/chatgpt/interaction/prompt/index.js",
+    "src/ai/copilot/client/interaction/prompt/send/sendWithFile.js",
+    "src/ai/deepseek/interaction/prompt/index.js",
+    "src/ai/deepseek/interaction/prompt/input.js",
+    "src/ai/gemini/interaction/prompt/index.js",
+    "src/ai/grok/interaction/prompt/index.js",
+    "src/routes/ask.js",
+    "src/routes/ask/askOne.js",
+    "tests/buildAskOneSuccessResult.test.js"
+  ],
+  "serverLoadedCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-22T02:47:32.715Z",
+  "fixtureSha256": "f626b887c879f26ad319da788abd6204e3af6c4cbc552b644b8cbbcaf4c0b5c9",
+  "plantedBreak": "T-058 clause 3: deepseek's verifySelector deliberately overridden to .NONEXISTENT-T058-BREAK (deepseek normally has none, falling through to DEFAULT_ATTACHMENT_EVIDENCE) — upload strategy left working, evidence check made to fail on purpose, to test whether imageAttachedEvidence.evidenceSelectorUsed survives onto a FALSE row on a bespoke provider",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 6,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787366795133.png",
+  "results": [
+    {
+      "providerId": "deepseek",
+      "elapsedMs": 57466,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "onList": true,
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": ".NONEXISTENT-T058-BREAK"
+      },
+      "visionModeVerdict": "clicked-and-confirmed-on",
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=yes COUNT=6 COLOR=teal"
+    }
+  ]
+}

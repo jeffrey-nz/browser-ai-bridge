@@ -1,0 +1,44 @@
+{
+  "graderSha256": "fa43cd4193babb81",
+  "bridgeCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/chatgpt/interaction/prompt/index.js",
+    "src/ai/chatgpt/interaction/prompt/input.js",
+    "src/ai/copilot/client/interaction/prompt/send/sendWithFile.js",
+    "src/ai/deepseek/interaction/prompt/index.js",
+    "src/ai/gemini/interaction/prompt/index.js",
+    "src/ai/grok/interaction/prompt/index.js",
+    "src/routes/ask.js",
+    "src/routes/ask/askOne.js",
+    "tests/buildAskOneSuccessResult.test.js"
+  ],
+  "serverLoadedCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-22T02:43:54.055Z",
+  "fixtureSha256": "ce24015c0835b3a8320ee7c0a9f29b3030bdabce59cec1e52621e7b2bc4c973d",
+  "plantedBreak": "T-058 clause 3: chatgpt's verifySelector deliberately broken to .NONEXISTENT-T058-BREAK — upload strategy left working, evidence check made to fail on purpose, to test whether imageAttachedEvidence.evidenceSelectorUsed survives onto a FALSE row on a bespoke provider",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 5,
+    "color": "goldenrod"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787366588170.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 45767,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": ".NONEXISTENT-T058-BREAK"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}

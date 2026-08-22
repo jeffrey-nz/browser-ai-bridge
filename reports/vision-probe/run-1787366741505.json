@@ -1,0 +1,49 @@
+{
+  "graderSha256": "fa43cd4193babb81",
+  "bridgeCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/chatgpt/interaction/prompt/index.js",
+    "src/ai/chatgpt/interaction/prompt/input.js",
+    "src/ai/copilot/client/interaction/prompt/send/sendWithFile.js",
+    "src/ai/deepseek/interaction/prompt/index.js",
+    "src/ai/gemini/interaction/prompt/index.js",
+    "src/ai/grok/interaction/prompt/index.js",
+    "src/routes/ask.js",
+    "src/routes/ask/askOne.js",
+    "tests/buildAskOneSuccessResult.test.js"
+  ],
+  "serverLoadedCommit": "98a20cf7252cc37a02e50ef034d84c610ffdb9e4",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-22T02:45:41.621Z",
+  "fixtureSha256": "48f1927683d9642757b9248d9df85e03c3bbc9370f6dbee56bc885692c3536a8",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 4,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787366702648.png",
+  "results": [
+    {
+      "providerId": "grok",
+      "elapsedMs": 38849,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]",
+          "[aria-label*=\"attachment\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 45,
+        "strategy": "direct_input"
+      },
+      "raw": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n \nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n \n...or reply with EXACTLY this if you cannot see any image at all:\n \nSEES=no"
+    }
+  ]
+}
