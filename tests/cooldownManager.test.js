@@ -81,3 +81,53 @@ test.describe("T-097: cooldown is tri-state, and a real trigger() reaches every 
     assert.equal(cd.remainingSeconds, 0);
   });
 });
+
+// T-102: API.md published `reason: "cooldown"` (askOne.js) and "a tier is
+// skipped without being asked when it is already cooling down" (ask.js's
+// tier chain) as general behaviour, with no qualification — but both read
+// cooldownManager.check().active with a plain truthiness test
+// (`if (cd.active)`), and T-097 made that null, not false, for the nine
+// providers with no writer. null is falsy, so both are structurally
+// unreachable for those nine, not merely unobserved. Demonstrated here
+// under a DELIBERATE forced trigger() — not the default never-triggered
+// state — so this proves the gate itself is closed, not just that nobody
+// has opened it yet. askOne() itself is not called for the non-writable
+// case (unlike the writable case above): past its own cooldown check it
+// touches resolveSession/sessionManager, which needs a live
+// session/browser this unit test does not have — the exact boolean gate
+// askOne.js:97 reads is asserted directly instead, which is the same
+// question without the live dependency.
+test.describe("T-102: 'cooldown' as a reason/tier-skip stays unreachable for a non-writable provider, even under a forced trigger()", () => {
+  test("chatgpt reads active:null even after cooldownManager.trigger('chatgpt', ...) is called directly for it", () => {
+    assert.equal(WRITABLE_PROVIDERS.has("chatgpt"), false);
+    cooldownManager.trigger("chatgpt", 999);
+    try {
+      const cd = cooldownManager.check("chatgpt");
+      assert.equal(cd.active, null);
+      // askOne.js:97's exact gate is `if (cd.active)` — null is falsy, so
+      // this branch (reason: "cooldown") can never fire for chatgpt.
+      assert.equal(Boolean(cd.active), false);
+    } finally {
+      cooldownManager.cooldowns.delete("chatgpt");
+    }
+  });
+
+  test("skipTier('chatgpt') never skips, even after the same forced trigger()", () => {
+    cooldownManager.trigger("chatgpt", 999);
+    try {
+      assert.deepEqual(skipTier("chatgpt"), { skip: false });
+    } finally {
+      cooldownManager.cooldowns.delete("chatgpt");
+    }
+  });
+
+  test("gemini, for contrast, DOES reach both gates under the same trigger()", () => {
+    cooldownManager.trigger("gemini", 120);
+    try {
+      assert.equal(cooldownManager.check("gemini").active, true);
+      assert.equal(skipTier("gemini").skip, true);
+    } finally {
+      cooldownManager.cooldowns.delete("gemini");
+    }
+  });
+});

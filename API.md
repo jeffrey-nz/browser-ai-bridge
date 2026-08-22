@@ -604,6 +604,18 @@ provider that timed out or never started is distinguished from one that
 disagreed: an absence is not a vote against, and nothing about the shape of
 the response lets a caller confuse the two.
 
+**`"cooldown"` is reachable only for providers with a real cooldown writer**
+(crew board T-097/T-102) — today, only `gemini`
+(`src/ai/gemini/interaction/prompt/errorHandler.js`, on a detected rate limit).
+The current list lives in `src/session/CooldownManager.js`'s exported
+`WRITABLE_PROVIDERS`; for every other provider, `cooldownManager.check()`
+returns `{active: null}` and this `reason` can never be produced, by
+construction, not by account behaviour. A genuinely rate-limited call on one
+of those nine surfaces as `reason: "rate_limited"` instead — a different code
+for a different mechanism, not the same fact under two names. Counting
+`"cooldown"` occurrences per provider to compare how often each one
+rate-limits will read nine structural zeros as nine well-behaved providers.
+
 **Runs in parallel**, not in series: each provider is its own already-open
 browser tab, so N requests cost close to what the slowest single one costs,
 not the sum. Measured: 4 providers (gemini/chatgpt/deepseek/grok) answered in
@@ -808,6 +820,14 @@ unluckiest provider.
 available, so a fallback lasts exactly as long as the cooldown that caused it
 and nothing has to remember to switch back. A tier is skipped without being
 asked when it is already cooling down, and dropped mid-turn when it rate-limits.
+
+**"Skipped without being asked" is gemini-only today** (crew board T-097/T-102)
+— `skipTier()`'s only input is `cooldownManager`, which has one writer
+(`WRITABLE_PROVIDERS` in `src/session/CooldownManager.js`). For the other nine
+providers there is no cooldown to skip in advance; a rate limit already seen on
+a previous turn is rediscovered at full turn cost on the next request, and the
+chain finds out mid-turn the same way it always has — "dropped mid-turn when it
+rate-limits" is the general case for those nine, not a fallback path.
 
 **The response says who answered:**
 
