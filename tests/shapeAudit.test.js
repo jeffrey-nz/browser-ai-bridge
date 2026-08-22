@@ -1033,3 +1033,55 @@ test("auditShapes excludes a planted row from the ranking populations but keeps 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// T-107: a row with no `raw` at all (an HTTP 500, a locator timeout, a
+// closed page — never produced a reply to grade) is dropped by the FIRST
+// line of the row loop, before rowsWithRaw or any ranking population is
+// formed. Counted here (noReplyByProvider), split by whether the record
+// names a bridge-side mechanism in its own words (bridge-attributable) or
+// names nothing attributable at all (unattributed) — never silently
+// dropped, and never folded into the end-to-end ranking (clause 3, option
+// b: it is not an answer of any shape, so it is not the same question
+// SEES_NO/ECHO/NO_ANSWER answer).
+test("auditShapes counts a no-reply row (no raw) separately, split into bridge-attributable and unattributed by its own detail text", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "no-reply-bridge.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          {
+            providerId: "a",
+            raw: null,
+            detail:
+              "HTTP 500: Failed to submit prompt: input did not clear and generation did not start",
+          },
+        ],
+      },
+      "no-reply-unattributed.json": {
+        truth: { count: 5, color: "teal" },
+        results: [{ providerId: "a", raw: null, detail: "timeout" }],
+      },
+      // A normal graded row from the same provider — proves the no-reply
+      // rows above do NOT enter rowsWithRaw or any graded/ranking
+      // population.
+      "normal.json": {
+        truth: { count: 6, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=6 COLOR=teal" }],
+      },
+    });
+
+    const { noReplyByProvider, rowsWithRaw, providerSighted } =
+      auditShapes(dir);
+
+    assert.equal(noReplyByProvider.a.n, 2);
+    assert.equal(noReplyByProvider.a.bridgeAttributable, 1);
+    assert.equal(noReplyByProvider.a.unattributed, 1);
+    // Only the one normal row has raw at all.
+    assert.equal(rowsWithRaw, 1);
+    // The no-reply rows never enter the ranking population either.
+    assert.equal(providerSighted.a.n, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

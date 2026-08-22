@@ -41,6 +41,13 @@ export function auditShapes(dir) {
     .sort();
 
   let rowsWithRaw = 0;
+  // T-107: providerId -> {n, bridgeAttributable, unattributed} for a row
+  // with no `raw` at all — the row loop's own first drop, before
+  // rowsWithRaw itself starts counting. See the comment at the drop site
+  // (the `if (r.raw == null)` branch, first line of the row loop) for the
+  // full account of why this is tracked separately from every other
+  // exclusion in this file.
+  const noReplyByProvider = {};
   // T-088: `rowsWithRaw` counts EVERY row with raw text — blind (no
   // picture at all, vision-probe.mjs --blind) and sighted alike — while
   // every truth-gated table below (countStrata, providerStrata, the
@@ -225,7 +232,60 @@ export function auditShapes(dir) {
     // distinction clause 2 below exists to surface.
     const isGradable = j.truth?.count !== undefined;
     for (const r of j.results || []) {
-      if (r.raw == null) continue;
+      // T-107: this is the FIRST statement in the row loop — every table
+      // below (rowsWithRaw itself, and everything gated on it downstream:
+      // the exclusion tables, the ranking) runs on rows that SURVIVE this
+      // line. A row with no `raw` at all — an HTTP 500, a locator timeout,
+      // a closed page, a fetch failure — never produced a reply to grade,
+      // which is categorically different from SEES_NO/ECHO/NO_ANSWER
+      // (T-106): those are real replies FROM the provider, gradable and
+      // graded; this is the round trip never completing at all. Measured,
+      // 39 of 185 sighted gradable rows (21.1%) are dropped here, before
+      // rowsWithRaw — the largest single exclusion in this file, and
+      // reached before the headline that is supposed to be the
+      // denominator for everything after it even starts counting.
+      //
+      // CLAUSE 3, OPTION (b): stays OUT of the end-to-end ranking, not
+      // folded in as a provider failure. T-096's own caution — "a provider
+      // cannot rank itself up by being excluded more" — does not transfer
+      // here the way it does to SEES_NO/ECHO/NO_ANSWER, because those are
+      // real answers a provider gave that this file chooses whether to
+      // count; a no-reply row is not an answer of any shape, it is
+      // evidence about whether THIS BRIDGE, on THIS turn, could complete a
+      // round trip with that provider at all — a different question a
+      // ranking of "how well does this provider read images" should not
+      // silently answer by omission either. Counted and printed instead
+      // (below), never silently dropped.
+      if (r.raw == null) {
+        if (isGradable && !isBlindFile) {
+          const nr = (noReplyByProvider[r.providerId] ??= {
+            n: 0,
+            bridgeAttributable: 0,
+            unattributed: 0,
+          });
+          nr.n++;
+          // T-107 clause 6: split by what the record itself says, not
+          // guessed. "input did not clear"/"locator.waitFor: Timeout"/a
+          // page or session reported CLOSED are the bridge naming its OWN
+          // interaction or infrastructure failure, in its own words —
+          // bridge-attributable. A bare "timeout" or "fetch failed" names
+          // no mechanism at all and is NOT attributable from the record —
+          // it could be the provider, the network, or this bridge, and
+          // saying which would be a guess this file has already refused
+          // once (onList/colorUnresolved, T-089).
+          const detail = r.detail || "";
+          if (
+            /input did not clear|locator\.waitFor: Timeout|has been closed|page was closed/i.test(
+              detail,
+            )
+          ) {
+            nr.bridgeAttributable++;
+          } else {
+            nr.unattributed++;
+          }
+        }
+        continue;
+      }
       rowsWithRaw++;
       if (isBlindFile) blindRowsWithRaw++;
       // T-091: the two predicates agree on every row recorded so far (0
@@ -475,6 +535,7 @@ export function auditShapes(dir) {
     providerSightedCellsNoPlant,
     countStrataSightedNoPlant,
     plantedRowCount,
+    noReplyByProvider,
   };
 }
 
@@ -671,6 +732,7 @@ function main() {
     providerSightedCellsNoPlant,
     countStrataSightedNoPlant,
     plantedRowCount,
+    noReplyByProvider,
   } = auditShapes(dir);
 
   // T-088: the headline used to read as the denominator for every table
@@ -683,6 +745,28 @@ function main() {
   console.log(
     `rows with raw: ${rowsWithRaw}   (${sightedRowsWithRaw} sighted, ${blindRowsWithRaw} blind — the histogram below includes both; every table after it is sighted-only)   disagreements: ${disagreements.length}`,
   );
+  // T-107 clause 2: the population dropped by the ROW LOOP'S OWN FIRST
+  // LINE, before rowsWithRaw above even starts counting — an HTTP 500, a
+  // locator timeout, a closed page, a fetch failure. Printed at every run,
+  // zero or not (T-078's rule), per provider, split by whether the record
+  // names a bridge-side mechanism in its own words or names nothing
+  // attributable at all (see the drop site's own comment for the split
+  // rule). NOT in the end-to-end ranking below (clause 3, option b) — this
+  // is the visible accounting T-096's own caution asks for regardless.
+  const noReplyProviders = Object.keys(noReplyByProvider).sort();
+  const noReplyTotal = noReplyProviders.reduce(
+    (s, p) => s + noReplyByProvider[p].n,
+    0,
+  );
+  console.log(
+    `   no reply at all (dropped before rowsWithRaw, excluded from the ranking below): ${noReplyTotal} of ${sightedRowsWithRaw + noReplyTotal} sighted gradable rows${noReplyProviders.length ? "" : " — none"}`,
+  );
+  for (const p of noReplyProviders) {
+    const nr = noReplyByProvider[p];
+    console.log(
+      `     ${p.padEnd(11)} ${nr.n}   bridge-attributable=${nr.bridgeAttributable}  unattributed=${nr.unattributed}`,
+    );
+  }
   // T-091: the headline's sighted/blind split above is decided by
   // `j.blind` (was this a --blind run); every truth-gated table below is
   // decided by `isGradable` (does this row have a truth to grade against).
