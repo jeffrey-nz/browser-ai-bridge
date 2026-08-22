@@ -1,7 +1,13 @@
 #!/usr/bin/env node
-// dom-diagnose.mjs — one-off diagnostic for T-005: inspect what the generic
-// extractor's responseBlock selector actually matches on a live provider
-// page, right after a real turn, without touching bridge internals.
+// dom-diagnose.mjs — written for T-005, kept as a TOOL (T-085): all four
+// modes below take a live provider page (any urlSubstr) and a selector as
+// ARGUMENTS, so the same file answers the next selector-debugging question
+// against a page that does not exist yet, not just T-005's original one —
+// unlike break-demo.mjs/extraction-break-demo.mjs (T-085's own one-shot
+// examples), which hardcode ONE historical before/after pair with no
+// target argument at all. Inspect what a selector actually matches on a
+// live provider page, right after a real turn, without touching bridge
+// internals.
 //
 // Modes:
 //   node dom-diagnose.mjs <urlSubstr> <cssSelector>         list matches

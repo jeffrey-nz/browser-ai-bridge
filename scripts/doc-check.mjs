@@ -14,8 +14,11 @@
 //     generally. Not required to be documented anywhere.
 //
 // THE PREDICATE, mechanical, not prose: a script is a one-shot probe iff
-// its own file carries the literal marker `@one-shot-probe` somewhere in
-// its header — checked by substring search, not by filename pattern.
+// its own LINE 2 — the line immediately after the shebang, exactly, no
+// earlier and no later — is `// @one-shot-probe ...`. Not a substring
+// search anywhere in the header and not "any line starting with it"
+// either; see the comment above isOneShot() below for why both of those
+// were tried first and both produced false positives on this very file.
 // (The obvious filename rule, "starts with t<digits>-", covers 8 of the
 // 10 today; break-demo.mjs and extraction-break-demo.mjs are one-shot
 // probes for closed tickets under names that don't match it — the marker
