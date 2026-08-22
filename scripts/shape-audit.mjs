@@ -53,6 +53,12 @@ export function auditShapes(dir) {
   // and the tables' denominator are two different populations that happen
   // to both be printed under one number.
   let blindRowsWithRaw = 0;
+  // T-091: see the isGradable/isBlindFile comment in the row loop below —
+  // rows where the two predicates disagree, named so the day one exists
+  // it is visible rather than silently absorbed into a headline count
+  // that no longer matches the tables beneath it.
+  const sightedNoTruthRows = [];
+  const blindWithTruthRows = [];
   const disagreements = [];
   const storedHistogram = {};
   const recomputedHistogram = {};
@@ -164,10 +170,40 @@ export function auditShapes(dir) {
       continue;
     }
     const isBlindFile = j.blind === true;
+    // T-091: the one place this file decides "does this row have a
+    // gradable truth" — every truth-gated table below (WRONG bucket,
+    // out-of-range, shapeByCount/exclusion, countStrata/providerStrata)
+    // used to repeat the same optional-chained truth-count check inline,
+    // four times.
+    // Computed once here so a future table can only get this right or
+    // wrong once, not once per copy.
+    //
+    // Deliberately NOT merged with `isBlindFile` into one predicate: they
+    // measure different things. `isBlindFile` is what the PROBE intended
+    // (a --blind run, by design has no truth). `isGradable` is what this
+    // FILE actually carries. A genuinely blind row is correctly
+    // ungradable — that is not a fault, it is the point of --blind. A
+    // SIGHTED row with no gradable truth (a stimulus that failed to
+    // generate, an aborted --pin run) is a different, unexpected fact, and
+    // collapsing the two into one boolean would erase exactly the
+    // distinction clause 2 below exists to surface.
+    const isGradable = j.truth?.count !== undefined;
     for (const r of j.results || []) {
       if (r.raw == null) continue;
       rowsWithRaw++;
       if (isBlindFile) blindRowsWithRaw++;
+      // T-091: the two predicates agree on every row recorded so far (0
+      // sighted-without-truth, 0 blind-with-truth, measured at ce7a289) —
+      // but nothing enforces that, and a future probe run could write
+      // either mismatch silently. Tracked here, at row granularity (same
+      // granularity `blindRowsWithRaw` already uses), so the day one
+      // exists it is a printed fact instead of a rediscovered surprise.
+      if (!isBlindFile && !isGradable) {
+        sightedNoTruthRows.push({ file: f, providerId: r.providerId });
+      }
+      if (isBlindFile && isGradable) {
+        blindWithTruthRows.push({ file: f, providerId: r.providerId });
+      }
       storedHistogram[r.shape] = (storedHistogram[r.shape] || 0) + 1;
       // T-088: a blind file carries no `truth` (nothing was drawn or
       // sent), so `j.truth` is undefined here on every blind row. Calling
@@ -202,7 +238,7 @@ export function auditShapes(dir) {
       // anything against, so it does not belong in the WRONG-bucket
       // population even on the day classify() (now sentinel-truthed
       // above) stops throwing and starts returning a shape for one.
-      if (recomputed.shape === "WRONG" && j.truth?.count !== undefined) {
+      if (recomputed.shape === "WRONG" && isGradable) {
         wrongRows.push({
           file: f,
           providerId: r.providerId,
@@ -210,7 +246,7 @@ export function auditShapes(dir) {
         });
       }
 
-      if (recomputed.outOfRange && j.truth?.count !== undefined) {
+      if (recomputed.outOfRange && isGradable) {
         const m = /COUNT\s*=\s*(\d+)/i.exec(r.raw ?? "");
         const said = m ? Number(m[1]) : null;
         outOfRangeRows.push({
@@ -223,7 +259,7 @@ export function auditShapes(dir) {
         });
       }
 
-      if (j.truth?.count !== undefined) {
+      if (isGradable) {
         const cell = (shapeByCount[j.truth.count] ??= {
           total: 0,
           excluded: 0,
@@ -276,7 +312,7 @@ export function auditShapes(dir) {
       // STRUCTURED subset (a row that carried a countOk verdict at all —
       // PASS/COUNT_ONLY/WRONG), keyed by the truth it was actually drawn
       // against.
-      if (recomputed.countOk !== undefined && j.truth?.count !== undefined) {
+      if (recomputed.countOk !== undefined && isGradable) {
         structuredCount++;
         const bucket = (countStrata[j.truth.count] ??= {
           n: 0,
@@ -336,6 +372,8 @@ export function auditShapes(dir) {
     providerSightedCells,
     countStrataSighted,
     providerExcludedByShape,
+    sightedNoTruthRows,
+    blindWithTruthRows,
   };
 }
 
@@ -523,6 +561,8 @@ function main() {
     providerSightedCells,
     countStrataSighted,
     providerExcludedByShape,
+    sightedNoTruthRows,
+    blindWithTruthRows,
   } = auditShapes(dir);
 
   // T-088: the headline used to read as the denominator for every table
@@ -535,6 +575,25 @@ function main() {
   console.log(
     `rows with raw: ${rowsWithRaw}   (${sightedRowsWithRaw} sighted, ${blindRowsWithRaw} blind — the histogram below includes both; every table after it is sighted-only)   disagreements: ${disagreements.length}`,
   );
+  // T-091: the headline's sighted/blind split above is decided by
+  // `j.blind` (was this a --blind run); every truth-gated table below is
+  // decided by `isGradable` (does this row have a truth to grade against).
+  // They agree on every row recorded so far — that is a fact about this
+  // corpus, not a guarantee the two predicates enforce on each other.
+  // Printed at every run, zero or not (T-078's rule for this file: a zero
+  // tally's own meaning must stay reachable, not print only when there is
+  // something to report) — 0 and 0 is what makes today's sighted count and
+  // every table's denominator the same number; either count moving above
+  // zero is what would make them disagree, silently, without this line.
+  console.log(
+    `   predicate check: ${sightedNoTruthRows.length} sighted row(s) with no gradable truth, ${blindWithTruthRows.length} blind row(s) with a gradable truth (0 and 0 is what makes the headline's sighted count and every truth-gated table below agree on the same denominator):`,
+  );
+  for (const r of sightedNoTruthRows) {
+    console.log(`     SIGHTED, NO TRUTH: ${r.file}  ${r.providerId}`);
+  }
+  for (const r of blindWithTruthRows) {
+    console.log(`     BLIND, WITH TRUTH: ${r.file}  ${r.providerId}`);
+  }
   for (const d of disagreements) {
     console.log(
       `   ${d.file}  ${d.providerId}  ${d.storedShape} -> ${d.recomputedShape}`,

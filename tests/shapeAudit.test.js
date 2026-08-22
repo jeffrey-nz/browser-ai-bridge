@@ -446,6 +446,57 @@ test("auditShapes tallies providerStrata (which counts each provider was shown)"
   }
 });
 
+// T-091: the headline's sighted/blind split (`j.blind`) and every
+// truth-gated table's own gate (`isGradable`, i.e. `j.truth?.count !==
+// undefined`) are two DIFFERENT predicates that happen to agree on every
+// row recorded so far. Nothing enforces that agreement — a sighted file
+// with no gradable truth (a stimulus that failed to generate, an aborted
+// --pin run) would make the headline's "N sighted" and the tables'
+// denominator (N-1) disagree, silently. sightedNoTruthRows/
+// blindWithTruthRows are the visible record of exactly that mismatch.
+test("auditShapes flags a sighted row with no gradable truth, and a blind row that unexpectedly carries one", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      // Sighted (not blind), but no truth.count at all — the mismatch
+      // clause 2 exists to surface. raw is "SEES=no", not a structured
+      // reply: classify()'s structured branch dereferences truth.count
+      // unconditionally on a non-blind file (only the blind path gets the
+      // {count:null,color:""} sentinel) and would throw on a truly absent
+      // truth — the SAME crash risk this file's own T-088 comment already
+      // names for the blind path, just not yet sentinel-guarded on this
+      // one. Not this ticket's fix to make; avoided in the fixture instead.
+      "sighted-no-truth.json": {
+        results: [{ providerId: "a", raw: "SEES=no" }],
+      },
+      // Blind, but carries a truth.count anyway — the other direction of
+      // the same mismatch.
+      "blind-with-truth.json": {
+        blind: true,
+        truth: { count: 5, color: "teal" },
+        results: [{ providerId: "b", raw: "SEES=no" }],
+      },
+      // A normal sighted row — present in neither mismatch list.
+      "normal.json": {
+        truth: { count: 6, color: "teal" },
+        results: [{ providerId: "c", raw: "SEES=yes COUNT=6 COLOR=teal" }],
+      },
+    });
+
+    const { sightedNoTruthRows, blindWithTruthRows } = auditShapes(dir);
+
+    assert.equal(sightedNoTruthRows.length, 1);
+    assert.equal(sightedNoTruthRows[0].file, "sighted-no-truth.json");
+    assert.equal(sightedNoTruthRows[0].providerId, "a");
+
+    assert.equal(blindWithTruthRows.length, 1);
+    assert.equal(blindWithTruthRows[0].file, "blind-with-truth.json");
+    assert.equal(blindWithTruthRows[0].providerId, "b");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // T-096: the test above pins the fault this ticket is about at the DATA
 // level — provider "b" answers only SEES=no and is entirely absent from
 // providerStrata (the GRADED population), which is exactly what let it
