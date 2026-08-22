@@ -32,9 +32,11 @@ export async function sendPromptWithFile(
   logger.info(`[DeepSeek] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053: see uploadFile.js's evidenceOut comment — a `true` gets a cause
-  // (which alternative matched, requireGrowth/grew, elapsedMs, strategy)
-  // the same way T-038 gave `false` one.
+  // T-053/T-058: see uploadFile.js's evidenceOut comment — evidenceSelectorUsed
+  // is set before anything can throw, so imageAttachedEvidence below is not
+  // gated behind imageAttached. `true` additionally gets the match details
+  // (which alternative matched, requireGrowth/grew, elapsedMs, strategy) the
+  // same way T-038 gave `false` its own cause.
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToDeepSeek(page, filePath, evidenceOut);
@@ -53,9 +55,10 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached
-      ? { imageAttachedEvidence: evidenceOut }
-      : { imageAttachedCause }),
+    // T-058: ungated — see src/ai/generic/interaction.js's own comment.
+    // An empty evidenceOut is filtered at the consumer, not here.
+    ...(imageAttached ? {} : { imageAttachedCause }),
+    imageAttachedEvidence: evidenceOut,
     // T-073: rides to the report JSON the same way imageAttached does —
     // see mode.js's own comment on the three verdict values.
     visionModeVerdict: visionMode.verdict,

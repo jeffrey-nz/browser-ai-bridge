@@ -60,7 +60,15 @@ export function buildAskOneSuccessResult(providerId, turn) {
       result.imageAttachedCause = imageAttachedCause;
       result.warning = describeUploadFailure(imageAttachedCause);
     }
-    if (imageAttachedEvidence) {
+    // T-058: a has-keys check, not a bare truthiness one — an empty {}
+    // (uploadFileToPage threw before uploadFile.js ever set a field on
+    // it, e.g. the NOT_OFFERED path) is truthy and would otherwise read
+    // as "evidence was recorded and it was empty" instead of "there is
+    // none". See ask.js's identical guard.
+    if (
+      imageAttachedEvidence &&
+      Object.keys(imageAttachedEvidence).length > 0
+    ) {
       result.imageAttachedEvidence = imageAttachedEvidence;
     }
     if (visionModeVerdict !== undefined) {

@@ -15,7 +15,9 @@ export async function sendPromptWithFile(
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053: see uploadFile.js's evidenceOut comment.
+  // T-053/T-058: see uploadFile.js's evidenceOut comment — evidenceSelectorUsed
+  // is set before anything can throw, so imageAttachedEvidence below is not
+  // gated behind imageAttached.
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToGemini(page, filePath, evidenceOut);
@@ -34,9 +36,10 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached
-      ? { imageAttachedEvidence: evidenceOut }
-      : { imageAttachedCause }),
+    // T-058: ungated — see src/ai/generic/interaction.js's own comment.
+    // An empty evidenceOut is filtered at the consumer, not here.
+    ...(imageAttached ? {} : { imageAttachedCause }),
+    imageAttachedEvidence: evidenceOut,
   };
 }
 

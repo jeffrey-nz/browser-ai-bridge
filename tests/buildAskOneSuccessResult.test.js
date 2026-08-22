@@ -70,4 +70,47 @@ test.describe("buildAskOneSuccessResult", () => {
     assert.equal(result.imageAttached, false);
     assert.equal(result.visionModeVerdict, "not-confirmed");
   });
+
+  // T-058 clause 3: imageAttachedEvidence must not be gated behind
+  // imageAttached===true — a FALSE row needs evidenceSelectorUsed exactly
+  // as much as a TRUE row needs its match details.
+  test("failed upload with a populated evidenceOut: imageAttachedEvidence still carried", () => {
+    const result = buildAskOneSuccessResult("chatgpt", {
+      response: "SEES=no",
+      data: {},
+      turnIndex: 1,
+      sessionAgeMs: 1000,
+      imageAttached: false,
+      imageAttachedCause: "unconfirmed",
+      imageAttachedEvidence: { evidenceSelectorUsed: 'img[src^="blob:"]' },
+    });
+    assert.equal(result.imageAttached, false);
+    assert.deepEqual(result.imageAttachedEvidence, {
+      evidenceSelectorUsed: 'img[src^="blob:"]',
+    });
+  });
+
+  // T-058 clause 2: uploadFileToPage throwing at the fs.access check (the
+  // NOT_OFFERED path, before uploadFile.js:116 ever sets a field) leaves
+  // evidenceOut as `{}` — an empty object is truthy, so a bare `if
+  // (imageAttachedEvidence)` guard would have let it through reading as
+  // "evidence was recorded and it was empty" instead of "there is none".
+  // This drives that exact not-found path's report shape and asserts the
+  // KEY is absent, not just falsy.
+  test("NOT_OFFERED path (empty evidenceOut): no imageAttachedEvidence KEY at all", () => {
+    const result = buildAskOneSuccessResult("chatgpt", {
+      response: "SEES=no",
+      data: {},
+      turnIndex: 1,
+      sessionAgeMs: 1000,
+      imageAttached: false,
+      imageAttachedCause: "not_offered",
+      imageAttachedEvidence: {}, // exactly what uploadFile.js's NOT_OFFERED throw leaves behind
+    });
+    assert.equal(Object.hasOwn(result, "imageAttachedEvidence"), false);
+    // Confirms this isn't the whole optional block being skipped — the
+    // cause and warning are still present, only the empty evidence is not.
+    assert.equal(result.imageAttached, false);
+    assert.equal(result.imageAttachedCause, "not_offered");
+  });
 });

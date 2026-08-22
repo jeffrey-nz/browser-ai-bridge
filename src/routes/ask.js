@@ -241,7 +241,15 @@ router.post("/", async (req, res, next) => {
           // minimum which selector was actually in effect), which is what
           // lets a deliberate evidence-break test prove its own claim
           // instead of relying on a filename or a hand-typed note.
-          if (imageAttachedEvidence) {
+          // T-058: a has-keys check, not a bare truthiness one — an empty
+          // {} (uploadFileToPage threw before uploadFile.js ever set a
+          // field on it, e.g. the NOT_OFFERED path) is truthy and would
+          // otherwise ride onto the payload reading as "evidence was
+          // recorded and it was empty" instead of "there is none".
+          if (
+            imageAttachedEvidence &&
+            Object.keys(imageAttachedEvidence).length > 0
+          ) {
             payload.imageAttachedEvidence = imageAttachedEvidence;
           }
           // T-073: present only alongside imageAttached (this provider/turn

@@ -18,10 +18,14 @@ export async function sendPromptWithFile(
   logger.info(`[ChatGPT] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053: populated by uploadFileToChatGpt only on a successful verify() —
-  // see uploadFile.js's own evidenceOut comment for why (matchedAlternatives,
-  // requireGrowth/grew, elapsedMs, strategy). `false` still carries a cause
-  // via imageAttachedCause (T-038); this is the same thing for `true`.
+  // T-053/T-058: `evidenceSelectorUsed` is set by uploadFileToChatGpt
+  // (via uploadFile.js) BEFORE anything that can throw — a false row needs
+  // this proof exactly as much as a true row does, which is why
+  // imageAttachedEvidence below is no longer gated behind `imageAttached`.
+  // The rest of evidenceOut's fields (matchedAlternatives, requireGrowth/
+  // grew, elapsedMs, strategy) are still populated only on a successful
+  // verify(). `false` still also carries a cause via imageAttachedCause
+  // (T-038).
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToChatGpt(page, filePath, evidenceOut);
@@ -40,9 +44,13 @@ export async function sendPromptWithFile(
   return {
     ...result,
     imageAttached,
-    ...(imageAttached
-      ? { imageAttachedEvidence: evidenceOut }
-      : { imageAttachedCause }),
+    // T-058: ungated to match src/ai/generic/interaction.js — a FALSE row
+    // needs evidenceSelectorUsed exactly as much as a TRUE row needs its
+    // match details. An evidenceOut with no keys (e.g. NOT_OFFERED, thrown
+    // before uploadFile.js ever sets a field on it) is filtered out at the
+    // consumer (src/routes/ask.js, src/routes/ask/askOne.js), not here.
+    ...(imageAttached ? {} : { imageAttachedCause }),
+    imageAttachedEvidence: evidenceOut,
   };
 }
 
