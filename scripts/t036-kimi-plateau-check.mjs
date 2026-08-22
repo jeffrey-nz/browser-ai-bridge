@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 /**
  * T-036 evidence-gathering probe. T-035's own latency data showed kimi's
  * persisted .image-thumbnail.success count climbing 0..8 across two batches

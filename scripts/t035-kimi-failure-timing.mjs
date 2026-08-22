@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 /**
  * T-035 clause 3: measure the FAILURE path cost of requireGrowth's poll —
  * a stale .image-thumbnail.success node present, and a malformed file (same

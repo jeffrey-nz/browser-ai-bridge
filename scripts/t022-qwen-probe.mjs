@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 // T-022: attachment-diagnose.mjs's table doesn't print the raw
 // input[type="file"] count/visibility that uploadFileToPage's Strategy 1
 // actually branches on — it prints the EVIDENCE selectors (post-attach), not

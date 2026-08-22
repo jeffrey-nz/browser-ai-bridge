@@ -213,6 +213,21 @@ If a provider fails, the auto-fix command uses an LLM session to analyse the fai
 npm run audit:fix
 ```
 
+## Corpus & diagnostic scripts
+
+Reusable tools under `scripts/` — reached for repeatedly across tickets, not tied to one closed one. Run directly with `node`, no bridge required unless noted:
+
+- `scripts/vision-probe.mjs [--blind] [--count N --color name] [--providers a,b,c]` — sends a fixture image (or, with `--blind`, the same prompt with no image at all) to one or more providers and grades the reply against ground truth. `--help` for the full flag list.
+- `scripts/ia-grade.mjs` — regrades the whole `reports/vision-probe/` corpus against the current `classify()`, reporting the `imageAttached` flag's refutable/confirming/neither split and the corpus's realised (count,colour) prior alongside the generator's.
+- `scripts/shape-audit.mjs` — recomputes every recorded reply's shape fresh and reports where the stored value and today's classifier disagree, plus per-count and per-provider accuracy tables.
+- `scripts/fixture-audit.mjs` — decodes every committed fixture PNG's actual pixels and checks the drawn square count matches its declared truth.
+- `scripts/pngPixels.mjs` — the one shared PNG pixel decoder (IHDR/IDAT/inflate/un-filter). A library, not a CLI tool — imported by `fixture-audit.mjs` and `tests/renderPng.test.js`; write a caller against this file rather than a second decoder.
+- `scripts/attachment-diagnose.mjs <providerId>` — drives a real upload through the production `uploadFileToPage` path against a live provider tab (requires the bridge running) and reports whether attachment evidence appears, before and after.
+- `scripts/dom-diagnose.mjs <urlSubstr> <mode> [args]` — inspects a live provider page's DOM (selector matches, ancestor chains of a known text, sibling walk, screenshot) over the bridge's own CDP connection, without touching bridge internals. `--help`-free; see the file header for its four modes.
+- `scripts/doc-check.mjs` — checks this section against `scripts/` itself: every script named above still exists on disk, and every script on disk that isn't marked `@one-shot-probe` in its own header is named above. Run it after adding or removing a script.
+
+One-shot, closed-ticket evidence probes also live under `scripts/` (marked `// @one-shot-probe` in their own header — `doc-check.mjs` uses that marker, not a filename pattern, to tell the two apart) and are not listed here; see the ticket named in each file's header for context.
+
 ## Hotkeys (while server is running)
 
 | Key          | Action                       |

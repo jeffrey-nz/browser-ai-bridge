@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 /**
  * break-demo.mjs — acceptance clause 3, executed rather than merely described.
  *

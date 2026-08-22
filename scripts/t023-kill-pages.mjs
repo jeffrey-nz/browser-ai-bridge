@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 /**
  * t023-kill-pages.mjs — T-023's reproduction, same CDP pattern break-demo.mjs
  * already established: connect to the SAME running Chrome the live bridge
