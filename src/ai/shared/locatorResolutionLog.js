@@ -19,7 +19,14 @@ import process from "node:process";
 const LOG_PATH = path.join(process.cwd(), "logs", "locator-resolutions.jsonl");
 
 export function recordLocatorResolution(
-  { provider, key, matchCount, pickedIndex, pickedSelector },
+  {
+    provider,
+    key,
+    matchCount,
+    pickedIndex,
+    pickedSelector,
+    distinctVisibleElements,
+  },
   logPath = LOG_PATH,
 ) {
   const entry = {
@@ -29,6 +36,15 @@ export function recordLocatorResolution(
     matchCount,
     pickedIndex,
     pickedSelector,
+    // T-111: matchCount counts SELECTORS that matched, not distinct
+    // ELEMENTS (T-108's own finding — several selectors often describe one
+    // box). null when matchCount <= 1 (nothing to compare) or the caller
+    // didn't compute it; a real number is how many of the matchCount
+    // visible selectors resolved to a DIFFERENT bounding box, which is
+    // this ticket's actual question — same-element collisions are the
+    // normal, harmless case the list's order cannot get wrong.
+    distinctVisibleElements:
+      distinctVisibleElements === undefined ? null : distinctVisibleElements,
   };
   // Same guard src/session/Manager.js already uses for its own
   // real-file side effect: a test exercising production code through the

@@ -284,3 +284,132 @@ test("resolveSelector's fallback (nothing visible) is unchanged: the whole origi
   const pickedFromArray = await resolveSelector(page, ["#a", "#b", "#c"]);
   assert.equal(pickedFromArray, "#a");
 });
+
+/**
+ * T-111: matchCount counts SELECTORS that matched, not distinct ELEMENTS —
+ * several selectors describing the SAME box (the normal, harmless case,
+ * where the list's order cannot get anything wrong) look identical to
+ * matchCount alone as two selectors pointing at genuinely DIFFERENT
+ * elements (the real ambiguity this whole ordering-fix class exists for).
+ * distinctVisibleElements tells them apart via each visible match's own
+ * bounding box — a fake page here carries one per selector so the same
+ * fixed-answer seam as the tests above can express "same box" vs
+ * "different box" without a real DOM.
+ */
+function fakePageWithBoxes(visibleBoxes) {
+  // visibleBoxes: { [selector]: {x,y,width,height} | undefined } — a
+  // selector present with a box is visible; absent is not.
+  return {
+    locator(selector) {
+      return {
+        last() {
+          return {
+            __selector: selector,
+            async isVisible() {
+              return selector in visibleBoxes;
+            },
+            async boundingBox() {
+              return visibleBoxes[selector] ?? null;
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+test("resolveVisibleInOrder: distinctVisibleElements is null when matchCount <= 1 — nothing to compare", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "locator-log-test-"));
+  try {
+    // Only one visible match.
+    const page = fakePageWithBoxes({
+      "#a": { x: 0, y: 0, width: 10, height: 10 },
+    });
+    const picked = await resolveVisibleInOrder(
+      page,
+      "test",
+      "key",
+      ["#a", "#b"],
+      { logPath: tmpLogPath(dir) },
+    );
+    assert.equal(picked.__selector, "#a");
+    const rows = readLocatorResolutions(tmpLogPath(dir));
+    assert.equal(rows[0].matchCount, 1);
+    assert.equal(rows[0].distinctVisibleElements, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("resolveVisibleInOrder: distinctVisibleElements is 1 when multiple selectors resolve to the SAME box — the normal, harmless case", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "locator-log-test-"));
+  try {
+    const sameBox = { x: 10, y: 20, width: 300, height: 40 };
+    const page = fakePageWithBoxes({
+      "#a": sameBox,
+      "#b": sameBox,
+      "#c": sameBox,
+    });
+    await resolveVisibleInOrder(page, "test", "key", ["#a", "#b", "#c"], {
+      logPath: tmpLogPath(dir),
+    });
+    const rows = readLocatorResolutions(tmpLogPath(dir));
+    assert.equal(rows[0].matchCount, 3);
+    assert.equal(
+      rows[0].distinctVisibleElements,
+      1,
+      "three selectors describing one element must not read as three-way ambiguity",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("resolveVisibleInOrder: distinctVisibleElements counts DIFFERENT boxes as different elements — the real ambiguity", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "locator-log-test-"));
+  try {
+    const page = fakePageWithBoxes({
+      "#a": { x: 0, y: 0, width: 100, height: 20 },
+      "#b": { x: 0, y: 200, width: 100, height: 20 }, // a different location
+    });
+    const picked = await resolveVisibleInOrder(
+      page,
+      "test",
+      "key",
+      ["#a", "#b"],
+      { logPath: tmpLogPath(dir) },
+    );
+    // Order still picks the earlier one — this field only ADDS information,
+    // it doesn't change which element wins.
+    assert.equal(picked.__selector, "#a");
+    const rows = readLocatorResolutions(tmpLogPath(dir));
+    assert.equal(rows[0].matchCount, 2);
+    assert.equal(rows[0].distinctVisibleElements, 2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("resolveVisibleInOrder: a locator with no boundingBox() (this file's own plain fakePage) does not throw — distinctVisibleElements degrades to counting nulls as one bucket", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "locator-log-test-"));
+  try {
+    // The ORIGINAL fakePage() above has no boundingBox() method at all —
+    // this is the exact shape every OTHER test in this file already uses,
+    // and it must keep working after this field was added.
+    const page = fakePage(["#a", "#c"]);
+    await assert.doesNotReject(
+      resolveVisibleInOrder(page, "test", "key", ["#a", "#b", "#c"], {
+        logPath: tmpLogPath(dir),
+      }),
+    );
+    const rows = readLocatorResolutions(tmpLogPath(dir));
+    assert.equal(rows[0].matchCount, 2);
+    // Both boundingBox() calls fail closed to null, and both nulls collapse
+    // into the SAME bucket by this function's own dedup logic — this is a
+    // known, named limitation (a caller with no bounding-box support reads
+    // as "same element" rather than "unknown"), not silently wrong.
+    assert.equal(rows[0].distinctVisibleElements, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

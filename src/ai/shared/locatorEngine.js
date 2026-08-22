@@ -45,12 +45,50 @@ export async function resolveVisibleInOrder(
     }
   }
 
+  // T-111: matchCount alone cannot tell "several selectors describe one
+  // box" (harmless — order cannot get this wrong) from "selectors point at
+  // genuinely different elements" (the actual ambiguity this whole class of
+  // ordering fix exists for). Only worth computing when there is something
+  // to compare; a bounding box is a cheap, no-extra-round-trip stand-in for
+  // element identity — two selectors resolving to the exact same rendered
+  // box are the same element for this purpose, and Playwright doesn't
+  // expose element identity across independently-resolved locators any
+  // more directly than that without extra page.evaluate() plumbing this
+  // ticket doesn't need.
+  let distinctVisibleElements = null;
+  if (visibleIndexes.length > 1) {
+    const boxes = [];
+    for (const i of visibleIndexes) {
+      // try/catch, not `.catch()` chained onto the call — a caller whose
+      // locator has no boundingBox() at all (this file's own fakePage()
+      // test seam, see tests/locatorResolution.test.js) throws
+      // SYNCHRONOUSLY before any promise exists to attach `.catch()` to.
+      let box = null;
+      try {
+        box = await page.locator(selectors[i]).last().boundingBox();
+      } catch {
+        box = null;
+      }
+      boxes.push(box);
+    }
+    const seen = [];
+    for (const b of boxes) {
+      const key =
+        b === null
+          ? null
+          : `${b.x.toFixed(1)},${b.y.toFixed(1)},${b.width.toFixed(1)},${b.height.toFixed(1)}`;
+      if (!seen.includes(key)) seen.push(key);
+    }
+    distinctVisibleElements = seen.length;
+  }
+
   const resolution = {
     provider,
     key,
     matchCount: visibleIndexes.length,
     pickedIndex,
     pickedSelector: pickedIndex === -1 ? null : selectors[pickedIndex],
+    distinctVisibleElements,
   };
   if (logPath) {
     recordLocatorResolution(resolution, logPath);
