@@ -18,6 +18,11 @@ import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
 } from "../scripts/vision-probe.mjs";
+// T-083: was a hand-rolled `fetch(.../api/ping)` here — the exact shape
+// evidence/t075-repro.mjs's own hand-rolled version disagreed with. Source
+// changed to the shared helper; this file's own already-committed output
+// (reports/vision-probe/t079-askall-deepseek.json) is untouched.
+import { fetchServerProvenance } from "../scripts/serverProvenance.mjs";
 
 const BASE_URL = process.env.BRIDGE_URL || "http://localhost:3333";
 const COUNT = 4;
@@ -44,9 +49,9 @@ function buildPrompt() {
 }
 
 async function main() {
-  const ping = await (await fetch(`${BASE_URL}/api/ping`)).json();
+  const provenance = await fetchServerProvenance(BASE_URL);
   console.log(
-    `[provenance] loadedCommit=${ping.loadedCommit} loadedTreeDirty=${ping.loadedTreeDirty}`,
+    `[provenance] loadedCommit=${provenance.loadedCommit} loadedTreeDirty=${provenance.loadedTreeDirty}`,
   );
 
   const png = renderPng(CANVAS_WIDTH, CANVAS_HEIGHT, COUNT, COLORS[COLOR]);
@@ -79,8 +84,8 @@ async function main() {
   const record = {
     endpoint: "/api/ask-all",
     bridgeCommit: process.env.T079_BRIDGE_COMMIT || null,
-    serverLoadedCommit: ping.loadedCommit,
-    serverLoadedTreeDirty: ping.loadedTreeDirty,
+    serverLoadedCommit: provenance.loadedCommit,
+    serverLoadedTreeDirty: provenance.loadedTreeDirty,
     truth: { count: COUNT, color: COLOR },
     fixtureSha256,
     httpStatus: res.status,

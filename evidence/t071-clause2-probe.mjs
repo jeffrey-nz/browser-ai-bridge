@@ -2,16 +2,22 @@
 // "copilot's image path specifically broke" — a text-only turn, a
 // cooldownManager read, and a DOM sweep for any visible quota/limit
 // messaging near the composer.
+// T-083: was a hand-rolled `fetch(.../api/ping)` here; source changed to
+// the shared helper (this file's own already-committed transcript,
+// evidence/t071-clause2-transcript.txt, is untouched).
+import { fetchServerProvenance } from "../scripts/serverProvenance.mjs";
+
 const BASE = "http://127.0.0.1:3333";
 
 async function main() {
   console.log("=== cooldownManager state (via /api/ping) ===");
-  const ping = await fetch(`${BASE}/api/ping`).then((r) => r.json());
+  const provenance = await fetchServerProvenance(BASE);
+  const providers = await fetch(`${BASE}/api/ping`).then((r) => r.json());
   console.log(
     JSON.stringify({
-      status: ping.status,
-      loadedCommit: ping.loadedCommit,
-      copilot: ping.providers.copilot,
+      loadedCommit: provenance.loadedCommit,
+      loadedTreeDirty: provenance.loadedTreeDirty,
+      copilot: providers.providers.copilot,
     }),
   );
 

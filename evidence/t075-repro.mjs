@@ -27,6 +27,11 @@
 import { spawn, execSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import process from "node:process";
+// T-083: CLAUSE 0's provenance block, read the same way every live
+// evidence script should now read it — see scripts/serverProvenance.mjs's
+// own header for why this exists (two evidence scripts written hours
+// apart disagreed on whether loadedTreeDirty was part of it).
+import { fetchServerProvenance } from "../scripts/serverProvenance.mjs";
 
 const REPO = "C:/Users/Work/browser-ai-bridge";
 const A_PORT = 3347;
@@ -111,7 +116,15 @@ async function main() {
   );
 
   const pingA = await waitForReady(A_PORT);
-  log(`Bridge A ready: loadedCommit=${pingA.loadedCommit}`);
+  // T-083: fetchServerProvenance re-fetches /api/ping rather than reusing
+  // pingA's own raw JSON, so this evidence carries the SAME reader
+  // contract (fieldsPresent, reachable) every future live-verification
+  // script uses — a second read of a bridge that has not restarted in
+  // between answers the same question waitForReady's own fetch did.
+  const provenanceA = await fetchServerProvenance(`http://localhost:${A_PORT}`);
+  log(
+    `Bridge A ready: loadedCommit=${provenanceA.loadedCommit} loadedTreeDirty=${provenanceA.loadedTreeDirty}`,
+  );
 
   const aChromePid = findChromeMainPid(CDP_PORT);
   log(`Bridge A's own Chrome main process PID: ${aChromePid}`);
@@ -189,7 +202,11 @@ async function main() {
     aChromeAliveAfter;
 
   const result = {
-    pingA: { loadedCommit: pingA.loadedCommit, status: pingA.status },
+    pingA: {
+      status: pingA.status,
+      loadedCommit: provenanceA.loadedCommit,
+      loadedTreeDirty: provenanceA.loadedTreeDirty,
+    },
     aChromePid,
     bExit,
     bChromePidRaw,
