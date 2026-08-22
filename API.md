@@ -208,6 +208,45 @@ Close and remove a session.
 
 ---
 
+### GET `/api/sessions/:id/snapshot`
+
+Captures a screenshot **and** the page's own HTML (via `capturePageContext`, the
+self-heal diagnostic capture — a best-first walk over a fixed list of chat-container
+selectors, falling back to the full page). Different from
+[`GET /api/screenshot/session/:id`](#get-apiscreenshotsessionid) above: that one is
+screenshot-only; this one also returns HTML and is what the self-heal/stall-escape
+path uses to hand a human or another system enough context to see what a session is
+stuck on.
+
+Either capture can fail independently (a closed tab, a detached frame, a timeout) —
+`capturePageContext` swallows that into a plausible-looking empty value
+(`screenshotBase64: null` / `html: ""`) rather than throwing, the same shape a
+genuinely blank page would produce. `screenshotFailed` and `htmlFailed` exist so a
+caller can tell "nothing here" from "the capture broke" from the response alone,
+which the two plain fields alone cannot do. `screenshotFailed` is exact — a
+successful screenshot never produces `null`. `htmlFailed` is best-effort, not
+airtight: `html: ""` is `capturePageContext`'s own failure return, but nothing
+guarantees `page.content()` can never legitimately resolve to an empty string on
+some future degenerate page.
+
+**Response**
+
+```json
+{
+  "success": true,
+  "sessionId": "uuid",
+  "providerId": "chatgpt",
+  "state": "active | stalled | idle",
+  "timestamp": "2025-01-01T00:00:00.000Z",
+  "html": "<div>...</div>",
+  "screenshotBase64": "<base64-png>",
+  "screenshotFailed": false,
+  "htmlFailed": false
+}
+```
+
+---
+
 ## Ask (Send Prompt)
 
 ### POST `/api/ask`

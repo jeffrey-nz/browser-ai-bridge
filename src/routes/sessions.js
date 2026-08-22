@@ -143,15 +143,28 @@ router.get("/:id/snapshot", async (req, res) => {
     // page.content() from one day legitimately resolving to an empty string
     // on some future degenerate page — documented as such rather than
     // claimed airtight.
+    //
+    // screenshotBase64Out/htmlOut are each computed ONCE and reused for both
+    // the response field and its *Failed flag — review caught that computing
+    // screenshotFailed from the raw screenshotBase64 (`== null`) while the
+    // response field went through `|| null` meant a hypothetical empty-string
+    // screenshotBase64 ("" — not believed reachable; a successful
+    // page.screenshot() is never zero bytes) would ship
+    // screenshotBase64:null next to screenshotFailed:false, the exact
+    // can't-tell-apart shape this ticket removes, reintroduced in one
+    // corner. Deriving both from the same coerced value closes it without
+    // having to prove the corner is unreachable.
+    const screenshotBase64Out = screenshotBase64 || null;
+    const htmlOut = htmlSnippet || "";
     return sendSuccess(res, {
       sessionId: id,
       providerId: session.providerId,
       state: getSessionState(id),
       timestamp: new Date().toISOString(),
-      html: htmlSnippet || "",
-      screenshotBase64: screenshotBase64 || null,
-      screenshotFailed: screenshotBase64 == null,
-      htmlFailed: !htmlSnippet,
+      html: htmlOut,
+      screenshotBase64: screenshotBase64Out,
+      screenshotFailed: screenshotBase64Out == null,
+      htmlFailed: !htmlOut,
     });
   } catch (err) {
     logger.error(
