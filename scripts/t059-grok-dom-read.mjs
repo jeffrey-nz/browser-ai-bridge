@@ -1,22 +1,36 @@
 #!/usr/bin/env node
 /**
- * t059-grok-dom-read.mjs — T-059. Settles, by direct live DOM read during a
- * real grok turn, whether the ECHO shape T-054 found (grok's reply contains
- * the sent prompt verbatim, blank lines carrying a literal space that
- * wasn't sent) is (i) the extractor reading OUR OWN user bubble because
- * `.last()` over a shared user+assistant selector picked the wrong node, or
- * (ii) grok genuinely echoing a prompt ProseMirror already mutated (blank
- * lines -> a line with one space) before submit.
+ * t059-grok-dom-read.mjs — T-059. Settles, by an IN-WINDOW live DOM read
+ * during a real grok turn (in the same regime T-054/T-072's echoing turns
+ * ran in, not a fresh-chat steady-state snapshot), whether the ECHO shape
+ * T-054 found is (i) the extractor reading OUR OWN user bubble because
+ * `.last()` over a shared user+assistant selector picked it up before the
+ * assistant's own block existed, or (ii) grok genuinely echoing a prompt
+ * ProseMirror already mutated before submit.
  *
- * Drives the REAL production functions unmodified — startNewChat,
- * injectGrokText (clearAndType), clickGrokSend, waitForGrokCompletion — so
- * this reproduces exactly what a live turn does, with one extra read
- * inserted between typing and submitting that production code never takes.
+ * REDO of the first pass, which sampled only after waitForGrokCompletion
+ * had already returned — a moment where `.last()` is necessarily the
+ * assistant node on any completed turn, distinguishing nothing — and used
+ * startNewChat, which never runs on the /api/ask path the real echoing
+ * turns took (a fresh chat has no prior bubble, no live Copy/Like button,
+ * so poll.js's doneSignal check can't fire early the way it could on a
+ * page carrying a prior turn).
+ *
+ * This version: sends ONE throwaway turn first so the page carries a prior
+ * user+assistant bubble pair and a live Copy/Like button (the regime real
+ * echoing turns ran in), then for the SECOND (measured) turn, samples
+ * `.last()` on a short interval CONCURRENTLY with the real, unmodified
+ * waitForGrokCompletion() — not after it returns — so the trace covers the
+ * exact window poll.js/extract.js actually decide in.
+ *
+ * Drives the real production functions unmodified — injectGrokText
+ * (clearAndType), clickGrokSend, waitForGrokCompletion — with one extra
+ * read (composer content before submit) and one extra concurrent sampler
+ * (the in-window trace) that production code never takes.
  */
 import { chromium } from "playwright-core";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
-import { startNewChat } from "../src/ai/grok/interaction/chat.js";
 import {
   injectGrokText,
   clickGrokSend,
@@ -30,6 +44,8 @@ const CDP_URL = process.env.CDP_URL || "http://127.0.0.1:9222";
 // on a reports/-rooted path here would silently do nothing.
 const outPath =
   process.argv[2] || `evidence/t059-grok-dom-read-${Date.now()}.json`;
+const SAMPLE_INTERVAL_MS = 300;
+const POST_COMPLETE_SAMPLE_MS = 1500;
 
 // Byte-identical shape to scripts/vision-probe.mjs's buildPrompt() — the
 // blank-line structure is what matters here, not the specific count/color
@@ -47,18 +63,33 @@ function buildPrompt() {
   );
 }
 
+async function sendTurn(page, prompt) {
+  await injectGrokText(page, prompt);
+  await clickGrokSend(page);
+  return waitForGrokCompletion(page);
+}
+
 async function main() {
   const browser = await chromium.connectOverCDP(CDP_URL);
   const context = browser.contexts()[0];
   let page = context.pages().find((p) => p.url().includes("grok.com"));
   if (!page) page = await context.newPage();
 
-  await startNewChat(page);
-  await page.waitForTimeout(500);
+  // Deliberately NOT startNewChat — the real echoing turns (T-072, via
+  // /api/ask) never call it either. Whatever conversation state the tab
+  // already carries is the regime. If it's a genuinely fresh landing page,
+  // the throwaway turn below still establishes a prior bubble pair before
+  // the measured turn runs.
+  console.log(
+    "[t059] sending a THROWAWAY turn first, to establish a prior bubble pair + live Copy/Like button...",
+  );
+  const throwawayCompleted = await sendTurn(page, "Reply with exactly: PONG");
+  console.log(`[t059] throwaway turn completed: ${throwawayCompleted}`);
+  await page.waitForTimeout(1000);
 
   const prompt = buildPrompt();
   console.log(
-    "[t059] injecting prompt (production injectGrokText/clearAndType)...",
+    "[t059] injecting the MEASURED prompt (production injectGrokText/clearAndType)...",
   );
   await injectGrokText(page, prompt);
 
@@ -70,26 +101,65 @@ async function main() {
     `[t059] composer innerText before submit (JSON-escaped): ${JSON.stringify(composerInnerText)}`,
   );
 
-  console.log("[t059] clicking send (production clickGrokSend)...");
-  await clickGrokSend(page);
-
-  console.log(
-    "[t059] waiting for completion (production waitForGrokCompletion)...",
-  );
-  const completed = await waitForGrokCompletion(page);
-  console.log(`[t059] waitForGrokCompletion returned: ${completed}`);
-
-  // Let the DOM settle a moment longer before the dump.
-  await page.waitForTimeout(1000);
-
-  // CLAUSE 1 — dump every match, in document order, of the SAME selector
-  // poll.js/extract.js use, with enough per-node detail to tell the user's
-  // bubble from the assistant's without guessing.
   const selector = GROK_LOCATORS.responseBlock;
   const nodes = page.locator(selector);
-  const count = await nodes.count();
+
+  console.log("[t059] clicking send (production clickGrokSend)...");
+  await clickGrokSend(page);
+  const t0 = Date.now();
+
+  // IN-WINDOW TRACE — sampled CONCURRENTLY with the real
+  // waitForGrokCompletion() call below, not after it returns. Records
+  // .last()'s own class/id/text at each tick, so the trace covers exactly
+  // the window poll.js/extract.js decide in, not the steady state after.
+  const trace = [];
+  let sampling = true;
+  const samplerDone = (async () => {
+    while (sampling) {
+      const count = await nodes.count().catch(() => 0);
+      let lastClass = null;
+      let lastId = null;
+      let lastText = null;
+      if (count > 0) {
+        const el = nodes.nth(count - 1);
+        lastClass = await el.getAttribute("class").catch(() => null);
+        lastId = await el.getAttribute("id").catch(() => null);
+        lastText = await el
+          .innerText()
+          .then((t) => t.slice(0, 60))
+          .catch(() => null);
+      }
+      trace.push({
+        tMs: Date.now() - t0,
+        matchCount: count,
+        lastClass,
+        lastId,
+        lastText,
+      });
+      await new Promise((r) => setTimeout(r, SAMPLE_INTERVAL_MS));
+    }
+  })();
+
+  console.log(
+    "[t059] waiting for completion (production waitForGrokCompletion) while sampling concurrently...",
+  );
+  const completed = await waitForGrokCompletion(page);
+  const completedAtMs = Date.now() - t0;
+  console.log(
+    `[t059] waitForGrokCompletion returned: ${completed}, at t=${completedAtMs}ms`,
+  );
+
+  // Keep sampling a bit past completion so the trace shows the transition
+  // to steady state too, not just cut off at the exact return.
+  await new Promise((r) => setTimeout(r, POST_COMPLETE_SAMPLE_MS));
+  sampling = false;
+  await samplerDone;
+
+  // CLAUSE 1 — final full dump, same as before, for the steady-state
+  // picture alongside the in-window trace.
+  const finalCount = await nodes.count();
   const dump = [];
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < finalCount; i++) {
     const el = nodes.nth(i);
     const className = await el.getAttribute("class").catch(() => null);
     const id = await el.getAttribute("id").catch(() => null);
@@ -100,30 +170,72 @@ async function main() {
     dump.push({ index: i, className, id, innerTextFirst200: text });
   }
 
+  // Does the in-window trace ever show .last() resolving to the USER's own
+  // bubble (right-aligned, "items-end") rather than the assistant's
+  // ("items-start")? This is the gate clause 1 actually asks for now.
+  const userBubbleAtAnyTick = trace.some(
+    (t) => t.lastClass && t.lastClass.includes("items-end"),
+  );
+  const assistantBubbleAtAnyTick = trace.some(
+    (t) => t.lastClass && t.lastClass.includes("items-start"),
+  );
+  const lastNodeWasUserAtCompletionTick =
+    trace
+      .find((t) => t.tMs >= completedAtMs)
+      ?.lastClass?.includes("items-end") ?? null;
+
   const result = {
     ts: new Date().toISOString(),
+    throwawayCompleted,
     prompt,
     composerInnerTextBeforeSubmit: composerInnerText,
+    // T-059 REDO: the T-054 artifacts' actual blank-line character is
+    // U+00A0 (non-breaking space), confirmed at the byte level
+    // (reports/vision-probe/t054-grok-echo-*.json contain \xc2\xa0, UTF-8
+    // for U+00A0) — not a literal space (U+0020). The original predicate
+    // tested only U+0020 and could never read true for the thing it was
+    // named after.
+    // T-059 REDO: the SECOND includes() below, and the regex's
+    // [ \t<NBSP>] character class, both contain a literal U+00A0
+    // (non-breaking space) -- not a second copy of the plain-space check
+    // above. Confirmed at the byte level that T-054's stored artifacts
+    // contain 0xC2 0xA0 (UTF-8 for U+00A0), not U+0020. The two calls
+    // LOOK identical in a terminal or a diff (NBSP renders as a blank),
+    // which is exactly why the original predicate (space only) could
+    // never read true for the character it was named after.
     composerContainsSpaceInBlankLine: composerInnerText
       ? composerInnerText.includes("\n \n") ||
-        /\n[ \t]+\n/.test(composerInnerText)
+        composerInnerText.includes("\n \n") ||
+        /\n[ \t ]+\n/.test(composerInnerText)
       : null,
-    waitForGrokCompletionReturned: completed,
     selectorUsed: selector,
-    matchCount: count,
-    domDump: dump,
-    lastNodeIsIndex: dump.length - 1,
+    sampleIntervalMs: SAMPLE_INTERVAL_MS,
+    completedAtMs,
+    waitForGrokCompletionReturned: completed,
+    inWindowTrace: trace,
+    userBubbleAtAnyTick,
+    assistantBubbleAtAnyTick,
+    lastNodeWasUserAtCompletionTick,
+    finalDump: dump,
+    finalMatchCount: finalCount,
   };
 
   await mkdir(path.dirname(outPath), { recursive: true });
   await writeFile(outPath, JSON.stringify(result, null, 2));
+
   console.log(
-    `[t059] ${count} node(s) matched "${selector}", in document order:`,
+    `[t059] in-window trace: ${trace.length} samples over ${trace[trace.length - 1]?.tMs ?? 0}ms`,
   );
-  dump.forEach((d) =>
+  trace.forEach((t) =>
     console.log(
-      `  [${d.index}] class=${JSON.stringify(d.className)} id=${JSON.stringify(d.id)} text="${(d.innerTextFirst200 || "").replace(/\n/g, "\\n")}"`,
+      `  t=${String(t.tMs).padStart(6)}ms matchCount=${t.matchCount} lastClass=${JSON.stringify((t.lastClass || "").slice(-30))} lastText="${(t.lastText || "").replace(/\n/g, "\\n")}"`,
     ),
+  );
+  console.log(
+    `[t059] .last() was ever the USER's own bubble (items-end) during the window: ${userBubbleAtAnyTick}`,
+  );
+  console.log(
+    `[t059] .last() was ever the ASSISTANT's bubble (items-start) during the window: ${assistantBubbleAtAnyTick}`,
   );
   console.log(`[t059] report written to ${outPath}`);
 }
