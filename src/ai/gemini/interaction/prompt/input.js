@@ -7,8 +7,27 @@ import {
   waitForAttachmentEvidence,
 } from "#ai/shared/uploadFile.js";
 import { UPLOAD_CAUSES, UploadOutcomeError } from "#ai/shared/uploadOutcome.js";
+import { resolveVisibleInOrder } from "#ai/shared/locatorEngine.js";
 import { logger } from "#utils/logger.js";
 import fs from "node:fs/promises";
+
+// T-108 clause 3: this list is explicitly generational by its own
+// surrounding comment ("The menu button was renamed to 'Upload & tools'
+// (older builds: 'Open upload file menu')") — newest build's selector
+// first, older builds after. It used to be joined into one CSS selector
+// and resolved with `.first()`, which means DOM-earliest, not
+// list-earliest: under a join the ordering below carries no meaning at
+// all. Selectors themselves are unchanged from before this ticket —
+// walked in order now, by resolveVisibleInOrder, so the newest-build
+// selector actually IS tried first when more than one happens to match.
+const UPLOAD_MENU_BUTTON_SELECTORS = [
+  'gem-icon-button[arialabel="Upload & tools"]',
+  'gem-icon-button[aria-label="Upload & tools"]',
+  'button[aria-label="Upload & tools"]',
+  '[aria-label="Upload & tools"]',
+  '[aria-label="Open upload file menu"]',
+  'button[aria-label*="upload file menu" i]',
+];
 
 // Gemini renders an uploaded image as a thumbnail chip above the composer
 // once ingestion finishes — this is the same evidence the settle-wait below
@@ -39,23 +58,21 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
   // button reports as pointer-intercepted, so we target the host element and
   // force the click. Generic uploadFileToPage Strategy 2 times out on the
   // filechooser because the first click only opens a sub-menu.
-  const menuBtn = page
-    .locator(
-      'gem-icon-button[arialabel="Upload & tools"], ' +
-        'gem-icon-button[aria-label="Upload & tools"], ' +
-        'button[aria-label="Upload & tools"], [aria-label="Upload & tools"], ' +
-        '[aria-label="Open upload file menu"], button[aria-label*="upload file menu" i]',
-    )
-    .first();
   // Poll for the upload-menu button rather than giving up after one short
   // check. After a fresh "new chat" the composer toolbar can take several
   // seconds to mount; if we fall through too early the generic fallback
   // (which has no Gemini-matching selector) fails and the prompt is silently
   // sent TEXT-ONLY — fatal for image transcription. Up to ~3×(4s+1.5s).
-  let menuVisible = false;
-  for (let attempt = 0; attempt < 3 && !menuVisible; attempt++) {
-    menuVisible = await menuBtn.isVisible({ timeout: 4000 }).catch(() => false);
-    if (!menuVisible) {
+  let menuBtn = null;
+  for (let attempt = 0; attempt < 3 && !menuBtn; attempt++) {
+    menuBtn = await resolveVisibleInOrder(
+      page,
+      "gemini",
+      "upload_menu_button",
+      UPLOAD_MENU_BUTTON_SELECTORS,
+      { timeoutMs: 4000 },
+    );
+    if (!menuBtn) {
       logger.warn(
         `[Gemini] Upload menu button not ready (attempt ${attempt + 1}/3) — waiting…`,
       );
@@ -63,7 +80,7 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
     }
   }
 
-  if (menuVisible) {
+  if (menuBtn) {
     // T-093 review: hoisted to the TOP of this branch, not just above
     // waitForAttachmentEvidence — menuBtn.click, uploadItem.waitFor,
     // page.waitForEvent("filechooser"), and fileChooser.setFiles can all

@@ -1,0 +1,32 @@
+=== BEFORE (main HEAD fab0b10, the ticket's own selector-order.mjs, re-run byte-for-byte) ===
+inputLocator.js's own joined+.last() expression picks position 8 of 9 (#searchbox)
+while tryFallbacks (the loop) picks position 3 of 8 (#m365-chat-editor-target-element)
+-- the two paths for the SAME control disagree on the SAME page:
+
+the joined list matches 2 visible element(s), in this order:
+    m365-chat-editor-target-element
+    searchbox
+
+inputLocator.js's own expression  .locator(list.join(", ")).filter({visible:true}).last()
+  picks: #searchbox   (list position 8 of 9)
+
+fallbacks.js's own tryFallbacks(page, "input_box")  — a loop, first visible wins
+  picks: #m365-chat-editor-target-element
+
+FALLBACK_SELECTORS.input_box order vs inputLocator.js's order:
+  fallbacks.js : #userInput  [data-testid="composer-input"]  #m365-chat-editor-target-element  [data-lexical-editor="true"]  textarea[aria-label*="Copilot"]  div[contenteditable="true"]  #searchbox  .copilot-input-box
+  inputLocator : #m365-chat-editor-target-element  [data-lexical-editor="true"]  #userInput  [data-testid="composer-input"]  textarea[aria-label*="Copilot" i]  textarea  [contenteditable="true"]  #searchbox  [role="textbox"]
+
+CONTROL — same two elements, DOM order swapped, list unchanged:
+  .last() now picks: #m365-chat-editor-target-element
+
+=== AFTER (this fix): getChatInputArea now delegates entirely to tryFallbacks; ===
+=== both paths agree, and the CONTROL (DOM order swapped, list unchanged) shows the ===
+=== pick is unchanged -- it now follows the LIST's order, not DOM position. ===
+
+tryFallbacks(page, "input_box")  picks: #m365-chat-editor-target-element
+getChatInputArea(page)           picks: #m365-chat-editor-target-element
+
+CONTROL (DOM order swapped, list unchanged):
+tryFallbacks(page, "input_box")  picks: #m365-chat-editor-target-element
+getChatInputArea(page)           picks: #m365-chat-editor-target-element

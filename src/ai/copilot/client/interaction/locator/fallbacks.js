@@ -1,3 +1,5 @@
+import { resolveVisibleInOrder } from "#ai/shared/locatorEngine.js";
+
 export const FALLBACK_SELECTORS = {
   input_box: [
     "#userInput",
@@ -41,11 +43,5 @@ export async function tryFallbacks(page, key) {
   const fallbacks = FALLBACK_SELECTORS[key];
   if (!fallbacks) return null;
 
-  for (const selector of fallbacks) {
-    const fallbackLoc = page.locator(selector).last();
-    if (await fallbackLoc.isVisible({ timeout: 500 }).catch(() => false)) {
-      return fallbackLoc;
-    }
-  }
-  return null;
+  return resolveVisibleInOrder(page, "copilot", key, fallbacks);
 }

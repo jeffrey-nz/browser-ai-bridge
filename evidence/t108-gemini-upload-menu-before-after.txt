@@ -1,0 +1,5 @@
+OLD CODE'S OWN BEHAVIOUR, reproduced by hand (joined selector + .first()):
+  .first() picks: "Open upload file menu"  (DOM-earliest, list position 5 of 6)
+
+NEW CODE (resolveVisibleInOrder, this fix):
+  picks: "Upload & tools"  (list-earliest, list position 3 of 6 — the newer build wins, as the list's own order intends)

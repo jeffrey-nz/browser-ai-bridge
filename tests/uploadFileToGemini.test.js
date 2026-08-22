@@ -25,6 +25,12 @@ import { UploadOutcomeError } from "../src/ai/shared/uploadOutcome.js";
 function makeLocator({ visible = true, clickThrows = false } = {}) {
   const loc = {
     first: () => loc,
+    // T-108: the upload-menu button resolution now goes through
+    // resolveVisibleInOrder, which calls `.last()` on each individual
+    // selector (mirroring copilot's existing tryFallbacks) rather than
+    // `.first()` on the whole joined list — the fake needs the same
+    // method the real Locator interface offers.
+    last: () => loc,
     isVisible: async () => visible,
     click: async () => {
       if (clickThrows) throw new Error("mock: click intercepted");

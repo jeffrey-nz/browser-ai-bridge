@@ -10,23 +10,21 @@ async function ensureFocusable(locator) {
 }
 
 export async function getChatInputArea(page) {
-  const loc = await ensureLocator(page, "input_box", "the chat text area", () =>
-    page
-      .locator(
-        [
-          "#m365-chat-editor-target-element",
-          '[data-lexical-editor="true"]',
-          "#userInput",
-          '[data-testid="composer-input"]',
-          'textarea[aria-label*="Copilot" i]',
-          "textarea",
-          '[contenteditable="true"]',
-          "#searchbox",
-          '[role="textbox"]',
-        ].join(", "),
-      )
-      .filter({ visible: true })
-      .last(),
+  // T-108 clause 2: this used to carry its OWN 9-selector list, joined and
+  // resolved with `.filter({visible:true}).last()` — a comma-joined CSS
+  // selector resolves in DOCUMENT order, so `.last()` means "latest in the
+  // page", not "highest in this list". FALLBACK_SELECTORS.input_box (in
+  // ./locator/fallbacks.js) is a DIFFERENT 8-selector list for the same
+  // control, walked in order by tryFallbacks (first visible wins — an
+  // order that actually binds). The two disagreed on a real fixture
+  // (measured: this ticket's goal). Passing `null` here means there is no
+  // separate priority list any more — FALLBACK_SELECTORS.input_box, walked
+  // in order, is the one and only resolution for this key.
+  const loc = await ensureLocator(
+    page,
+    "input_box",
+    "the chat text area",
+    null,
   );
 
   try {
