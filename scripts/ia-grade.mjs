@@ -85,6 +85,104 @@ export function gradeBlindReply(raw) {
 // with the verdict it produces.
 export const INDEPENDENCE_MIN_IMAGE_SHARE = 0.5;
 
+// T-087 review, second round: the withdrawal above stops the REALISED-prior
+// line quoting a too-concentrated rate — but a SEPARATE consumer, the
+// "TWO NULLS" sentence (formatTwoNullsLine below), computed its own
+// multiplier as `prior.rowRate / genRate` regardless of independentEnough.
+// rowRate is still a real, non-null number in the degenerate case
+// (computeCorpusPrior never withdraws IT — only the printer decides
+// whether to quote it), so that multiplier silently handed the reader back
+// the exact rate the line above had just refused to publish: multiply the
+// printed Nx by the generator's own 1-in-28 and the withdrawn number falls
+// straight out. A caveat and a leak two lines apart is still a leak. Both
+// consumers of `prior` are now pure, exported functions — same print
+// order as before (this block, then section 3's refutable listing, then
+// formatTwoNullsLine right after the "agreements" line, unchanged) — so
+// the degenerate case can be driven through EACH consumer independently in
+// a test, not just asserted against a flag nothing downstream was checked
+// against.
+export function formatCorpusPriorBlock(prior, countRange, colorChoices) {
+  const totalCells = countRange * colorChoices;
+  const lines = [];
+  lines.push(
+    `   key space (the GENERATOR): COUNT 1-in-${countRange} x COLOR 1-in-${colorChoices} = 1-in-${totalCells}`,
+  );
+  if (prior.modalCell && !prior.independentEnough) {
+    // T-087 review: a caveat printed BELOW the number does not stop the
+    // number being quoted — this is the same fault the ticket itself was
+    // filed about, one consumer over, and printing "22 files, 2 distinct
+    // images" with a footnote is not meaningfully different from not
+    // printing the footnote at all. When the modal cell fails its own
+    // independence check, the realised prior is WITHDRAWN — replaced by the
+    // reason, not decorated with it.
+    lines.push(
+      `   realised   (this CORPUS ): WITHDRAWN — modal cell ${prior.modalCell} has only ${prior.modalImages} distinct image(s) across ${prior.modalFileCount} files (needs >= ${Math.ceil(prior.modalFileCount * prior.independenceThreshold)}, i.e. >= ${prior.independenceThreshold * 100}% distinct) — too concentrated on too few fixtures to trust as a corpus-wide prior.`,
+    );
+  } else if (prior.modalCell) {
+    lines.push(
+      `   realised   (this CORPUS ): modal cell ${prior.modalCell}, ${prior.modalRowCount} of ${prior.totalRows} rows (${prior.modalFileCount} of ${prior.totalFiles} files) = 1-in-${(prior.totalRows / prior.modalRowCount).toFixed(1)}`,
+    );
+    lines.push(
+      `                              over ${prior.visitedCells} of ${totalCells} cells, ${prior.distinctImages} distinct images ` +
+        `(independence check: ${prior.modalImages} of ${prior.modalFileCount} files at the modal cell are distinct images, >= ${prior.independenceThreshold * 100}% required — passes)`,
+    );
+    // T-087 clause 6: drawn-vs-pinned is T-084's field, which does not exist
+    // yet — say plainly that this prior mixes both rather than let it be
+    // read as a measurement of the generator's own draw.
+    lines.push(
+      `                              (mixture of drawn and pinned stimuli — no field distinguishes them yet, T-084)`,
+    );
+  } else {
+    lines.push(
+      `   realised   (this CORPUS ): no files carry both truth and results`,
+    );
+  }
+  return lines;
+}
+
+// T-087 clause 3: TWO separate nulls back the "agreements" line, priced
+// differently. Neither replaces T-072's measured 0 of 19 — that stands and
+// applies to the NO-PICTURE case. This corpus prior is for the OTHER null
+// (T-068/T-073: imageAttached=true but the model's actual input state is
+// unconfirmed), where a reply is not blind, it is INVENTING. When the
+// corpus prior above was WITHDRAWN, this must not reconstruct it — no
+// rowRate, no multiplier, nothing a reader could multiply by 1-in-28 to
+// get the withdrawn number back (T-087 review, second round).
+export function formatTwoNullsLine(
+  prior,
+  blindRefusedCount,
+  blindInformativeCount,
+  countRange,
+  colorChoices,
+) {
+  const totalCells = countRange * colorChoices;
+  const invertingClause =
+    prior.modalCell && prior.independentEnough
+      ? (() => {
+          const genRate = 1 / totalCells;
+          const priorMultiplier = (prior.rowRate / genRate).toFixed(1);
+          return (
+            `is priced at the corpus's realised prior above, not the ` +
+            `generator's 1-in-${totalCells} — that prior is ${priorMultiplier}x ` +
+            `higher, because an invented answer is that many times more ` +
+            `likely to land on the modal cell than a uniform draw over the ` +
+            `key space would suggest.`
+          );
+        })()
+      : `cannot be priced from this corpus right now: the realised prior ` +
+        `above was withdrawn for failing its own independence check, and ` +
+        `pricing the INVENTING null from a rate this corpus refuses to ` +
+        `quote would repeat the exact leak the withdrawal exists to stop.`;
+  return (
+    `      TWO NULLS BACK THAT LINE, PRICED DIFFERENTLY: a reply with NO ` +
+    `PICTURE was measured refusing ${blindRefusedCount} of ${blindInformativeCount || "?"} ` +
+    `times (T-072, section 5) — the generator's key space never even ` +
+    `applies, because a blind model does not guess. A reply that INVENTS ` +
+    `instead of refusing (T-068/T-073's Instant-mode case, imageAttached=true ` +
+    `but the model's real input state unconfirmed) ${invertingClause}`
+  );
+}
+
 // T-087: KEY_SPACE (vision-probe.mjs) is a true fact about the GENERATOR —
 // COUNT drawn uniformly 1-in-COUNT_RANGE, COLOR uniformly 1-in-|COLORS| — and
 // section 3 has always quoted it as a prior over the CORPUS, a different
@@ -402,40 +500,11 @@ if (
   // REALISED cell frequency are different questions — see the function
   // comment above computeCorpusPrior. Printed side by side, both labelled,
   // computed fresh from the files on disk every run (never typed, same rule
-  // T-012 already won for KEY_SPACE itself).
+  // T-012 already won for KEY_SPACE itself). formatCorpusPriorBlock is the
+  // pure/exported/testable half; this call site just prints its lines.
   const colorChoices = Object.keys(COLORS).length;
-  console.log(
-    `   key space (the GENERATOR): COUNT 1-in-${COUNT_RANGE} x COLOR 1-in-${colorChoices} = 1-in-${COUNT_RANGE * colorChoices}`,
-  );
-  if (prior.modalCell && !prior.independentEnough) {
-    // T-087 review: a caveat printed BELOW the number does not stop the
-    // number being quoted — this is the same fault the ticket itself was
-    // filed about, one consumer over, and printing "22 files, 2 distinct
-    // images" with a footnote is not meaningfully different from not
-    // printing the footnote at all. When the modal cell fails its own
-    // independence check, the realised prior is WITHDRAWN — replaced by the
-    // reason, not decorated with it.
-    console.log(
-      `   realised   (this CORPUS ): WITHDRAWN — modal cell ${prior.modalCell} has only ${prior.modalImages} distinct image(s) across ${prior.modalFileCount} files (needs >= ${Math.ceil(prior.modalFileCount * prior.independenceThreshold)}, i.e. >= ${prior.independenceThreshold * 100}% distinct) — too concentrated on too few fixtures to trust as a corpus-wide prior.`,
-    );
-  } else if (prior.modalCell) {
-    console.log(
-      `   realised   (this CORPUS ): modal cell ${prior.modalCell}, ${prior.modalRowCount} of ${prior.totalRows} rows (${prior.modalFileCount} of ${prior.totalFiles} files) = 1-in-${(prior.totalRows / prior.modalRowCount).toFixed(1)}`,
-    );
-    console.log(
-      `                              over ${prior.visitedCells} of ${COUNT_RANGE * colorChoices} cells, ${prior.distinctImages} distinct images ` +
-        `(independence check: ${prior.modalImages} of ${prior.modalFileCount} files at the modal cell are distinct images, >= ${prior.independenceThreshold * 100}% required — passes)`,
-    );
-    // T-087 clause 6: drawn-vs-pinned is T-084's field, which does not exist
-    // yet — say plainly that this prior mixes both rather than let it be
-    // read as a measurement of the generator's own draw.
-    console.log(
-      `                              (mixture of drawn and pinned stimuli — no field distinguishes them yet, T-084)`,
-    );
-  } else {
-    console.log(
-      `   realised   (this CORPUS ): no files carry both truth and results`,
-    );
+  for (const line of formatCorpusPriorBlock(prior, COUNT_RANGE, colorChoices)) {
+    console.log(line);
   }
   console.log(
     `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${cell(false, () => true)} (+ ${planted.length} planted, listed separately)`,
@@ -473,17 +542,17 @@ if (
       : `   -> agreements resting on an arithmetic reference: ${confirming.length}, every one imageAttached=true`,
   );
   // T-087 clause 3: TWO separate nulls back that "agreements" line, and they
-  // are priced differently. Neither replaces T-072's measured 0 of 19 — that
-  // stands, is the stronger result, and applies to the NO-PICTURE case. This
-  // corpus prior is for the OTHER null (T-068/T-073: imageAttached=true but
-  // the model's actual input state — Instant mode, a stale Vision radio — is
-  // unconfirmed), where a reply is not blind, it is INVENTING, and the
-  // generator's 1-in-28 overstates how rare an accidental match is.
-  const genRate = 1 / (COUNT_RANGE * colorChoices);
-  const priorMultiplier =
-    prior.rowRate != null ? (prior.rowRate / genRate).toFixed(1) : "?";
+  // are priced differently — see formatTwoNullsLine's own comment for why
+  // this is a separate pure function from formatCorpusPriorBlock rather
+  // than reading prior.rowRate directly here (the review-round-2 leak).
   console.log(
-    `      TWO NULLS BACK THAT LINE, PRICED DIFFERENTLY: a reply with NO PICTURE was measured refusing ${blindRefused.length} of ${blindInformative.length || "?"} times (T-072, section 5) — the generator's key space never even applies, because a blind model does not guess. A reply that INVENTS instead of refusing (T-068/T-073's Instant-mode case, imageAttached=true but the model's real input state unconfirmed) is priced at the corpus's realised prior above, not the generator's 1-in-${COUNT_RANGE * colorChoices} — that prior is ${priorMultiplier}x higher, because an invented answer is that many times more likely to land on the modal cell than a uniform draw over the key space would suggest.`,
+    formatTwoNullsLine(
+      prior,
+      blindRefused.length,
+      blindInformative.length,
+      COUNT_RANGE,
+      colorChoices,
+    ),
   );
   console.log(
     `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length}`,
