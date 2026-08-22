@@ -20,8 +20,22 @@ export async function injectChatGptText(page, text) {
 }
 
 export async function uploadFileToChatGpt(page, filePath, evidenceOut = null) {
-  // Claude.ai / ChatGPT: attachment button is a paperclip icon near the input.
-  // Selector targets the attachment/file button in the composer toolbar.
+  // DEAD END — DO NOT "FIX" THIS SELECTOR. T-103 (commit 334652f) measured,
+  // with a live CDP event trace plus a window.showOpenFilePicker() shim, that
+  // chatgpt's real attach control ([data-testid="composer-plus-btn"] → the
+  // menu item "Add photos & files") calls showOpenFilePicker() and raises
+  // ZERO Page.* events — fileChooserOpened included. Playwright's
+  // waitForEvent("filechooser") is backed by CDP's legacy
+  // Page.fileChooserOpened, which the File System Access API never triggers.
+  // So Strategy 2 below (uploadFileToPage's attachmentBtnSelector →
+  // waitForEvent("filechooser") path) is structurally unreachable for
+  // chatgpt — no selector, however accurate, can make it fire a chooser.
+  // The string below is left stale (a five-line paperclip guess this ticket's
+  // own history, T-018, shows predates the current UI) on purpose: replacing
+  // it with the now-confirmed real selector would not make Strategy 2 work,
+  // and would read as a fix that isn't one. T-018 measured that Strategy 1
+  // below (the hidden input[type="file"]) IS the only path that can ever
+  // succeed for chatgpt — real, but racy (T-042, T-018's own live 2/3 sample).
   const chatgptAttachSelector =
     'button[aria-label*="Attach" i], button[aria-label*="attach file" i], ' +
     'button[data-testid*="attach" i], button[data-testid*="file" i], ' +

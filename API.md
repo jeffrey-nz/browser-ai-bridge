@@ -338,7 +338,27 @@ Per `reports/vision-probe/after-ask.json` (the T-001 measurement), only `gemini`
 `deepseek`, `grok` and `copilot` — 4 providers — can be verified as receiving an image on
 a given turn. `chatgpt` is NOT in that set: the same run recorded it as `SEES_NO` with
 `imageAttached: false`, i.e. it answered fluently without ever having seen the picture —
-exactly the failure mode this section exists to catch, not an exception to it. `kimi` and
+exactly the failure mode this section exists to catch, not an exception to it.
+
+`chatgpt` still is not in the set, but not for the reason the T-001 run alone would
+suggest. Crew board T-018, three pinned turns 2026-08-22 (bridge commit `f293d113`,
+`serverProvenance: "verified"` on all three, same `fixtureSha256` on all three, confirming
+a deterministic fixture), got 2 of 3 `PASS` with a correct `COUNT` and `COLOR`, both via
+`imageAttachedEvidence.strategy: "direct_input"` — the hidden `input[type="file"]`
+(uploadFile.js's Strategy 1), not the attach-button click. The third was `SEES_NO`,
+`imageAttachedCause: "not_offered"`: Strategy 1 didn't confirm and Strategy 2 (the
+attach-button fallback) found nothing to click either, consistent with T-042's own
+established ~1/3-to-2/3 raciness for this exact path. Strategy 2 itself — the attach
+button/menu click Strategy 1 would fall back to — is separately confirmed structurally
+dead for `chatgpt` regardless of raciness: T-103 (commit `334652f`) traced the real click
+over CDP and found it calls `window.showOpenFilePicker()`, which never raises
+`Page.fileChooserOpened`, so Playwright's `waitForEvent("filechooser")` can never observe
+it. So `chatgpt` CAN receive an image today, through the one path that can ever work for
+it, at a measured rate too unreliable to add it to the "verified receiving" set above —
+2 of 3 is not the same claim as the 4 providers that have had no observed non-rate-limit
+failures across this board's sweeps (see the n=8 text-turn list below). The raciness
+itself is filed separately (crew board T-127) rather than treated as fixed here.
+`kimi` and
 `zai` could not complete a turn at all in that same measurement; `kimi`'s cause was found
 and fixed (crew board T-006): its `responseBlock` selector (`.message-list`) no longer
 existed on the current site, so every completion poll ran out its full timeout regardless
