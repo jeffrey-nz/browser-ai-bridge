@@ -1,0 +1,31 @@
+{
+  "graderSha256": "b9d92df779eb9c5a",
+  "bridgeCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "treeDirty": false,
+  "serverLoadedCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-22T00:37:19.799Z",
+  "fixtureSha256": "072cc674d167a7364b860f69eadb2ffa34338fa1f5cebe6c72a375a8512e44b3",
+  "endpoint": "ask",
+  "truth": {
+    "count": 7,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787358471133.png",
+  "results": [
+    {
+      "providerId": "mistral",
+      "elapsedMs": 300009,
+      "shape": "ERROR",
+      "detail": "timeout"
+    },
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 268461,
+      "shape": "ERROR",
+      "detail": "HTTP 500: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('div#ask-input[contenteditable=\\'true\\'], div#ask-input, textarea#ask-input').first() to be visible\u001b[22m\n"
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "graderSha256": "b9d92df779eb9c5a",
+  "bridgeCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "treeDirty": false,
+  "serverLoadedCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-21T22:54:05.358Z",
+  "fixtureSha256": "072cc674d167a7364b860f69eadb2ffa34338fa1f5cebe6c72a375a8512e44b3",
+  "endpoint": "ask",
+  "truth": {
+    "count": 7,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787352653514.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 22145,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "strategy": "gemini_submenu",
+        "requireGrowth": false,
+        "grew": null
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    },
+    {
+      "providerId": "mistral",
+      "elapsedMs": 19769,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "not_offered",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "[class*='zoomable-image' i]"
+      },
+      "warning": "Nothing on the provider's page accepted the image — no file input or attachment button was found, so it was never offered to the provider, and this response is text-only.",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "kimi",
+      "elapsedMs": 20462,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": ".image-thumbnail.success",
+        "matchedAlternatives": [
+          ".image-thumbnail.success"
+        ],
+        "requireGrowth": true,
+        "grew": true,
+        "elapsedMs": 2208,
+        "strategy": "file_chooser"
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    },
+    {
+      "providerId": "zai",
+      "elapsedMs": 20627,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    },
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 13061,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 1503,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    },
+    {
+      "providerId": "qwen",
+      "elapsedMs": 22895,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "grok",
+      "elapsedMs": 41128,
+      "shape": "ECHO",
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]",
+          "[aria-label*=\"attachment\" i]"
+        ],
+        "requireGrowth": false,
+        "grew": true,
+        "elapsedMs": 336,
+        "strategy": "direct_input"
+      },
+      "raw": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n \nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n \n...or reply with EXACTLY this if you cannot see any image at all:\n \nSEES=no"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 31556,
+      "shape": "SEES_NO",
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "strategy": "plus_menu"
+      },
+      "raw": "SEES=no\n\nEdit in a page"
+    }
+  ]
+}

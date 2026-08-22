@@ -1,0 +1,69 @@
+{
+  "graderSha256": "b9d92df779eb9c5a",
+  "bridgeCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "treeDirty": false,
+  "serverLoadedCommit": "112ad24090ab92314a52ed667231a67b958f8435",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-21T23:01:25.826Z",
+  "blind": true,
+  "endpoint": "ask",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 15446,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "mistral",
+      "elapsedMs": 300015,
+      "shape": "ERROR",
+      "detail": "timeout"
+    },
+    {
+      "providerId": "kimi",
+      "elapsedMs": 18552,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "zai",
+      "elapsedMs": 10337,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "perplexity",
+      "elapsedMs": 10244,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "qwen",
+      "elapsedMs": 16807,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no"
+    },
+    {
+      "providerId": "grok",
+      "elapsedMs": 40820,
+      "shape": "ECHO",
+      "stated": null,
+      "raw": "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text:\n \nSEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match from exactly this list: crimson, teal, goldenrod, indigo>\n \n...or reply with EXACTLY this if you cannot see any image at all:\n \nSEES=no"
+    },
+    {
+      "providerId": "copilot",
+      "elapsedMs": 21978,
+      "shape": "SEES_NO",
+      "stated": null,
+      "raw": "SEES=no\n\nEdit in a page"
+    }
+  ]
+}
