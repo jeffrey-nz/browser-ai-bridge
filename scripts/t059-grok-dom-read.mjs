@@ -31,12 +31,51 @@
 import { chromium } from "playwright-core";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   injectGrokText,
   clickGrokSend,
 } from "../src/ai/grok/interaction/prompt/input.js";
 import { waitForGrokCompletion } from "../src/ai/grok/interaction/prompt/poll.js";
 import { GROK_LOCATORS } from "../src/ai/grok/locators.js";
+
+// T-132: the selector `.message-bubble, .response-content-markdown,
+// div[id^="response-"]` matches three different depths of the same DOM
+// subtree, and `.last()` in document order always resolves to the
+// innermost one — `.response-content-markdown` — never to the
+// `div[id^="response-"]` wrapper that actually carries the alignment
+// class. Confirmed on the committed dumps: index 17 (run1) / index 29
+// (run2), the node `.last()` returns, has class
+// "relative response-content-markdown markdown chat-md chat-md-links
+// [&>:first-child:not(.not-prose)]:mt-0 [&>:last-child:not(.not-prose)]:mb-0"
+// — no items-end/items-start substring anywhere in it. The alignment class
+// lives one level up, on the enclosing div[id^="response-"] (index 15 run1
+// / index 27 run2, class "...items-start"; index 12 run1 / index 24 run2,
+// class "...items-end"). So checking `.last()`'s OWN class for items-end/
+// items-start can never read true — the class check has to walk up to
+// that ancestor first.
+export function classifyAlignmentClass(className) {
+  if (!className) return null;
+  if (className.includes("items-end")) return "user";
+  if (className.includes("items-start")) return "assistant";
+  return null;
+}
+
+export function summarizeAlignmentTrace(trace, completedAtMs) {
+  const userBubbleAtAnyTick = trace.some((t) => t.lastAlignment === "user");
+  const assistantBubbleAtAnyTick = trace.some(
+    (t) => t.lastAlignment === "assistant",
+  );
+  const tickAtCompletion = trace.find((t) => t.tMs >= completedAtMs);
+  const lastNodeWasUserAtCompletionTick = tickAtCompletion
+    ? tickAtCompletion.lastAlignment === "user"
+    : null;
+  return {
+    userBubbleAtAnyTick,
+    assistantBubbleAtAnyTick,
+    lastNodeWasUserAtCompletionTick,
+  };
+}
 
 const CDP_URL = process.env.CDP_URL || "http://127.0.0.1:9222";
 // evidence/, not reports/ — reports/* is gitignored except reports/vision-probe/
@@ -110,8 +149,11 @@ async function main() {
 
   // IN-WINDOW TRACE — sampled CONCURRENTLY with the real
   // waitForGrokCompletion() call below, not after it returns. Records
-  // .last()'s own class/id/text at each tick, so the trace covers exactly
-  // the window poll.js/extract.js decide in, not the steady state after.
+  // .last()'s own class/id/text at each tick, plus (T-132) the alignment
+  // class read off the enclosing div[id^="response-"] ancestor — see the
+  // classifyAlignmentClass comment above for why .last()'s OWN class can't
+  // carry it — so the trace covers exactly the window poll.js/extract.js
+  // decide in, not the steady state after.
   const trace = [];
   let sampling = true;
   const samplerDone = (async () => {
@@ -120,6 +162,7 @@ async function main() {
       let lastClass = null;
       let lastId = null;
       let lastText = null;
+      let lastAlignment = null;
       if (count > 0) {
         const el = nodes.nth(count - 1);
         lastClass = await el.getAttribute("class").catch(() => null);
@@ -128,6 +171,12 @@ async function main() {
           .innerText()
           .then((t) => t.slice(0, 60))
           .catch(() => null);
+        const ancestorClass = await el
+          .locator('xpath=ancestor::*[starts-with(@id, "response-")][1]')
+          .first()
+          .getAttribute("class")
+          .catch(() => null);
+        lastAlignment = classifyAlignmentClass(ancestorClass);
       }
       trace.push({
         tMs: Date.now() - t0,
@@ -135,6 +184,7 @@ async function main() {
         lastClass,
         lastId,
         lastText,
+        lastAlignment,
       });
       await new Promise((r) => setTimeout(r, SAMPLE_INTERVAL_MS));
     }
@@ -173,16 +223,14 @@ async function main() {
   // Does the in-window trace ever show .last() resolving to the USER's own
   // bubble (right-aligned, "items-end") rather than the assistant's
   // ("items-start")? This is the gate clause 1 actually asks for now.
-  const userBubbleAtAnyTick = trace.some(
-    (t) => t.lastClass && t.lastClass.includes("items-end"),
-  );
-  const assistantBubbleAtAnyTick = trace.some(
-    (t) => t.lastClass && t.lastClass.includes("items-start"),
-  );
-  const lastNodeWasUserAtCompletionTick =
-    trace
-      .find((t) => t.tMs >= completedAtMs)
-      ?.lastClass?.includes("items-end") ?? null;
+  // T-132: read off trace[].lastAlignment (the ancestor's class), not
+  // trace[].lastClass (.last()'s own class, which never carries either
+  // substring — see classifyAlignmentClass above).
+  const {
+    userBubbleAtAnyTick,
+    assistantBubbleAtAnyTick,
+    lastNodeWasUserAtCompletionTick,
+  } = summarizeAlignmentTrace(trace, completedAtMs);
 
   const result = {
     ts: new Date().toISOString(),
@@ -240,9 +288,18 @@ async function main() {
   console.log(`[t059] report written to ${outPath}`);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+// T-132: guarded so `import { classifyAlignmentClass, summarizeAlignmentTrace }
+// from "./t059-grok-dom-read.mjs"` (the unit test) does not also fire off a
+// live grok turn against a bridge — main() only runs when this file is
+// executed directly. Same pattern as vision-probe.mjs (T-025).
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}
