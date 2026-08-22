@@ -69,11 +69,11 @@
   },
   {
     "path": "src/ai/chatgpt/locators.js",
-    "reason": "T-119: CORRECTED from T-116's own reason (\"nothing imports it\") — src/audit/providers.js DOES import CHATGPT_LOCATORS from here, a real edge missed by only grepping inside src/ai/chatgpt/ the first time. Unreachable because src/audit/ itself is (see src/audit/ entries above), not because this file is independently orphaned. Left in place — deleting it would break the audit subsystem's own (currently unwired) selector-health check for chatgpt."
+    "reason": "T-119: CORRECTED from T-116's own reason (\"nothing imports it\"). The reachable writer is src/heal/patcher.js's PROVIDER_LOCATOR_PATHS, which maps chatgpt to this exact path and rewrites it at runtime via patchLocatorsFile() (node:fs) — src/heal/ is live, imported by src/routes/sessions.js and src/routes/ask/executor/stallLoop.js. That reference is a string path, invisible to the static reachability census. src/audit/providers.js also imports CHATGPT_LOCATORS from here, but src/audit/ is itself unwired (see src/audit/ entries above), so that import alone would not save this file. Left in place — deleting it would break the live self-heal path's writes for chatgpt."
   },
   {
     "path": "src/ai/grok/locators.js",
-    "reason": "T-119: same correction and same reason as chatgpt/locators.js — src/audit/providers.js imports GROK_LOCATORS from here."
+    "reason": "T-119: same correction and same reason as chatgpt/locators.js — src/heal/patcher.js's PROVIDER_LOCATOR_PATHS maps grok to this exact path and rewrites it at runtime via patchLocatorsFile(); src/audit/providers.js also imports GROK_LOCATORS from here but src/audit/ is itself unwired, so it's the secondary reference, not the load-bearing one."
   },
   {
     "path": "src/ai/copilot/client/session/tabSelector.js",
