@@ -169,9 +169,11 @@ export function auditShapes(dir) {
   let plantedRowCount = 0;
   // T-096 clause 4: EXCLUDED_SHAPES pools three different failure modes
   // under one argument (transport failure) that only actually applies to
-  // SEES_NO. Tracked per provider so ECHO (bridge/extraction failure) and
-  // NO_ANSWER (empty/unmatched reply) are visible as what they are, not
-  // folded into "excluded" as if every one were "the image never arrived".
+  // SEES_NO. Tracked per provider so ECHO (T-136: mechanism settled as NOT
+  // this bridge's own extraction reading its own prompt bubble back — see
+  // the T-106/T-136 comment further below) and NO_ANSWER (empty/unmatched
+  // reply) are visible as what they are, not folded into "excluded" as if
+  // every one were "the image never arrived".
   const providerExcludedByShape = {};
   // T-106 review: the ranking's own denominator (providerSightedNoPlant)
   // excludes planted rows, but this per-shape suffix did not — so a
@@ -984,12 +986,25 @@ function main() {
     // something I could use", not "which provider is to blame when it
     // didn't" — the per-row `excluded SEES_NO=/ECHO=/NO_ANSWER=` breakdown
     // beside every rate below is exactly how a reader who wants the second
-    // question can back it out for themselves, per provider. T-059 (open)
-    // is the live question on ECHO's own direction specifically — whether
-    // grok's 7 are the provider's or this bridge's own extractor reading
-    // its OWN prompt bubble back; nothing here resolves that, and this
-    // column's rule does not depend on the answer either way, since a
-    // caller got nothing usable under both readings.
+    // question can back it out for themselves, per provider.
+    //
+    // T-136: ECHO's own cause, updated. T-059 (closed) settled the
+    // MECHANISM — 68 in-window samples across 2 live runs, `.last()` was
+    // never our own user bubble at any sampled tick, so grok's ECHO rows
+    // are not this bridge's extractor reading its own prompt back. T-133
+    // then ruled out PROMPT LENGTH as the trigger — a live ladder of 4
+    // rungs (93/313/2000/4500 chars, bracketing the known 313-char length
+    // and grok's 4000-char chunkSize boundary), 3 turns each, 0 of 12
+    // echoed, including the 313-char control that echoed in 100% of its 9
+    // prior recorded turns. What both tickets found instead: every one of
+    // those 9 ECHO rows falls inside one contiguous ~8-hour window,
+    // 2026-08-21T18:41Z-2026-08-22T02:45Z; every other grok row in the
+    // corpus, before and after that window, is clean. So the behaviour
+    // looks time/session-clustered, not a standing property of the
+    // provider or of any prompt this board has sent it — but WHAT inside
+    // that window triggered it is still not identified, and this column's
+    // rule does not depend on the answer either way, since a caller got
+    // nothing usable under any reading.
     console.log(
       "T-106 — SEES_NO/ECHO/NO_ANSWER all count as 'not right' in END TO",
     );
@@ -1000,9 +1015,24 @@ function main() {
       "was it' — the excluded breakdown on each row is how to ask the",
     );
     console.log(
-      "second question. ECHO's own cause is disputed (T-059, open); this",
+      "second question. ECHO's mechanism is settled (T-059: not this",
     );
-    console.log("column's rule does not depend on its answer):");
+    console.log(
+      "bridge's own prompt echoed back) and length is ruled out as its",
+    );
+    console.log(
+      "cause (T-133: 0/12 echoed across 4 rungs bracketing the known 313-",
+    );
+    console.log(
+      "char length). The 9 recorded ECHO rows cluster in one ~8-hour",
+    );
+    console.log(
+      "window (2026-08-21T18:41Z-2026-08-22T02:45Z), none before or since —",
+    );
+    console.log(
+      "apparently non-recurring, not a standing property. This column's",
+    );
+    console.log("rule does not depend on the answer either way):");
     for (const p of providerIdsAll) {
       const sighted = providerSightedNoPlant[p];
       const graded = providerStrataNoPlant[p];
@@ -1055,8 +1085,10 @@ function main() {
       );
     }
     // T-106 clause 5: NO_ANSWER, UNKNOWN ATTRIBUTION — unlike SEES_NO (a
-    // transport argument, T-096) and ECHO (a specific, disputed mechanism
-    // with an open ticket, T-059), no investigation on this board has
+    // transport argument, T-096) and ECHO (mechanism settled and length
+    // ruled out as the trigger, T-059/T-133 — see the T-136 comment
+    // above; the rows cluster in one ~8-hour window with the trigger
+    // inside it still unidentified), no investigation on this board has
     // established whether a NO_ANSWER row (an empty or off-format reply,
     // matching none of classify()'s expected shapes) is evidence about the
     // PROVIDER (declined to follow the format), this bridge's own
