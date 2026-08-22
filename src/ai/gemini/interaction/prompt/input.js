@@ -13,7 +13,7 @@ import fs from "node:fs/promises";
 // Gemini renders an uploaded image as a thumbnail chip above the composer
 // once ingestion finishes — this is the same evidence the settle-wait below
 // is timed around, made explicit rather than trusted on faith.
-const GEMINI_ATTACHMENT_EVIDENCE =
+export const GEMINI_ATTACHMENT_EVIDENCE =
   'img[src^="blob:" i], [data-test-id*="file-preview" i], [class*="file-preview" i], ' +
   '[class*="uploaded-file" i], [class*="attachment-chip" i]';
 
@@ -98,6 +98,15 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
       settleMs = Math.min(30000, 1500 + Math.round(size / 1024 / 1024) * 1000);
     } catch {}
     await page.waitForTimeout(settleMs);
+    // T-093: set BEFORE waitForAttachmentEvidence, not after — this branch
+    // never calls the shared uploadFileToPage(), so it is the only place
+    // that can record which selector this call actually checked, and a
+    // FALSE row (the UNCONFIRMED throw a few lines down) needs that proof
+    // exactly as much as a true row needs its match details. T-058 added a
+    // comment at this file's call site claiming this was already true; it
+    // was not — this line is what makes it true.
+    if (evidenceOut)
+      evidenceOut.evidenceSelectorUsed = GEMINI_ATTACHMENT_EVIDENCE;
     const attached = await waitForAttachmentEvidence(page, {
       selector: GEMINI_ATTACHMENT_EVIDENCE,
       timeoutMs: 6000,

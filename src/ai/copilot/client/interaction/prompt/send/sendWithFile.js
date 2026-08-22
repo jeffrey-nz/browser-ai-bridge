@@ -30,9 +30,12 @@ export async function sendPromptWithFile(
   logger.info(`[Copilot] Uploading image for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053/T-058: see uploadFile.js's evidenceOut comment — evidenceSelectorUsed
-  // is set before anything can throw, so imageAttachedEvidence below is not
-  // gated behind imageAttached.
+  // T-093: attachFileToCopilot has NO shared verifySelector — unlike the
+  // four providers that go through uploadFile.js, it never sets
+  // evidenceSelectorUsed (see its own comment at sendAsFile.js's throw
+  // site). What it DOES record before its own UNCONFIRMED throw:
+  // strategiesAttempted and confirmed:false. imageAttachedEvidence below
+  // is not gated behind imageAttached either way.
   const evidenceOut = {};
   try {
     imageAttached = await attachFileToCopilot(page, filePath, evidenceOut);

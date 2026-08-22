@@ -236,6 +236,20 @@ export async function attachFileToCopilot(page, filePath, evidenceOut = null) {
   }
   if (!attached) {
     log(colors.yellow("  [Copilot] Could not attach file for image-ask."));
+    // T-093: attachFileToCopilot has no shared verifySelector to name (it
+    // never calls uploadFile.js's uploadFileToPage — see this file's own
+    // header) — inventing an evidenceSelectorUsed here would be exactly
+    // the "guess wearing a unit" this board's own lessons warn about. What
+    // IS true, and worth recording before the throw below: BOTH strategies
+    // (plus_menu, then hidden_input) were actually attempted and neither
+    // produced a confirmed chip — this is what lets a reader of a false
+    // row tell "we tried everything we know and none of it worked" apart
+    // from "the file was never offered at all" (a NOT_OFFERED cause, a
+    // different code path entirely).
+    if (evidenceOut) {
+      evidenceOut.strategiesAttempted = ["plus_menu", "hidden_input"];
+      evidenceOut.confirmed = false;
+    }
     // T-038: UNCONFIRMED rather than NOT_OFFERED. sendPromptAsFile's own
     // comment two functions up says the hidden-input path routinely accepts
     // a file the server never registers — a failure here reads much closer
