@@ -893,3 +893,52 @@ one that quietly gets slower and less consistent.
 When every tier is cooling down the reply is `503 STALLED` with `Retry-After`
 set to the **shortest** remaining wait — that is when the chain comes back, and
 reporting tier 0's would send you to sleep past a provider that was already free.
+
+**Both `503 STALLED` responses carry an `attempted` array** — a per-provider
+record of what the chain tried before giving up (checked: a `200` success
+never carries it, and neither does any other error status this route
+returns):
+
+```json
+{
+  "success": false,
+  "error": "STALLED",
+  "stalled": true,
+  "attempted": [
+    { "provider": "gemini", "outcome": "cooldown" },
+    { "provider": "chatgpt", "outcome": "rate limit" }
+  ]
+}
+```
+
+The two `503`s are different failures and `attempted` means something
+slightly different on each:
+
+- **A tier's own turn stalled.** `attempted` lists whichever EARLIER tiers
+  were skipped (cooling down) or dropped with an error before the chain
+  reached the one that stalled — stalling itself never falls through to a
+  further tier, so this response can fire even on tier 0, with `attempted`
+  empty.
+- **The whole chain was exhausted.** Every tier was either skipped (cooling
+  down) or rate-limited with nowhere left to fall through to, and none of
+  them completed or stalled. `attempted` here covers every tier in the
+  chain.
+
+**`outcome` is not drawn from the `reason` vocabulary above, even where a
+token looks the same.** Three call sites write it, three different ways:
+
+- `"cooldown"` — `skipTier()` fired for this tier. The string happens to
+  match `/api/ask-all`'s `reason: "cooldown"` exactly, and means the same
+  thing (gemini-only today — see "Skipped without being asked" above).
+- `"rate limit"` (a space, not an underscore) — this tier rate-limited
+  mid-turn with a further tier to fall through to. This is the SAME
+  mechanism as `/api/ask-all`'s `reason: "rate_limited"`, spelled
+  differently — a caller matching the literal string across both endpoints
+  will not get a hit matching one against the other.
+- The raw error string from session resolution — free text, drawn from
+  whatever failed to open or reuse a session for that tier, with no fixed
+  vocabulary at all. Do not pattern-match this one; log it.
+
+These three spellings are current behaviour, documented as they are — not
+normalised to one vocabulary here, since that would be a wire-format change
+a caller may already be matching against.
