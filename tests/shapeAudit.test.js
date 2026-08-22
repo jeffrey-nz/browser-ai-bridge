@@ -964,3 +964,72 @@ test.describe("fisherExactTwoSided", () => {
     assert.ok(Math.abs(p1 - p2) < 1e-9);
   });
 });
+
+// T-106 clause 3: a deliberate evidence-break plant (vision-probe.mjs
+// --planted-break, the file-level `plantedBreak` field ia-grade.mjs already
+// partitions on) proves the imageAttached flag CAN be wrong under a broken
+// evidence check — it is not a naturally-occurring reading of the provider
+// it was performed on, and a RIGHT plant would otherwise inflate that
+// provider in a ranking. This corpus had FOUR such rows and the ranking
+// (providerStrataNoPlant/providerCountCellsNoPlant/countStrataNoPlant and
+// providerSightedNoPlant/providerSightedCellsNoPlant/countStrataSightedNoPlant)
+// must exclude them while the plant-including originals (providerStrata,
+// providerSighted, etc. — used by the per-truth.count table and cross-tab,
+// a different question, clause 7) keep counting them exactly as before.
+test("auditShapes excludes a planted row from the ranking populations but keeps counting it in the original ones", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      // A deliberate plant, a RIGHT answer — the exact shape that inflates
+      // a provider if left in a ranking.
+      "planted.json": {
+        plantedBreak: "test plant",
+        truth: { count: 5, color: "teal" },
+        results: [
+          {
+            providerId: "a",
+            raw: "SEES=yes COUNT=5 COLOR=teal",
+            imageAttached: false,
+          },
+        ],
+      },
+      // A natural row from the SAME provider, also right — so the
+      // provider still appears in the ranking, just without the plant's
+      // own contribution.
+      "natural.json": {
+        truth: { count: 6, color: "teal" },
+        results: [
+          {
+            providerId: "a",
+            raw: "SEES=yes COUNT=6 COLOR=teal",
+            imageAttached: true,
+          },
+        ],
+      },
+    });
+
+    const {
+      plantedRowCount,
+      providerSighted,
+      providerSightedNoPlant,
+      providerStrata,
+      providerStrataNoPlant,
+    } = auditShapes(dir);
+
+    assert.equal(plantedRowCount, 1);
+
+    // Original (plant-including) populations: both rows counted.
+    assert.equal(providerSighted.a.n, 2);
+    assert.equal(providerSighted.a.ok, 2);
+    assert.equal(providerStrata.a.n, 2);
+    assert.equal(providerStrata.a.ok, 2);
+
+    // Ranking (plant-excluding) populations: only the natural row.
+    assert.equal(providerSightedNoPlant.a.n, 1);
+    assert.equal(providerSightedNoPlant.a.ok, 1);
+    assert.equal(providerStrataNoPlant.a.n, 1);
+    assert.equal(providerStrataNoPlant.a.ok, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

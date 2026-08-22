@@ -140,6 +140,26 @@ export function auditShapes(dir) {
   const providerSighted = {};
   const providerSightedCells = {};
   const countStrataSighted = {};
+  // T-106: the per-provider RANKING block (built from the four structures
+  // above/below) had no concept of a deliberate evidence-break plant
+  // (vision-probe.mjs --planted-break, ia-grade.mjs's own `plantedBreak` —
+  // T-053) at all. Three of today's four plants are RIGHT answers, by
+  // design (a plant breaks the EVIDENCE check and leaves the upload
+  // working), so they inflate the provider they were performed on in a
+  // ranking that is supposed to read as "how well does this provider do
+  // naturally". These mirror providerStrata/providerCountCells/countStrata
+  // and providerSighted/providerSightedCells/countStrataSighted exactly,
+  // but exclude planted rows — used ONLY by the per-provider ranking block;
+  // every other table in this file (per-truth.count, the cross-tab) keeps
+  // reading the ORIGINAL, plant-including structures above, unchanged, per
+  // this ticket's own clause 7 ("nothing else moves").
+  const providerStrataNoPlant = {};
+  const providerCountCellsNoPlant = {};
+  const countStrataNoPlant = {};
+  const providerSightedNoPlant = {};
+  const providerSightedCellsNoPlant = {};
+  const countStrataSightedNoPlant = {};
+  let plantedRowCount = 0;
   // T-096 clause 4: EXCLUDED_SHAPES pools three different failure modes
   // under one argument (transport failure) that only actually applies to
   // SEES_NO. Tracked per provider so ECHO (bridge/extraction failure) and
@@ -170,6 +190,22 @@ export function auditShapes(dir) {
       continue;
     }
     const isBlindFile = j.blind === true;
+    // T-106: a deliberate evidence-break test (vision-probe.mjs
+    // --planted-break, the same file-level field ia-grade.mjs's own
+    // `plantedBreak` reads and partitions on, T-053) proves the
+    // imageAttached FLAG can be wrong under a broken evidence check — it
+    // is not a naturally-occurring reading of that provider's own
+    // behaviour, and three of today's four plants are RIGHT answers that
+    // would otherwise inflate the provider they were performed on in a
+    // per-provider RANKING (this file had no concept of the field at all
+    // until now; ia-grade.mjs has separated planted from naturally-
+    // occurring since T-053). Excluded from the per-provider ranking
+    // populations below — NOT from every table in this file: the
+    // per-truth.count table and the PROVIDER x TRUTH.COUNT cross-tab are a
+    // different question (are these four counts right or wrong, full
+    // stop) and are unaffected on purpose, so a diff of this file's other
+    // sections stays clean, per this ticket's own clause 7.
+    const isPlanted = j.plantedBreak !== undefined;
     // T-091: the one place this file decides "does this row have a
     // gradable truth" — every truth-gated table below (WRONG bucket,
     // out-of-range, shapeByCount/exclusion, countStrata/providerStrata)
@@ -299,6 +335,33 @@ export function auditShapes(dir) {
         const cs = (countStrataSighted[j.truth.count] ??= { n: 0 });
         cs.n++;
 
+        if (isPlanted) {
+          plantedRowCount++;
+        } else {
+          const psn = (providerSightedNoPlant[r.providerId] ??= {
+            countsShown: new Set(),
+            n: 0,
+            ok: 0,
+          });
+          psn.countsShown.add(j.truth.count);
+          psn.n++;
+          if (recomputed.countOk === true) psn.ok++;
+
+          const pcn = (providerSightedCellsNoPlant[r.providerId] ??= new Map());
+          const sightedCellNoPlant = pcn.get(j.truth.count) ?? {
+            n: 0,
+            ok: 0,
+          };
+          sightedCellNoPlant.n++;
+          if (recomputed.countOk === true) sightedCellNoPlant.ok++;
+          pcn.set(j.truth.count, sightedCellNoPlant);
+
+          const csn = (countStrataSightedNoPlant[j.truth.count] ??= {
+            n: 0,
+          });
+          csn.n++;
+        }
+
         if (isExcluded) {
           const eb = (providerExcludedByShape[r.providerId] ??= {
             SEES_NO: 0,
@@ -350,6 +413,36 @@ export function auditShapes(dir) {
         const cell = (pb[band] ??= { n: 0, ok: 0 });
         cell.n++;
         if (recomputed.countOk) cell.ok++;
+
+        if (!isPlanted) {
+          const bucketNoPlant = (countStrataNoPlant[j.truth.count] ??= {
+            n: 0,
+            ok: 0,
+            providers: new Set(),
+          });
+          bucketNoPlant.n++;
+          bucketNoPlant.providers.add(r.providerId);
+          if (recomputed.countOk) bucketNoPlant.ok++;
+
+          const psGradedNoPlant = (providerStrataNoPlant[r.providerId] ??= {
+            countsShown: new Set(),
+            n: 0,
+            ok: 0,
+          });
+          psGradedNoPlant.countsShown.add(j.truth.count);
+          psGradedNoPlant.n++;
+          if (recomputed.countOk) psGradedNoPlant.ok++;
+
+          const pcGradedNoPlant = (providerCountCellsNoPlant[r.providerId] ??=
+            new Map());
+          const gradedCellNoPlant = pcGradedNoPlant.get(j.truth.count) ?? {
+            n: 0,
+            ok: 0,
+          };
+          gradedCellNoPlant.n++;
+          if (recomputed.countOk) gradedCellNoPlant.ok++;
+          pcGradedNoPlant.set(j.truth.count, gradedCellNoPlant);
+        }
       }
     }
   }
@@ -375,6 +468,13 @@ export function auditShapes(dir) {
     providerExcludedByShape,
     sightedNoTruthRows,
     blindWithTruthRows,
+    providerStrataNoPlant,
+    providerCountCellsNoPlant,
+    countStrataNoPlant,
+    providerSightedNoPlant,
+    providerSightedCellsNoPlant,
+    countStrataSightedNoPlant,
+    plantedRowCount,
   };
 }
 
@@ -564,6 +664,13 @@ function main() {
     providerExcludedByShape,
     sightedNoTruthRows,
     blindWithTruthRows,
+    providerStrataNoPlant,
+    providerCountCellsNoPlant,
+    countStrataNoPlant,
+    providerSightedNoPlant,
+    providerSightedCellsNoPlant,
+    countStrataSightedNoPlant,
+    plantedRowCount,
   } = auditShapes(dir);
 
   // T-088: the headline used to read as the denominator for every table
@@ -658,9 +765,20 @@ function main() {
   // standardisation to the corpus's own stratum mix, renormalised over
   // the strata a provider actually holds) — crude rate is still printed,
   // unchanged, beside it; only the ORDER and the two new columns changed.
-  const standardized = computeStandardizedRates(
+  // T-106: computeStandardizedRates() over the ORIGINAL plant-including
+  // countStrata/providerCountCells is kept exactly as it was — used below
+  // by the count=9 region analysis and the coverage-hole sentence, which
+  // this ticket does not touch. `standardized` (graded, ranking-only) is
+  // now built from the plant-EXCLUDING pair instead — see the
+  // providerStrataNoPlant/providerCountCellsNoPlant/countStrataNoPlant
+  // comment at their own declaration for why.
+  const standardizedAllRows = computeStandardizedRates(
     providerCountCells,
     countStrata,
+  );
+  const standardized = computeStandardizedRates(
+    providerCountCellsNoPlant,
+    countStrataNoPlant,
   );
   // T-096: the block above's own predecessor ("Per-provider rate, WITH the
   // strata it was actually shown") sorted and ranked on `providerStrata` —
@@ -683,8 +801,8 @@ function main() {
   // renormalisation, the crude/standardised gap is no longer a special
   // case of the end-to-end column alone.
   const stdSighted = computeStandardizedRates(
-    providerSightedCells,
-    countStrataSighted,
+    providerSightedCellsNoPlant,
+    countStrataSightedNoPlant,
   );
   // Master list is every provider with a SIGHTED row — a superset of
   // `providerStrata`'s keys (graded requires sighted; sighted does not
@@ -696,11 +814,11 @@ function main() {
   // order no longer asserts a ranking the graded column alone cannot
   // support. Ties broken by sighted n, descending (more measured rows
   // first), same tie-break the ticket's own probe used.
-  const providerIdsAll = Object.keys(providerSighted).sort((a, b) => {
+  const providerIdsAll = Object.keys(providerSightedNoPlant).sort((a, b) => {
     const sa = stdSighted[a]?.standardized ?? -1;
     const sb = stdSighted[b]?.standardized ?? -1;
     if (sb !== sa) return sb - sa;
-    return providerSighted[b].n - providerSighted[a].n;
+    return providerSightedNoPlant[b].n - providerSightedNoPlant[a].n;
   });
   // T-099: a standardised rate is only as strong as how much of the corpus
   // weight it actually renormalises over — computeStandardizedRates()
@@ -716,6 +834,16 @@ function main() {
   const THIN_COVERAGE_THRESHOLD = 0.5;
   const thinProviders = [];
   if (providerIdsAll.length > 0) {
+    // T-106 clause 3: a deliberate evidence-break plant proves the
+    // imageAttached flag CAN be wrong under a broken evidence check — it is
+    // not a naturally-occurring reading of the provider it was performed
+    // on, and three of today's four are RIGHT answers that would otherwise
+    // inflate that provider in a ranking. Printed at every run, zero or
+    // not (T-078's rule for this file — a zero tally's own meaning must
+    // stay reachable, not print only when there is something to exclude).
+    console.log(
+      `\n${plantedRowCount} planted row(s) excluded from the ranking below (deliberate evidence-break tests — vision-probe.mjs --planted-break; unaffected: the per-truth.count table and cross-tab above, a different question).`,
+    );
     console.log(
       "\nPer-provider rate — GRADED (right/rows that stated a COUNT) and END",
     );
@@ -740,10 +868,42 @@ function main() {
     console.log(
       `on less than ${(THIN_COVERAGE_THRESHOLD * 100).toFixed(0)}% of corpus weight; read its standardised rate as`,
     );
-    console.log("provisional, not as comparable to a fully-covered row):");
+    console.log("provisional, not as comparable to a fully-covered row.");
+    // T-106 clause 2, option (b): the END TO END column scores
+    // SEES_NO/ECHO/NO_ANSWER identically — "a row that did not tell me the
+    // count" — the SAME single rule T-096's own goal criticised for the
+    // GRADED column's exclusion set, applied here to a different column
+    // instead of fixed. Argued rather than silently left: shape-audit.mjs's
+    // own exclusion-table comment above calls ECHO a "bridge/extraction
+    // failure", and that is still true of ITS cause — but a caller reading
+    // this ranking to pick a provider for a REAL question got no usable
+    // answer either way, whoever is at fault for the reply looking like the
+    // prompt read back. This column answers "which provider gave me
+    // something I could use", not "which provider is to blame when it
+    // didn't" — the per-row `excluded SEES_NO=/ECHO=/NO_ANSWER=` breakdown
+    // beside every rate below is exactly how a reader who wants the second
+    // question can back it out for themselves, per provider. T-059 (open)
+    // is the live question on ECHO's own direction specifically — whether
+    // grok's 7 are the provider's or this bridge's own extractor reading
+    // its OWN prompt bubble back; nothing here resolves that, and this
+    // column's rule does not depend on the answer either way, since a
+    // caller got nothing usable under both readings.
+    console.log(
+      "T-106 — SEES_NO/ECHO/NO_ANSWER all count as 'not right' in END TO",
+    );
+    console.log(
+      "END: this column answers 'gave me a usable answer', not 'whose fault",
+    );
+    console.log(
+      "was it' — the excluded breakdown on each row is how to ask the",
+    );
+    console.log(
+      "second question. ECHO's own cause is disputed (T-059, open); this",
+    );
+    console.log("column's rule does not depend on its answer):");
     for (const p of providerIdsAll) {
-      const sighted = providerSighted[p];
-      const graded = providerStrata[p];
+      const sighted = providerSightedNoPlant[p];
+      const graded = providerStrataNoPlant[p];
       const e2ePct = ((sighted.ok / sighted.n) * 100).toFixed(1);
       const e2eStd = stdSighted[p];
       const e2eStdPct =
@@ -792,13 +952,34 @@ function main() {
         `  *THIN*: ${thinProviders.join(", ")} — ranked on less than ${(THIN_COVERAGE_THRESHOLD * 100).toFixed(0)}% of corpus weight (end-to-end coverage).`,
       );
     }
+    // T-106 clause 5: NO_ANSWER, UNKNOWN ATTRIBUTION — unlike SEES_NO (a
+    // transport argument, T-096) and ECHO (a specific, disputed mechanism
+    // with an open ticket, T-059), no investigation on this board has
+    // established whether a NO_ANSWER row (an empty or off-format reply,
+    // matching none of classify()'s expected shapes) is evidence about the
+    // PROVIDER (declined to follow the format), this bridge's own
+    // extraction (truncated or mis-captured the real reply), or neither.
+    // Stated as unknown rather than assumed either way — the count is real,
+    // the attribution is not established.
+    const noAnswerByProvider = {};
+    for (const p of providerIdsAll) {
+      const n = providerExcludedByShape[p]?.NO_ANSWER || 0;
+      if (n > 0) noAnswerByProvider[p] = n;
+    }
+    const noAnswerTotal = Object.values(noAnswerByProvider).reduce(
+      (a, b) => a + b,
+      0,
+    );
+    console.log(
+      `  NO_ANSWER, attribution UNKNOWN: ${noAnswerTotal} row(s) total ${JSON.stringify(noAnswerByProvider)} — neither the provider nor this bridge's own extractor is established as the cause; counted against the provider above (T-106 clause 2's single rule) without that claim being made.`,
+    );
     // T-096 clause 6: this board's product for every other board is "which
     // provider do I send this to" — a named provider and its n, not a
     // table to interpret. Read off the top of the same sort the table
     // itself uses (standardised end-to-end), so the recommendation and the
     // ranking above it can never disagree about which provider is first.
     const top = providerIdsAll[0];
-    const topSighted = providerSighted[top];
+    const topSighted = providerSightedNoPlant[top];
     const topStd = stdSighted[top];
     const topStdPct =
       topStd?.standardized != null
@@ -902,10 +1083,10 @@ function main() {
   });
   if (erringElsewhere.length > 0) {
     for (const p of erringElsewhere) {
-      const std = standardized[p];
+      const std = standardizedAllRows[p];
       const weightPct =
         std?.weightCovered != null ? (std.weightCovered * 100).toFixed(1) : "?";
-      const maxHeld = Math.max(...standardized[p].strataHeld);
+      const maxHeld = Math.max(...standardizedAllRows[p].strataHeld);
       const ungradedTop = counts.filter((c) => c > maxHeld);
       const ungradedList =
         ungradedTop.length > 1
