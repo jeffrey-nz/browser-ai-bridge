@@ -1,0 +1,25 @@
+browser-ai-bridge d7a90cf
+TIER 1  literal comma-joined arg (T-108's census) : 39
+TIER 2  named multi constant, by name             : 18
+        overlap tier1 n tier2                     : 0
+known population                                  : 57
+CONTROL named SINGLE constant, by name            : 1
+        multi declared 43 / single 10
+  src/ai/copilot/client/interaction/prompt/responseValidator/domChecks.js:25  COPILOT_365_LOCATORS.responseBlock
+  src/ai/copilot/client/interaction/prompt/responseValidator/domChecks.js:28  COPILOT_365_LOCATORS.pageWidget
+  src/ai/copilot/client/interaction/prompt/responseValidator/domChecks.js:33  COPILOT_365_LOCATORS.pageSidePane
+  src/ai/copilot/client/interaction/prompt/responseValidator/domChecks.js:45  COPILOT_365_LOCATORS.designerImageFrame
+  src/ai/copilot/client/interaction/sidepane/softDismiss.js:48  COPILOT_365_LOCATORS.navDrawer
+  src/ai/copilot/client/interaction/sidepane/softDismiss.js:49  COPILOT_365_LOCATORS.navCollapseBtn
+  src/ai/copilot/client/interaction/sidepane.js:69  COPILOT_365_LOCATORS.navDrawer
+  src/ai/copilot/client/interaction/sidepane.js:70  COPILOT_365_LOCATORS.navCollapseBtn
+  src/ai/deepseek/interaction/chat.js:8  DEEPSEEK_LOCATORS.newChatBtn
+  src/ai/deepseek/interaction/chat.js:9  DEEPSEEK_LOCATORS.inputBox
+  src/ai/deepseek/interaction/prompt/extract.js:36  DEEPSEEK_LOCATORS.responseBlock
+  src/ai/deepseek/interaction/prompt/input.js:10  DEEPSEEK_LOCATORS.inputBox
+  src/ai/deepseek/interaction/prompt/input.js:34  DEEPSEEK_LOCATORS.sendBtn
+  src/ai/deepseek/interaction/prompt/input.js:35  DEEPSEEK_LOCATORS.inputBox
+  src/ai/deepseek/interaction/prompt/input.js:36  DEEPSEEK_LOCATORS.stopBtn
+  src/ai/deepseek/interaction/prompt/poll/setup.js:25  DEEPSEEK_LOCATORS.stopBtn
+  src/ai/deepseek/interaction/prompt/poll/setup.js:28  DEEPSEEK_LOCATORS.responseBlock
+  src/ai/deepseek/interaction/prompt/poll/setup.js:32  DEEPSEEK_LOCATORS.cloudflareOverlay

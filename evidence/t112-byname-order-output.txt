@@ -1,0 +1,14 @@
+
+==== DEEPSEEK_LOCATORS.newChatBtn   .first()
+  matches 2 visible, DOM order:
+    #broad
+    #specific
+  picks: #broad
+  CONTROL, DOM order swapped: picks #specific
+
+==== DEEPSEEK_LOCATORS.inputBox   .last()
+  matches 2 visible, DOM order:
+    #realbox
+    #chat-input
+  picks: #chat-input
+  CONTROL, DOM order swapped: picks #realbox
