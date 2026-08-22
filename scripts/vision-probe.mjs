@@ -391,18 +391,39 @@ const ALL_PROVIDERS = [
   "perplexity",
 ];
 
-// LEFT AS-IS, MEASURED RATHER THAN GUESSED (T-012): the only evidence that
-// "goldenrod" is a synonym trap is 3 of 3 healthy providers naming one
-// goldenrod image's squares "yellow" — a lead on ONE image, not a rate on
-// the colour in general (4 distinct images have been drawn from this
-// palette in this probe's recorded history; only one was goldenrod).
-// COUNT_ONLY already keeps that miss from reading as a vision failure, which
-// was the actual problem. Not adding a synonym-acceptance list here: a typed
-// set of "close enough" colour names is a guess wearing a unit, same shape
-// as the "1-in-45" this ticket just corrected. If goldenrod keeps drawing
-// "yellow" across future runs, that becomes a rate and the fix (accept
-// synonyms, or swap the palette for names with no common alternative) can
-// be chosen from real numbers instead of one image's outcome.
+// DEFERRAL DISCHARGED (T-012 opened it, T-086 answered it — was NOT deleted,
+// because a comment that was right to defer and then got answered should
+// read as a settled question, not as though it had never been in doubt).
+//
+// T-012 left this open on 4 distinct fixtures (1 goldenrod). The corpus has
+// since grown past 95 distinct fixtures (4 goldenrod) and the answer is a
+// NULL: goldenrod is NOT a synonym trap. Re-derived at HEAD (128 reports,
+// sha256-16 5bd60ffdb4d1ed0e — grows every session, re-run T-086's frozen
+// colour-channel.mjs for today's numbers, this line is a snapshot):
+//
+//   goldenrod, pooled              3/7   43%
+//   goldenrod, the one old image   0/4   probe-1787282150016.png
+//   goldenrod, every image since   3/3   three fixtures, three providers,
+//                                        three different bridge commits
+//
+// gemini is on BOTH sides — "yellow" on the old image, "goldenrod" on a
+// later one — so this was never "gemini cannot produce the word". Both
+// fixes this comment used to name are REFUSED by that number: no synonym
+// list, no palette swap.
+//
+// THE LIMIT, carried forward rather than left implicit: n=7, and only ONE
+// goldenrod fixture has ever been shown to more than one provider — it is
+// the failing one. "3 of 3 since" is three single-provider rows, not three
+// replications. Enough to refuse the two proposed fixes; not enough to
+// declare goldenrod safe outright (L-004).
+//
+// What COUNT_ONLY already did right stands unchanged: a colour-word miss
+// (on a real palette member or off it) does not read as a vision failure.
+// T-086 additionally gave classify() a mechanical `onList` field (see the
+// READER-FACING NOTE above classify()) so a report can tell "named a
+// different real colour" apart from "reached for an everyday word" without
+// re-deriving it by hand — measured, 5 of 5 recorded colour disagreements in
+// this corpus are the second kind, none the first.
 export const COLORS = {
   crimson: [220, 20, 60],
   teal: [0, 128, 128],
@@ -714,6 +735,21 @@ function buildPrompt(truth) {
  * it", which is what WRONG means and COUNT_ONLY must never be folded into,
  * on pain of a grader that under-reports arrival exactly when this ticket's
  * board is inclined to believe that story anyway.
+ *
+ * READER-FACING NOTE (T-086), for anyone reading a raw run-file's JSON
+ * rather than this source: a structured reply (PASS / COUNT_ONLY / WRONG)
+ * always carries `colorOk` (did the stated word match truth.color exactly)
+ * AND `onList` (is the stated word one of COLORS' own four names at all).
+ * The two bits together tell apart the disagreement that colorOk alone
+ * cannot: colorOk=false + onList=true means the model named a DIFFERENT
+ * real palette colour — a genuine miss. colorOk=false + onList=false means
+ * it reached for an everyday word not in our four (measured: 5 of 5
+ * recorded colorOk=false rows in this corpus have been this second kind,
+ * none the first — see the deferral note above COLORS for the numbers).
+ * `onList` is mechanical (Object.keys(COLORS)), never a hand-typed synonym
+ * list; it does not attempt to resolve an off-list word to its nearest
+ * palette member by colour distance — that refinement was scoped out of
+ * T-086, not built and silently skipped.
  */
 // T-025: exported so ia-grade.mjs (and anything else that needs to know
 // whether a recorded reply is a prompt echo) decides it from the SAME code
@@ -745,13 +781,30 @@ export function classify(replyText, truth) {
     const [, count, color] = m;
     const countOk = Number(count) === truth.count;
     const colorOk = color.toLowerCase() === truth.color.toLowerCase();
-    if (countOk && colorOk) return { shape: "PASS", countOk, colorOk };
+    // T-086: colorOk=false has always collapsed two different disagreements
+    // into one bit — "named a different member of OUR palette" (a genuine
+    // miss: the model saw a colour and named the wrong one) versus "named a
+    // word that isn't one of our four at all" (a vocabulary miss: measured,
+    // 5 of 5 recorded colorOk=false rows were this kind, none the other —
+    // see the READER-FACING NOTE below classify() for how to tell them
+    // apart in a raw report). onList is mechanical, derived from COLORS
+    // (never a hand-typed synonym list — that guess was already refused
+    // once, T-012), and — same rule T-076 set for outOfRange — always
+    // present, true or false, never omitted.
+    const onList = Object.prototype.hasOwnProperty.call(
+      COLORS,
+      color.toLowerCase(),
+    );
+    if (countOk && colorOk) return { shape: "PASS", countOk, colorOk, onList };
     if (countOk) {
       return {
         shape: "COUNT_ONLY",
         countOk,
         colorOk,
-        detail: `COUNT=${count} correct, COLOR=${color} not on the list (expected ${truth.color})`,
+        onList,
+        detail: onList
+          ? `COUNT=${count} correct, COLOR=${color} is a different listed colour (expected ${truth.color})`
+          : `COUNT=${count} correct, COLOR=${color} not on the list (expected ${truth.color})`,
       };
     }
     // T-076: a WRONG count outside MIN_COUNT..MAX_COUNT names a picture
@@ -773,13 +826,20 @@ export function classify(replyText, truth) {
       shape: "WRONG",
       countOk,
       colorOk,
+      onList,
       // Always present, true or false — never omitted. This board has
       // three tickets (T-038, T-046, T-052) about absence-of-a-field
       // silently reading as false; an omitted outOfRange would repeat
       // that shape for a field whose whole point is "checked, not just
       // assumed".
       outOfRange: Number(count) < MIN_COUNT || Number(count) > MAX_COUNT,
-      detail: `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}`,
+      detail:
+        `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}` +
+        (colorOk
+          ? ""
+          : onList
+            ? " (COLOR is a different listed colour)"
+            : " (COLOR is not on the list)"),
     };
   }
 
