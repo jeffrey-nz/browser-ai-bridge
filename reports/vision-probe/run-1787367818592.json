@@ -1,0 +1,41 @@
+{
+  "graderSha256": "fa43cd4193babb81",
+  "bridgeCommit": "8a4701bf0c89ac77277f050593ec8e672b298778",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/copilot/client/interaction/prompt/send/sendAsFile.js",
+    "src/ai/copilot/client/interaction/prompt/send/sendWithFile.js",
+    "src/ai/gemini/interaction/prompt/input.js"
+  ],
+  "serverLoadedCommit": "8a4701bf0c89ac77277f050593ec8e672b298778",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-22T03:03:38.704Z",
+  "fixtureSha256": "d0dc3c529ba47ca6e7fe5291110d8ded9c86db9a325935c36df1629807d5b912",
+  "plantedBreak": "T-093 clause 4: gemini's GEMINI_ATTACHMENT_EVIDENCE deliberately broken to .NONEXISTENT-T093-BREAK — upload path (submenu file chooser) left working, evidence check made to fail on purpose, to test whether imageAttachedEvidence.evidenceSelectorUsed survives onto a FALSE row via gemini's own bespoke submenu branch (T-093 clause 1)",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 7,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787367796383.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 22202,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "onList": true,
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": ".NONEXISTENT-T093-BREAK"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=yes COUNT=7 COLOR=indigo"
+    }
+  ]
+}
