@@ -97,6 +97,22 @@ export function auditShapes(dir) {
   // which applies here identically: a zero count here is not evidence
   // nobody fabricated, only that nobody fabricated conspicuously.
   const outOfRangeRows = [];
+  // T-084 clause 5: a per-provider rate is only comparable to another
+  // provider's if they were shown comparable stimuli — gemini has seen all
+  // 7 counts, perplexity exactly 1. Tracked per provider as the SET of
+  // truth.count values it has ever been graded against (same structured
+  // gate countStrata/providerBand use), so "gemini 100%, deepseek 79%"
+  // cannot be printed as a ranking without the coverage that makes it one
+  // printed right beside it.
+  const providerStrata = {};
+  // T-084 clause 4: vision-probe.mjs's header already argues WRONG is not
+  // an upload bug — "the model saw *something* and was confidently mistaken
+  // about it". Collected here so that argument has numbers behind it in an
+  // ARTEFACT, not only in a comment: how many WRONG rows named the colour
+  // correctly anyway (positive evidence of arrival on a field the model got
+  // right), printed beside T-072's blind-arm null (0 of N informative blind
+  // turns ever state a count at all).
+  const wrongRows = [];
   // T-078: the denominator the zero-tally line below needs — "0 of N" vs
   // "0 of 0" are different facts and only the corpus knows which. Same
   // population outOfRangeRows is drawn from (a structured reply, one that
@@ -125,6 +141,14 @@ export function auditShapes(dir) {
           providerId: r.providerId,
           storedShape: r.shape,
           recomputedShape: recomputed.shape,
+        });
+      }
+
+      if (recomputed.shape === "WRONG") {
+        wrongRows.push({
+          file: f,
+          providerId: r.providerId,
+          colorOk: recomputed.colorOk,
         });
       }
 
@@ -172,6 +196,15 @@ export function auditShapes(dir) {
         bucket.providers.add(r.providerId);
         if (recomputed.countOk) bucket.ok++;
 
+        const ps = (providerStrata[r.providerId] ??= {
+          countsShown: new Set(),
+          n: 0,
+          ok: 0,
+        });
+        ps.countsShown.add(j.truth.count);
+        ps.n++;
+        if (recomputed.countOk) ps.ok++;
+
         const band = j.truth.count <= 5 ? "easy" : "hard";
         const pb = (providerBand[r.providerId] ??= {});
         const cell = (pb[band] ??= { n: 0, ok: 0 });
@@ -192,6 +225,8 @@ export function auditShapes(dir) {
     exclusionByProviderBand,
     outOfRangeRows,
     structuredCount,
+    providerStrata,
+    wrongRows,
   };
 }
 
@@ -291,6 +326,8 @@ function main() {
     exclusionByProviderBand,
     outOfRangeRows,
     structuredCount,
+    providerStrata,
+    wrongRows,
   } = auditShapes(dir);
 
   console.log(
@@ -315,6 +352,30 @@ function main() {
     console.log(
       `  truth.count=${c}   ${ok}/${n}   ${pct}%   (${providers.size} provider${providers.size === 1 ? "" : "s"})`,
     );
+  }
+
+  // T-084 clause 5: "gemini 100%, deepseek 79%" reads as a ranking and is
+  // really a statement about which tickets happened to call which provider
+  // — printed here beside the stimulus range each rate actually covers so
+  // a reader cannot mistake "shown every count" for "shown one".
+  const providerIds5 = Object.keys(providerStrata).sort(
+    (a, b) =>
+      providerStrata[b].ok / providerStrata[b].n -
+      providerStrata[a].ok / providerStrata[a].n,
+  );
+  if (providerIds5.length > 0) {
+    console.log(
+      "\nPer-provider rate, WITH the strata it was actually shown (T-084 —",
+    );
+    console.log("a ranking over incomparable stimulus sets is not a ranking):");
+    for (const p of providerIds5) {
+      const { n, ok, countsShown } = providerStrata[p];
+      const pct = ((ok / n) * 100).toFixed(0);
+      const shown = [...countsShown].sort((a, b) => a - b);
+      console.log(
+        `  ${p.padEnd(11)} ${ok}/${n}  ${pct.padStart(3)}%   strata shown (of ${COUNT_RANGE}): ${shown.length}/${COUNT_RANGE}  [${shown.join(",")}]`,
+      );
+    }
   }
 
   // T-063: the pooled 3-5/6-9 line alone hides that the provider SET differs
@@ -457,6 +518,44 @@ function main() {
   )) {
     console.log(line);
   }
+
+  for (const line of formatWrongBucketSection(wrongRows)) {
+    console.log(line);
+  }
+}
+
+// T-084 clause 4: vision-probe.mjs's own header already argues WRONG is not
+// an upload bug — "the model saw *something* and was confidently mistaken
+// about it (this is not an upload bug and no upload fix will ever catch
+// it)". Puts the two numbers behind that argument where a reader of a
+// REPORT (this script's output) sees them, not only where a reader of the
+// source does — this board has three tickets (T-011, T-048, T-074) about a
+// true sentence in one artefact being unreadable from another. Pure/
+// testable for the same reason formatOutOfRangeSection is: the zero-tally
+// case needs to print a real "0 of 0", not silently vanish.
+export function formatWrongBucketSection(wrongRows) {
+  const colorRight = wrongRows.filter((r) => r.colorOk).length;
+  const lines = [];
+  lines.push(
+    `\nWRONG bucket: upload failure, or a model that saw something and got`,
+  );
+  lines.push(`it wrong? (T-084)`);
+  lines.push(
+    `  WRONG rows: ${wrongRows.length}   colour named correctly among them: ` +
+      `${colorRight}/${wrongRows.length}` +
+      (wrongRows.length
+        ? `  (${((colorRight / wrongRows.length) * 100).toFixed(1)}%)`
+        : ""),
+  );
+  lines.push(
+    `  Cross-reference (T-072): 0 of every informative BLIND turn recorded` +
+      ` on this board has ever stated a count at all — a stated count is` +
+      ` itself evidence a picture arrived. Together: the WRONG bucket is` +
+      ` not an arrival signal in either direction, and most of it carries` +
+      ` positive evidence of arrival — a colour named correctly — on the` +
+      ` one field it got right while missing the other.`,
+  );
+  return lines;
 }
 
 // T-078: the section T-076 shipped for this could only ever print the NOTE

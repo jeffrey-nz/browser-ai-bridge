@@ -9,6 +9,7 @@ import {
   exclusionStats,
   classifyAbsence,
   formatOutOfRangeSection,
+  formatWrongBucketSection,
 } from "../scripts/shape-audit.mjs";
 
 /**
@@ -294,6 +295,99 @@ test("classifyAbsence: some excluded, some not, is mixed", () => {
     total: 3,
     excluded: 1,
   });
+});
+
+// T-084 clause 5: a per-provider rate is only comparable to another's if
+// the stimulus sets are comparable — providerStrata tracks the SET of
+// truth.count values each provider was ever graded against, same gate
+// countStrata/providerBand use, so a provider shown 7 of 7 counts isn't
+// silently ranked against one shown 1 of 7.
+test("auditShapes tallies providerStrata (which counts each provider was shown)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" },
+          { providerId: "b", raw: "SEES=no" }, // not structured — excluded
+        ],
+      },
+    });
+
+    const { providerStrata } = auditShapes(dir);
+
+    assert.equal(providerStrata.a.n, 2);
+    assert.equal(providerStrata.a.ok, 1);
+    assert.deepEqual(providerStrata.a.countsShown, new Set([4, 9]));
+    assert.equal(providerStrata.b, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-084 clause 4: wrongRows carries colorOk for every WRONG-shaped row, so
+// "8 of 9 wrong rows named the colour correctly" is computed off the same
+// pass classify() already made, not re-derived by a reader.
+test("auditShapes collects wrongRows with colorOk, only for WRONG-shaped rows", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "wrong-color-right.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" }, // WRONG, colour right
+        ],
+      },
+      "wrong-color-wrong.json": {
+        truth: { count: 5, color: "indigo" },
+        results: [
+          { providerId: "b", raw: "SEES=yes COUNT=1 COLOR=goldenrod" }, // WRONG, colour wrong
+        ],
+      },
+      "pass.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "c", raw: "SEES=yes COUNT=4 COLOR=teal" }, // PASS — not WRONG
+        ],
+      },
+    });
+
+    const { wrongRows } = auditShapes(dir);
+
+    assert.equal(wrongRows.length, 2);
+    const right = wrongRows.find((r) => r.file === "wrong-color-right.json");
+    const wrong = wrongRows.find((r) => r.file === "wrong-color-wrong.json");
+    assert.equal(right.colorOk, true);
+    assert.equal(wrong.colorOk, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("formatWrongBucketSection: reports colour-right rate among WRONG rows", () => {
+  const wrongRows = [
+    { file: "a.json", providerId: "x", colorOk: true },
+    { file: "b.json", providerId: "y", colorOk: true },
+    { file: "c.json", providerId: "z", colorOk: false },
+  ];
+  const lines = formatWrongBucketSection(wrongRows);
+  const joined = lines.join("\n");
+  assert.match(joined, /WRONG rows: 3/);
+  assert.match(joined, /colour named correctly among them: 2\/3/);
+  assert.match(joined, /66\.7%/);
+});
+
+test("formatWrongBucketSection: zero WRONG rows prints 0 of 0, not a division-by-zero artefact", () => {
+  const lines = formatWrongBucketSection([]);
+  const joined = lines.join("\n");
+  assert.match(joined, /WRONG rows: 0/);
+  assert.match(joined, /colour named correctly among them: 0\/0/);
+  assert.doesNotMatch(joined, /NaN/);
 });
 
 // T-076: an out-of-range WRONG count names a picture the generator could
