@@ -213,10 +213,9 @@ Close and remove a session.
 Captures a screenshot **and** the page's own HTML (via `capturePageContext`, the
 self-heal diagnostic capture — a best-first walk over a fixed list of chat-container
 selectors, falling back to the full page). Different from
-[`GET /api/screenshot/session/:id`](#get-apiscreenshotsessionid) above: that one is
-screenshot-only; this one also returns HTML and is what the self-heal/stall-escape
-path uses to hand a human or another system enough context to see what a session is
-stuck on.
+the screenshot-only [`GET /api/screenshot/session/:id`](#get-apiscreenshotsessionid):
+this one also returns HTML and is what the self-heal/stall-escape path uses to
+hand a human or another system enough context to see what a session is stuck on.
 
 Either capture can fail independently (a closed tab, a detached frame, a timeout) —
 `capturePageContext` swallows that into a plausible-looking empty value
@@ -844,6 +843,10 @@ Navigates a fresh browser page to the given URL, captures a PNG screenshot, then
 ### GET `/api/screenshot/session/:id`
 
 Captures the **current state** of a live AI session's page without navigating away. Useful for seeing what a session is displaying right now.
+
+Screenshot-only. For a screenshot plus the page's own HTML, with flags that
+distinguish a genuinely empty capture from a failed one, see
+[`GET /api/sessions/:id/snapshot`](#get-apisessionsidsnapshot).
 
 **Response**
 
