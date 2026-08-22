@@ -36,7 +36,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { classify } from "./vision-probe.mjs";
+import { classify, COUNT_RANGE, COLORS } from "./vision-probe.mjs";
 
 // T-025: the one place a recorded reply is decided to be a prompt echo (or
 // not), pulled out of the report-scanning loop below so it can be unit
@@ -68,6 +68,62 @@ export function gradeBlindReply(raw) {
   const shape = classify(cleaned, { count: null, color: "" }).shape;
   const m = shape === "ECHO" ? null : cleaned.match(/COUNT\s*=\s*(\d+)/i);
   return { raw: cleaned, shape, stated: m ? Number(m[1]) : null };
+}
+
+// T-087: KEY_SPACE (vision-probe.mjs) is a true fact about the GENERATOR —
+// COUNT drawn uniformly 1-in-COUNT_RANGE, COLOR uniformly 1-in-|COLORS| — and
+// section 3 has always quoted it as a prior over the CORPUS, a different
+// population. This computes the prior the corpus actually realised: given one
+// entry per report file that carries a `truth` and a non-empty `results`
+// array, tally `${count}/${color}` once per FILE and once per REPLY ROW (a
+// file with 8 provider results contributes 8 row-tallies at the same cell),
+// find the modal cell, and report it alongside its own independence check —
+// how many DISTINCT images were cited at that cell, so a concentrated prior
+// backed by one recycled fixture cannot be mistaken for a concentrated draw
+// (T-072 already ruled this out for the COUNT margin; this checks the joint
+// cell fresh, because "not concentrated on one axis" does not imply "not
+// concentrated on the pair").
+export function computeCorpusPrior(entries) {
+  const byFileCell = new Map();
+  const byRowCell = new Map();
+  const imagesByCell = new Map();
+  const allImages = new Set();
+  let totalFiles = 0;
+  let totalRows = 0;
+  for (const e of entries) {
+    const cell = `${e.count}/${e.color}`;
+    totalFiles++;
+    totalRows += e.rowCount;
+    byFileCell.set(cell, (byFileCell.get(cell) || 0) + 1);
+    byRowCell.set(cell, (byRowCell.get(cell) || 0) + e.rowCount);
+    if (e.imagePath) {
+      allImages.add(e.imagePath);
+      if (!imagesByCell.has(cell)) imagesByCell.set(cell, new Set());
+      imagesByCell.get(cell).add(e.imagePath);
+    }
+  }
+  let modalCell = null;
+  let modalFileCount = 0;
+  for (const [cell, n] of byFileCell) {
+    if (n > modalFileCount) {
+      modalFileCount = n;
+      modalCell = cell;
+    }
+  }
+  const modalRowCount = modalCell ? byRowCell.get(modalCell) || 0 : 0;
+  const modalImages = modalCell ? imagesByCell.get(modalCell)?.size ?? 0 : 0;
+  return {
+    totalFiles,
+    totalRows,
+    visitedCells: byFileCell.size,
+    distinctImages: allImages.size,
+    modalCell,
+    modalFileCount,
+    modalRowCount,
+    modalImages,
+    fileRate: totalFiles ? modalFileCount / totalFiles : null,
+    rowRate: totalRows ? modalRowCount / totalRows : null,
+  };
 }
 
 // T-029: pulled out of the report-scanning block below, same reason as
@@ -126,6 +182,7 @@ if (
   // skip.
   const blindRows = [];
   let blindErrored = 0;
+  const priorEntries = [];
   for (const f of files) {
     let j;
     try {
@@ -145,6 +202,20 @@ if (
         blindRows.push({ f, p: r.providerId, ...g });
       }
       continue;
+    }
+    // T-087: every result row in this file counts toward the corpus prior,
+    // regardless of imageAttached — that gate is about the flag's own
+    // evidence, not about what stimulus was drawn. A file missing `truth` or
+    // holding zero results (neither should happen, but nothing upstream
+    // guarantees it) contributes nothing rather than a cell keyed on
+    // "undefined/undefined".
+    if (j.truth?.count != null && j.truth?.color && j.results?.length) {
+      priorEntries.push({
+        count: j.truth.count,
+        color: j.truth.color,
+        rowCount: j.results.length,
+        imagePath: j.imagePath || null,
+      });
     }
     for (const r of j.results || []) {
       // Skips any result with no boolean imageAttached — not only rows that
@@ -198,6 +269,8 @@ if (
     (r) => !BLIND_EXCLUDED.has(r.shape),
   );
   const blindGuessed = blindInformative.filter((r) => r.stated !== null);
+  // T-087: same reasoning — computed once, read by section 3.
+  const prior = computeCorpusPrior(priorEntries);
   const blindRefused = blindInformative.filter((r) => r.stated === null);
 
   console.log(
@@ -298,6 +371,32 @@ if (
   console.log(
     `\n3. HOW MANY OF THE ${rows.length} COULD EVER HAVE CONTRADICTED THE FLAG?`,
   );
+  // T-087: KEY_SPACE (the generator's true odds) and the corpus's own
+  // REALISED cell frequency are different questions — see the function
+  // comment above computeCorpusPrior. Printed side by side, both labelled,
+  // computed fresh from the files on disk every run (never typed, same rule
+  // T-012 already won for KEY_SPACE itself).
+  const colorChoices = Object.keys(COLORS).length;
+  console.log(
+    `   key space (the GENERATOR): COUNT 1-in-${COUNT_RANGE} x COLOR 1-in-${colorChoices} = 1-in-${COUNT_RANGE * colorChoices}`,
+  );
+  if (prior.modalCell) {
+    console.log(
+      `   realised   (this CORPUS ): modal cell ${prior.modalCell}, ${prior.modalRowCount} of ${prior.totalRows} rows (${prior.modalFileCount} of ${prior.totalFiles} files) = 1-in-${(prior.totalRows / prior.modalRowCount).toFixed(1)}`,
+    );
+    console.log(
+      `                              over ${prior.visitedCells} of ${COUNT_RANGE * colorChoices} cells, ${prior.distinctImages} distinct images ` +
+        `(independence check: ${prior.modalImages} distinct images cited for the modal cell — not one fixture repeated)`,
+    );
+    // T-087 clause 6: drawn-vs-pinned is T-084's field, which does not exist
+    // yet — say plainly that this prior mixes both rather than let it be
+    // read as a measurement of the generator's own draw.
+    console.log(
+      `                              (mixture of drawn and pinned stimuli — no field distinguishes them yet, T-084)`,
+    );
+  } else {
+    console.log(`   realised   (this CORPUS ): no files carry both truth and results`);
+  }
   console.log(
     `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${cell(false, () => true)} (+ ${planted.length} planted, listed separately)`,
   );
@@ -332,6 +431,19 @@ if (
     blindInformative.length
       ? `   -> agreements resting on a MEASURED prior (${blindRefused.length} of ${blindInformative.length} blind, informative turns stated no count at all — section 5): ${confirming.length}, every one imageAttached=true`
       : `   -> agreements resting on an arithmetic reference: ${confirming.length}, every one imageAttached=true`,
+  );
+  // T-087 clause 3: TWO separate nulls back that "agreements" line, and they
+  // are priced differently. Neither replaces T-072's measured 0 of 19 — that
+  // stands, is the stronger result, and applies to the NO-PICTURE case. This
+  // corpus prior is for the OTHER null (T-068/T-073: imageAttached=true but
+  // the model's actual input state — Instant mode, a stale Vision radio — is
+  // unconfirmed), where a reply is not blind, it is INVENTING, and the
+  // generator's 1-in-28 overstates how rare an accidental match is.
+  const genRate = 1 / (COUNT_RANGE * colorChoices);
+  const priorMultiplier =
+    prior.rowRate != null ? (prior.rowRate / genRate).toFixed(1) : "?";
+  console.log(
+    `      TWO NULLS BACK THAT LINE, PRICED DIFFERENTLY: a reply with NO PICTURE was measured refusing ${blindRefused.length} of ${blindInformative.length || "?"} times (T-072, section 5) — the generator's key space never even applies, because a blind model does not guess. A reply that INVENTS instead of refusing (T-068/T-073's Instant-mode case, imageAttached=true but the model's real input state unconfirmed) is priced at the corpus's realised prior above, not the generator's 1-in-${COUNT_RANGE * colorChoices} — that prior is ${priorMultiplier}x higher, because an invented answer is that many times more likely to land on the modal cell than a uniform draw over the key space would suggest.`,
   );
   console.log(
     `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length}`,
