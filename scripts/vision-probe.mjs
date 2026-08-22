@@ -1038,6 +1038,67 @@ export function resolveAnsweredBy(requestedProviderId, json) {
   };
 }
 
+// T-138: answeredByMismatch is false both when a row agreed AND when a row
+// has no provider field to compare at all (answeredBy===null, e.g. the
+// `!res.ok` and catch branches, or a server that stopped sending the
+// field). A tally over answeredByMismatch alone cannot tell those two
+// apart — a run where every row is unattested prints the same "mismatch 0"
+// a genuinely clean run would. This splits the row set into the three
+// states a reader actually needs: AGREED (answeredBy===requestedProviderId),
+// MISMATCHED (answeredByMismatch), UNATTESTED (answeredBy===null, cannot
+// say either way). Every caller reports mismatched.length AND
+// unattested.length — never mismatched alone — so "0 mismatches" can't be
+// misread as "N attestations" when it's actually "0 rows said anything".
+export function summarizeAnsweredBy(results) {
+  const unattested = results.filter((r) => r.answeredBy === null);
+  const mismatched = results.filter((r) => r.answeredByMismatch);
+  const agreed = results.filter(
+    (r) => r.answeredBy !== null && !r.answeredByMismatch,
+  );
+  return { agreed, mismatched, unattested };
+}
+
+// T-138 review, second round: summarizeAnsweredBy proved the BUCKETS are
+// distinct, but runBlind() and main() built the text a reader actually sees
+// back up inline, so a printed line could still drop the unattested count
+// (or the block naming which rows it covers) without any test noticing —
+// the same shape of leak T-087's formatTwoNullsLine/formatCorpusPriorBlock
+// were extracted to stop, one layer over from where this ticket started.
+// These three are pure functions over the buckets summarizeAnsweredBy
+// already computed, so the rendered text for an all-unattested run can be
+// asserted against directly, and against the text for an all-agreed run,
+// rather than only against the counts that fed it.
+export function formatAnsweredBySummarySuffix(mismatched, unattested) {
+  return (
+    `answered by someone other than asked ${mismatched.length}   ` +
+    `UNATTESTED (no provider field) ${unattested.length}`
+  );
+}
+
+export function formatMismatchBlock(mismatched) {
+  if (!mismatched.length) return [];
+  const lines = [
+    `\n!!! ANSWERED-BY MISMATCH — asked one provider, a different one answered:`,
+  ];
+  for (const r of mismatched) {
+    lines.push(`    asked=${r.providerId}  answeredBy=${r.answeredBy}`);
+  }
+  return lines;
+}
+
+export function formatUnattestedBlock(unattested) {
+  if (!unattested.length) return [];
+  const lines = [
+    `\n!!! UNATTESTED — no \`provider\` field on the response, cannot say who answered:`,
+  ];
+  for (const r of unattested) {
+    lines.push(
+      `    asked=${r.providerId}  shape=${r.shape}  ${r.detail || ""}`,
+    );
+  }
+  return lines;
+}
+
 async function askProvider(opts, providerId, imagePath, truth) {
   const prompt = buildPrompt(truth);
   const started = Date.now();
@@ -1261,13 +1322,16 @@ async function runBlind(opts) {
   const informative = results.filter((r) => !EXCLUDED.has(r.shape));
   const guessed = informative.filter((r) => r.stated !== null);
   const refused = informative.filter((r) => r.stated === null);
-  // T-137: how many turns were answered by someone other than who was
-  // asked — visible in the summary line without reading any row by hand.
-  const mismatched = results.filter((r) => r.answeredByMismatch);
+  // T-137/T-138: how many turns were answered by someone other than who
+  // was asked, and how many recorded no provider at all (unattested —
+  // neither agreement nor mismatch, the row simply cannot say). Both
+  // counts print together so "mismatch 0" can never be misread as "every
+  // row attested" when it might mean "no row attested to anything".
+  const { mismatched, unattested } = summarizeAnsweredBy(results);
   console.log(
     `\nblind turns sent ${results.length}   informative (not ECHO/ERROR/NO_ANSWER) ${informative.length}   ` +
       `refused (stated no count) ${refused.length}   STATED A COUNT ${guessed.length}   ` +
-      `answered by someone other than asked ${mismatched.length}`,
+      formatAnsweredBySummarySuffix(mismatched, unattested),
   );
   if (guessed.length) {
     console.log(
@@ -1277,14 +1341,8 @@ async function runBlind(opts) {
       console.log(`    ${r.providerId}  stated=${r.stated}  :: ${r.raw}`);
     }
   }
-  if (mismatched.length) {
-    console.log(
-      `\n!!! ANSWERED-BY MISMATCH — asked one provider, a different one answered:`,
-    );
-    for (const r of mismatched) {
-      console.log(`    asked=${r.providerId}  answeredBy=${r.answeredBy}`);
-    }
-  }
+  for (const line of formatMismatchBlock(mismatched)) console.log(line);
+  for (const line of formatUnattestedBlock(unattested)) console.log(line);
 
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });
@@ -1435,9 +1493,12 @@ async function main() {
     acc[r.shape] = (acc[r.shape] || 0) + 1;
     return acc;
   }, {});
-  // T-137: same "who actually answered" gap the blind arm has — see
-  // resolveAnsweredBy's own comment. Surfaced in the summary the same way.
-  const mismatchedSighted = results.filter((r) => r.answeredByMismatch);
+  // T-137/T-138: same "who actually answered" gap the blind arm has — see
+  // resolveAnsweredBy's/summarizeAnsweredBy's own comments. Surfaced in the
+  // summary the same way, including the UNATTESTED count a mismatch tally
+  // alone cannot distinguish from a clean run.
+  const { mismatched: mismatchedSighted, unattested: unattestedSighted } =
+    summarizeAnsweredBy(results);
 
   // COUNT / COLOR / PASS are reported out of the STRUCTURED subset — replies
   // that carried a countOk/colorOk verdict at all (PASS, COUNT_ONLY, WRONG)
@@ -1465,16 +1526,12 @@ async function main() {
       Object.entries(counts)
         .map(([k, v]) => `${k}=${v}`)
         .join(" ") +
-      `)   answered by someone other than asked ${mismatchedSighted.length}`,
+      `)   ` +
+      formatAnsweredBySummarySuffix(mismatchedSighted, unattestedSighted),
   );
-  if (mismatchedSighted.length) {
-    console.log(
-      `\n!!! ANSWERED-BY MISMATCH — asked one provider, a different one answered:`,
-    );
-    for (const r of mismatchedSighted) {
-      console.log(`    asked=${r.providerId}  answeredBy=${r.answeredBy}`);
-    }
-  }
+  for (const line of formatMismatchBlock(mismatchedSighted)) console.log(line);
+  for (const line of formatUnattestedBlock(unattestedSighted))
+    console.log(line);
 
   const outDir = join(REPO_ROOT, "reports", "vision-probe");
   await mkdir(outDir, { recursive: true });
