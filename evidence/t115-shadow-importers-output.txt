@@ -1,0 +1,100 @@
+=== BEFORE (0e7fd24, pre-T-115): shadow-pair census, live tree ===
+
+FILE X.js AND DIRECTORY X/index.js BOTH EXIST — both importable, "./X.js" silently picks the FILE
+
+pairs: 5
+
+== src/ai/copilot/client/interaction/prompt/compactor
+   FILE  src/ai/copilot/client/interaction/prompt/compactor.js         importers: 0
+   INDEX src/ai/copilot/client/interaction/prompt/compactor/index.js   importers: 2   (directory holds 2 js: constants.js, index.js)
+         <- src/ai/copilot/client/interaction/prompt/compactor.js  ("./compactor/index.js")
+         <- src/ai/copilot/client/interaction/prompt/send/index.js  ("../compactor/index.js")
+   -> the FILE is unimported
+
+== src/ai/copilot/client/interaction/prompt/summary
+   FILE  src/ai/copilot/client/interaction/prompt/summary.js         importers: 4
+         <- src/ai/copilot/client/interaction/prompt/send/index.js  ("../summary.js")
+         <- src/ai/copilot/client/interaction/prompt/send/sendWithFile.js  ("../summary.js")
+         <- src/ai/gemini/interaction/prompt/index.js  ("#copilot/client/interaction/prompt/summary.js")
+         <- src/ai/shared/promptError/actions.js  ("#copilot/client/interaction/prompt/summary.js")
+   INDEX src/ai/copilot/client/interaction/prompt/summary/index.js   importers: 1   (directory holds 3 js: index.js, parser.js, printer.js)
+         <- src/ai/copilot/client/interaction/prompt/summary.js  ("./summary/index.js")
+   -> BOTH HALVES LIVE — two modules, one name, in one process
+
+== src/ai/copilot/client/interaction/sidepane
+   FILE  src/ai/copilot/client/interaction/sidepane.js         importers: 6
+         <- src/ai/copilot/client/interaction/chat.js  ("./sidepane.js")
+         <- src/ai/copilot/client/interaction/prompt/responseValidator/domChecks.js  ("../../sidepane.js")
+         <- src/ai/copilot/client/interaction/prompt/send/submitter.js  ("../../sidepane.js")
+         <- src/ai/copilot/client/interaction/prompt/submit/clickSubmit.js  ("../../sidepane.js")
+         <- src/ai/copilot/client/interaction/prompt/submit/injectText.js  ("../../sidepane.js")
+         <- src/ai/copilot/client/interaction/prompt/submit.js  ("../sidepane.js")
+   INDEX src/ai/copilot/client/interaction/sidepane/index.js   importers: 0   (directory holds 4 js: hardDismiss.js, index.js, menus.js, softDismiss.js)
+   -> the DIRECTORY is unimported
+
+== src/ai/deepseek/interaction/prompt/poll
+   FILE  src/ai/deepseek/interaction/prompt/poll.js         importers: 0
+   INDEX src/ai/deepseek/interaction/prompt/poll/index.js   importers: 1   (directory holds 7 js: abortController.js, constants.js, domState.js, evaluator.js, index.js, setup.js, waiter.js)
+         <- src/ai/deepseek/interaction/prompt/index.js  ("./poll/index.js")
+   -> the FILE is unimported
+
+== src/browser
+   FILE  src/browser.js         importers: 5
+         <- src/ai/copilot/client/validateBrowser.js  ("../../../browser.js")
+         <- src/ai/shared/BaseProvider.js  ("../../browser.js")
+         <- src/audit/index.js  ("../browser.js")
+         <- src/index.js  ("./browser.js")
+         <- src/routes/health.js  ("../browser.js")
+   INDEX src/browser/index.js   importers: 8   (directory holds 4 js: connection.js, context.js, index.js, state.js)
+         <- src/browser.js  ("./browser/index.js")
+         <- src/routes/click.js  ("../browser/index.js")
+         <- src/routes/evaluate.js  ("../browser/index.js")
+         <- src/routes/navigate.js  ("../browser/index.js")
+         <- src/routes/page-inspect.js  ("../browser/index.js")
+         <- src/routes/screenshot.js  ("../browser/index.js")
+         <- src/routes/visual-ask.js  ("../browser/index.js")
+         <- src/routes/wait-for.js  ("../browser/index.js")
+   -> BOTH HALVES LIVE — two modules, one name, in one process
+
+
+=== AFTER (this commit): ===
+
+FILE X.js AND DIRECTORY X/index.js BOTH EXIST — both importable, "./X.js" silently picks the FILE
+
+pairs: 3
+
+== src/ai/copilot/client/interaction/prompt/compactor
+   FILE  src/ai/copilot/client/interaction/prompt/compactor.js         importers: 0
+   INDEX src/ai/copilot/client/interaction/prompt/compactor/index.js   importers: 2   (directory holds 2 js: constants.js, index.js)
+         <- src/ai/copilot/client/interaction/prompt/compactor.js  ("./compactor/index.js")
+         <- src/ai/copilot/client/interaction/prompt/send/index.js  ("../compactor/index.js")
+   -> the FILE is unimported
+
+== src/ai/copilot/client/interaction/prompt/summary
+   FILE  src/ai/copilot/client/interaction/prompt/summary.js         importers: 4
+         <- src/ai/copilot/client/interaction/prompt/send/index.js  ("../summary.js")
+         <- src/ai/copilot/client/interaction/prompt/send/sendWithFile.js  ("../summary.js")
+         <- src/ai/gemini/interaction/prompt/index.js  ("#copilot/client/interaction/prompt/summary.js")
+         <- src/ai/shared/promptError/actions.js  ("#copilot/client/interaction/prompt/summary.js")
+   INDEX src/ai/copilot/client/interaction/prompt/summary/index.js   importers: 1   (directory holds 3 js: index.js, parser.js, printer.js)
+         <- src/ai/copilot/client/interaction/prompt/summary.js  ("./summary/index.js")
+   -> BOTH HALVES LIVE — two modules, one name, in one process
+
+== src/browser
+   FILE  src/browser.js         importers: 5
+         <- src/ai/copilot/client/validateBrowser.js  ("../../../browser.js")
+         <- src/ai/shared/BaseProvider.js  ("../../browser.js")
+         <- src/audit/index.js  ("../browser.js")
+         <- src/index.js  ("./browser.js")
+         <- src/routes/health.js  ("../browser.js")
+   INDEX src/browser/index.js   importers: 8   (directory holds 4 js: connection.js, context.js, index.js, state.js)
+         <- src/browser.js  ("./browser/index.js")
+         <- src/routes/click.js  ("../browser/index.js")
+         <- src/routes/evaluate.js  ("../browser/index.js")
+         <- src/routes/navigate.js  ("../browser/index.js")
+         <- src/routes/page-inspect.js  ("../browser/index.js")
+         <- src/routes/screenshot.js  ("../browser/index.js")
+         <- src/routes/visual-ask.js  ("../browser/index.js")
+         <- src/routes/wait-for.js  ("../browser/index.js")
+   -> BOTH HALVES LIVE — two modules, one name, in one process
+

@@ -51,8 +51,17 @@ export const COPILOT_365_LOCATORS = {
   // Pages sidepane — data-testid may be absent; fall back to layout heuristics
   pageSidePane:
     '[data-testid="pages-sidepane"], [id*="pages-sidepane"], [aria-label*="Pages" i][role="complementary"]',
+  // T-115: the 5 RHS-panel entries below (Pages split-panel layout) were
+  // written for this exact widget — clickSubmit.js's own comment says a
+  // Pages sidepane or Designer iframe "can overlay the composer and absorb
+  // clicks" — but lived only in src/ai/copilot/client/interaction/
+  // sidepane/softDismiss.js, an unreachable shadow of sidepane.js (both
+  // exported the same names; "./sidepane.js" silently won every import).
+  // Folded in here, the one decider both the live dismissSidePane() and
+  // (formerly) the dead softDismissWidgets() already read, rather than
+  // into sidepane.js's own literal list — one place for this fact, not two.
   closePageWidgetBtn:
-    '[data-testid="discardButton"], [data-testid="pages-sidepane"] button[aria-label="Close"], button[aria-label="Close pane"], button[aria-label*="Discard" i], button[aria-label*="Close" i][data-testid*="close" i]',
+    '[data-testid="discardButton"], [data-testid="pages-sidepane"] button[aria-label="Close"], button[aria-label="Close pane"], button[aria-label*="Discard" i], button[aria-label*="Close" i][data-testid*="close" i], button[aria-label="Close panel"], button[aria-label="Close sidebar"], button[aria-label="Dismiss panel"], button[aria-label*="close" i][aria-label*="panel" i], #m365-copilot-app-layout-content button[aria-label*="Close" i]',
 
   editInPageBtn:
     'button[aria-label*="Edit in Pages" i], button[aria-label*="Open in Pages" i], [data-testid="pages-edit-in-pages-button"], [data-testid*="pages-response-button" i]',

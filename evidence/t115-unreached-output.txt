@@ -1,0 +1,47 @@
+=== BEFORE (0e7fd24, pre-T-115): reachability census, live tree ===
+
+entry points: 4  src/index.js src/client/index.js src/server.js bin/browser-ai-bridge.js
+tracked src/ modules: 248
+reachable from an entry point: 211
+NOT reachable: 37
+
+  src/audit/   7 file(s): evaluator.js, fix.js, index.js, io.js, locatorProbe.js, motion.js, providers.js
+  src/audit/steps/   7 file(s): contextReset.js, dataExtraction.js, deepseekModeToggle.js, geminiModelDropdown.js, generationPolling.js, inputInjection.js, submission.js
+  src/ai/copilot/client/interaction/sidepane/   4 file(s): hardDismiss.js, index.js, menus.js, softDismiss.js
+  src/audit/fix/   3 file(s): generator.js, prompter.js, scanner.js
+  src/ai/chatgpt/   2 file(s): index.js, locators.js
+  src/ai/copilot/client/session/   2 file(s): tabSelector.js, tabSelector365.js
+  src/ai/grok/   2 file(s): index.js, locators.js
+  src/ai/copilot/client/interaction/prompt/   1 file(s): compactor.js
+  src/ai/copilot/client/interaction/prompt/poll/   1 file(s): stallDetector.js
+  src/ai/copilot/client/   1 file(s): validateBrowser.js
+  src/ai/deepseek/   1 file(s): index.js
+  src/ai/deepseek/interaction/prompt/   1 file(s): poll.js
+  src/ai/gemini/   1 file(s): index.js
+  src/ai/shared/   1 file(s): providerInit.js
+  src/heal/   1 file(s): openai.js
+  src/shims/utils/   1 file(s): sleep.js
+  src/shims/web/   1 file(s): inputBridge.js
+
+=== AFTER (this commit, sidepane/ and deepseek poll.js deleted): ===
+
+entry points: 4  src/index.js src/client/index.js src/server.js bin/browser-ai-bridge.js
+tracked src/ modules: 243
+reachable from an entry point: 211
+NOT reachable: 32
+
+  src/audit/   7 file(s): evaluator.js, fix.js, index.js, io.js, locatorProbe.js, motion.js, providers.js
+  src/audit/steps/   7 file(s): contextReset.js, dataExtraction.js, deepseekModeToggle.js, geminiModelDropdown.js, generationPolling.js, inputInjection.js, submission.js
+  src/audit/fix/   3 file(s): generator.js, prompter.js, scanner.js
+  src/ai/chatgpt/   2 file(s): index.js, locators.js
+  src/ai/copilot/client/session/   2 file(s): tabSelector.js, tabSelector365.js
+  src/ai/grok/   2 file(s): index.js, locators.js
+  src/ai/copilot/client/interaction/prompt/   1 file(s): compactor.js
+  src/ai/copilot/client/interaction/prompt/poll/   1 file(s): stallDetector.js
+  src/ai/copilot/client/   1 file(s): validateBrowser.js
+  src/ai/deepseek/   1 file(s): index.js
+  src/ai/gemini/   1 file(s): index.js
+  src/ai/shared/   1 file(s): providerInit.js
+  src/heal/   1 file(s): openai.js
+  src/shims/utils/   1 file(s): sleep.js
+  src/shims/web/   1 file(s): inputBridge.js
