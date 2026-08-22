@@ -24,6 +24,47 @@ function computeReachability() {
   const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
   const norm = (p) => p.split(path.sep).join("/");
   const all = [];
+  // T-129: scripts/ is deliberately NOT walked here, and this comment is
+  // that decision's record — the ticket found this exclusion looked like an
+  // oversight because nothing said otherwise.
+  //
+  // This walker's whole model is a BFS from package.json's declared entry
+  // points (exports/main/bin) — every src/ file is "reachable" because
+  // SOMETHING imports it, transitively, from that one root. scripts/ files
+  // are not imported from anywhere by design: each one is its own
+  // independent CLI entry point, run directly (`node scripts/x.mjs`). Under
+  // this walker's own model, applied to scripts/, every file would be an
+  // entry point and 0 of them would ever fail — a rule that fails 0 of N is
+  // not a gate.
+  //
+  // The next-best candidate — "reachable if package.json, ci.yml, or
+  // another file statically imports it" — was tried and counted, not just
+  // argued: of 23 scripts/ code files, 8 pass (referenced by a package.json
+  // script entry, a same-directory import, or a tests/*.test.js import) and
+  // 15 fail, BY NAME: attachment-diagnose.mjs, break-demo.mjs,
+  // dom-diagnose.mjs, extraction-break-demo.mjs, fixture-audit.mjs,
+  // generateCssColorTable.mjs, t022-qwen-probe.mjs, t023-kill-pages.mjs,
+  // t023-list-pages.mjs, t031-growth-check.mjs, t034-growth-timing-check.mjs,
+  // t035-kimi-failure-timing.mjs, t035-kimi-latency-check.mjs,
+  // t036-kimi-plateau-check.mjs, t103-cdp-trace.mjs. Several of those 15 are
+  // demonstrably alive, deliberately-manual tools with no importer BY
+  // DESIGN (fixture-audit.mjs, generateCssColorTable.mjs — T-089's own
+  // byte-reproducibility generator), indistinguishable under this rule from
+  // an actually-spent t0NN-*.mjs probe. A rule that can't tell those apart
+  // is not a gate either, whatever its pass/fail ratio looks like.
+  //
+  // A second, independent fragility: even the "passing" side isn't fully
+  // trustworthy. scripts/provenance-census.mjs's real, working import of
+  // scripts/ia-grade.mjs is a dynamic `await import(pathToFileURL(...).href)`
+  // — invisible to this file's own edgesFrom() regex (which only matches a
+  // literal quoted string immediately after from/import(/require(). It
+  // happened not to change ia-grade.mjs's own pass/fail result here (it also
+  // has tests/ importers), but a future scripts/ file reachable ONLY through
+  // a dynamic import would silently read as unreferenced.
+  //
+  // Verdict: NO widening. Nothing here replaces a human occasionally reading
+  // scripts/ and correlating the t0NN-*.mjs names against closed tickets —
+  // stated plainly rather than left implicit, per this ticket's own clause 4.
   (function walk(d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name === "node_modules" || e.name === ".git") continue;
