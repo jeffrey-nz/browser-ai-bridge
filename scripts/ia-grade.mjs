@@ -70,15 +70,35 @@ export function gradeBlindReply(raw) {
   return { raw: cleaned, shape, stated: m ? Number(m[1]) : null };
 }
 
+// T-087 review: the independence check must be able to WITHDRAW the prior,
+// not just print a number beside a hardcoded "not one fixture repeated" —
+// that trailing text was a verdict sitting next to a computed figure, true
+// only by accident of today's corpus, and would have kept printing itself
+// (and the modal rate beside it, at full confidence) even if a future modal
+// cell were 22 files over 2 distinct images. Named and exported so the
+// printed threshold and the code that enforces it can never drift apart —
+// the modal cell's distinct images must be AT LEAST HALF its file count, or
+// a single recycled fixture (repeated more than every other image in that
+// cell combined) could be inflating the file tally on its own. 0.5 is a
+// judgement call (the acceptance says it may be); what it must not be is a
+// bare literal buried in a condition, so it is named, exported, and printed
+// with the verdict it produces.
+export const INDEPENDENCE_MIN_IMAGE_SHARE = 0.5;
+
 // T-087: KEY_SPACE (vision-probe.mjs) is a true fact about the GENERATOR —
 // COUNT drawn uniformly 1-in-COUNT_RANGE, COLOR uniformly 1-in-|COLORS| — and
 // section 3 has always quoted it as a prior over the CORPUS, a different
 // population. This computes the prior the corpus actually realised: given one
-// entry per report file that carries a `truth` and a non-empty `results`
-// array, tally `${count}/${color}` once per FILE and once per REPLY ROW (a
-// file with 8 provider results contributes 8 row-tallies at the same cell),
-// find the modal cell, and report it alongside its own independence check —
-// how many DISTINCT images were cited at that cell, so a concentrated prior
+// entry per NON-BLIND report file that carries a `truth` and a non-empty
+// `results` array (a blind file never carries a shown image beside its drawn
+// truth, so it is excluded rather than tallied against an image nobody was
+// sent — the ticket's own reproduce rule says "every *.json with truth and
+// results", which is the broader claim; this implements the narrower one,
+// and today the two agree exactly, because 0 blind files carry both fields),
+// tally `${count}/${color}` once per FILE and once per REPLY ROW (a file
+// with 8 provider results contributes 8 row-tallies at the same cell), find
+// the modal cell, and report it alongside its own independence check — how
+// many DISTINCT images were cited at that cell, so a concentrated prior
 // backed by one recycled fixture cannot be mistaken for a concentrated draw
 // (T-072 already ruled this out for the COUNT margin; this checks the joint
 // cell fresh, because "not concentrated on one axis" does not imply "not
@@ -112,6 +132,11 @@ export function computeCorpusPrior(entries) {
   }
   const modalRowCount = modalCell ? byRowCell.get(modalCell) || 0 : 0;
   const modalImages = modalCell ? (imagesByCell.get(modalCell)?.size ?? 0) : 0;
+  // DERIVED from modalImages/modalFileCount, never asserted — this is the
+  // field a caller must check before quoting the realised prior at all.
+  const independentEnough = modalCell
+    ? modalImages >= modalFileCount * INDEPENDENCE_MIN_IMAGE_SHARE
+    : false;
   return {
     totalFiles,
     totalRows,
@@ -121,6 +146,8 @@ export function computeCorpusPrior(entries) {
     modalFileCount,
     modalRowCount,
     modalImages,
+    independentEnough,
+    independenceThreshold: INDEPENDENCE_MIN_IMAGE_SHARE,
     fileRate: totalFiles ? modalFileCount / totalFiles : null,
     rowRate: totalRows ? modalRowCount / totalRows : null,
   };
@@ -380,13 +407,24 @@ if (
   console.log(
     `   key space (the GENERATOR): COUNT 1-in-${COUNT_RANGE} x COLOR 1-in-${colorChoices} = 1-in-${COUNT_RANGE * colorChoices}`,
   );
-  if (prior.modalCell) {
+  if (prior.modalCell && !prior.independentEnough) {
+    // T-087 review: a caveat printed BELOW the number does not stop the
+    // number being quoted — this is the same fault the ticket itself was
+    // filed about, one consumer over, and printing "22 files, 2 distinct
+    // images" with a footnote is not meaningfully different from not
+    // printing the footnote at all. When the modal cell fails its own
+    // independence check, the realised prior is WITHDRAWN — replaced by the
+    // reason, not decorated with it.
+    console.log(
+      `   realised   (this CORPUS ): WITHDRAWN — modal cell ${prior.modalCell} has only ${prior.modalImages} distinct image(s) across ${prior.modalFileCount} files (needs >= ${Math.ceil(prior.modalFileCount * prior.independenceThreshold)}, i.e. >= ${prior.independenceThreshold * 100}% distinct) — too concentrated on too few fixtures to trust as a corpus-wide prior.`,
+    );
+  } else if (prior.modalCell) {
     console.log(
       `   realised   (this CORPUS ): modal cell ${prior.modalCell}, ${prior.modalRowCount} of ${prior.totalRows} rows (${prior.modalFileCount} of ${prior.totalFiles} files) = 1-in-${(prior.totalRows / prior.modalRowCount).toFixed(1)}`,
     );
     console.log(
       `                              over ${prior.visitedCells} of ${COUNT_RANGE * colorChoices} cells, ${prior.distinctImages} distinct images ` +
-        `(independence check: ${prior.modalImages} distinct images cited for the modal cell — not one fixture repeated)`,
+        `(independence check: ${prior.modalImages} of ${prior.modalFileCount} files at the modal cell are distinct images, >= ${prior.independenceThreshold * 100}% required — passes)`,
     );
     // T-087 clause 6: drawn-vs-pinned is T-084's field, which does not exist
     // yet — say plainly that this prior mixes both rather than let it be

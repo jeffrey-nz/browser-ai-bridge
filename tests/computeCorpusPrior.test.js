@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeCorpusPrior } from "../scripts/ia-grade.mjs";
+import {
+  computeCorpusPrior,
+  INDEPENDENCE_MIN_IMAGE_SHARE,
+} from "../scripts/ia-grade.mjs";
 
 // T-087: KEY_SPACE (vision-probe.mjs) is a fact about the GENERATOR's draw;
 // this is the corpus's own REALISED prior — the modal (count,color) cell,
@@ -39,7 +42,9 @@ test.describe("computeCorpusPrior", () => {
   test("independence check: counts DISTINCT images at the modal cell, not file count", () => {
     // Same image cited 3 times at the modal cell — the independence check
     // must read 1, not 3, or a single recycled fixture would masquerade as
-    // three independent draws landing on the same cell.
+    // three independent draws landing on the same cell. 1 of 3 files is
+    // also below INDEPENDENCE_MIN_IMAGE_SHARE, so this cell fails its own
+    // independence check too.
     const p = computeCorpusPrior([
       { count: 5, color: "crimson", rowCount: 1, imagePath: "same.png" },
       { count: 5, color: "crimson", rowCount: 1, imagePath: "same.png" },
@@ -50,6 +55,63 @@ test.describe("computeCorpusPrior", () => {
     assert.equal(p.modalFileCount, 3);
     assert.equal(p.modalImages, 1);
     assert.equal(p.distinctImages, 2);
+    assert.equal(p.independentEnough, false);
+  });
+
+  // T-087 review: a caveat printed BELOW the realised-prior number is not
+  // enough — the PM's own example is "22 files over 2 distinct images",
+  // where one recycled fixture could be doing almost all the work. The
+  // function must be able to say the prior should be WITHDRAWN, not just
+  // report a low count beside it.
+  test("independentEnough is false when the modal cell rests on too few distinct images (22 over 2)", () => {
+    const entries = [];
+    // 2 distinct images, 11 files each — matches the PM's own example.
+    for (let i = 0; i < 22; i++) {
+      entries.push({
+        count: 5,
+        color: "crimson",
+        rowCount: 1,
+        imagePath: i % 2 === 0 ? "recycled-a.png" : "recycled-b.png",
+      });
+    }
+    const p = computeCorpusPrior(entries);
+    assert.equal(p.modalCell, "5/crimson");
+    assert.equal(p.modalFileCount, 22);
+    assert.equal(p.modalImages, 2);
+    assert.equal(p.independentEnough, false);
+  });
+
+  test("independentEnough is true when at least the threshold share of files are distinct images", () => {
+    // 4 files, 2 distinct images — exactly INDEPENDENCE_MIN_IMAGE_SHARE
+    // (0.5) if the threshold is 0.5; asserted against the exported
+    // constant rather than the literal, so this test tracks the code if
+    // the threshold ever changes.
+    const entries = [
+      { count: 5, color: "crimson", rowCount: 1, imagePath: "a.png" },
+      { count: 5, color: "crimson", rowCount: 1, imagePath: "a.png" },
+      { count: 5, color: "crimson", rowCount: 1, imagePath: "b.png" },
+      { count: 5, color: "crimson", rowCount: 1, imagePath: "b.png" },
+    ];
+    const p = computeCorpusPrior(entries);
+    assert.equal(p.modalImages, 2);
+    assert.equal(p.modalFileCount, 4);
+    assert.equal(
+      p.modalImages >= p.modalFileCount * INDEPENDENCE_MIN_IMAGE_SHARE,
+      true,
+    );
+    assert.equal(p.independentEnough, true);
+  });
+
+  test("independenceThreshold on the result matches the exported constant, never drifts", () => {
+    const p = computeCorpusPrior([
+      { count: 5, color: "crimson", rowCount: 1, imagePath: "a.png" },
+    ]);
+    assert.equal(p.independenceThreshold, INDEPENDENCE_MIN_IMAGE_SHARE);
+  });
+
+  test("no modal cell (empty entries): independentEnough is false, not undefined", () => {
+    const p = computeCorpusPrior([]);
+    assert.equal(p.independentEnough, false);
   });
 
   test("a missing imagePath does not count toward distinctImages or the independence check", () => {
