@@ -446,6 +446,130 @@ test("auditShapes tallies providerStrata (which counts each provider was shown)"
   }
 });
 
+// T-096: the test above pins the fault this ticket is about at the DATA
+// level — provider "b" answers only SEES=no and is entirely absent from
+// providerStrata (the GRADED population), which is exactly what let it
+// disappear from a block captioned as a per-provider ranking. providerSighted
+// is the fix: every row with a truth to grade against counts, refusal or
+// not, so a provider that only refuses still has a row (n=1, ok=0), not no
+// row at all.
+test("auditShapes tallies providerSighted (every sighted row, refusals included) even for a provider absent from providerStrata", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "count4.json": {
+        truth: { count: 4, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }],
+      },
+      "count9.json": {
+        truth: { count: 9, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=10 COLOR=teal" },
+          { providerId: "b", raw: "SEES=no" }, // refuses every turn
+        ],
+      },
+    });
+
+    const { providerStrata, providerSighted } = auditShapes(dir);
+
+    // The fault, still true of the GRADED population: b is absent.
+    assert.equal(providerStrata.b, undefined);
+    // The fix: b is present in the SIGHTED population, scored as wrong
+    // rather than omitted — a provider cannot raise its own rate by
+    // refusing, since refusing no longer removes the row from view.
+    assert.equal(providerSighted.b.n, 1);
+    assert.equal(providerSighted.b.ok, 0);
+    assert.deepEqual(providerSighted.b.countsShown, new Set([9]));
+    // a is graded on both turns and sighted on both — the two populations
+    // agree exactly where a provider never refuses.
+    assert.equal(providerSighted.a.n, 2);
+    assert.equal(providerSighted.a.ok, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-096 clause 4: EXCLUDED_SHAPES pools SEES_NO/ECHO/NO_ANSWER under one
+// "excluded" tally. providerExcludedByShape keeps the three apart per
+// provider, so an ECHO (bridge/extraction failure) is never read as a
+// SEES_NO (the only shape with a transport-failure argument behind it).
+test("auditShapes splits providerExcludedByShape by shape, not one pooled tally", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "seesno.json": {
+        truth: { count: 4, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=no" }],
+      },
+      "echo.json": {
+        truth: { count: 5, color: "teal" },
+        results: [
+          {
+            providerId: "a",
+            raw: "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text: SEES=yes COUNT=<how many solid-colour squares are shown> COLOR=<pick the closest match>",
+          },
+        ],
+      },
+      "noanswer.json": {
+        truth: { count: 6, color: "teal" },
+        results: [{ providerId: "a", raw: "" }],
+      },
+    });
+
+    const { providerExcludedByShape } = auditShapes(dir);
+
+    assert.deepEqual(providerExcludedByShape.a, {
+      SEES_NO: 1,
+      ECHO: 1,
+      NO_ANSWER: 1,
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-096 clause 5: providerSightedCells/countStrataSighted must feed
+// computeStandardizedRates() the same way providerCountCells/countStrata
+// already do for the GRADED rate — same function, same contract, so the
+// END-TO-END rate is standardised by the identical convention rather than
+// left crude beside a standardised graded column.
+test("providerSightedCells standardises through the same computeStandardizedRates() the graded rate uses", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "p1.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" },
+          { providerId: "b", raw: "SEES=no" },
+        ],
+      },
+      "p2.json": {
+        truth: { count: 9, color: "teal" },
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=9 COLOR=teal" }],
+      },
+    });
+
+    const { providerSightedCells, countStrataSighted } = auditShapes(dir);
+    const result = computeStandardizedRates(
+      providerSightedCells,
+      countStrataSighted,
+    );
+
+    // a: right on both its sighted rows, at counts 4 and 9 (full coverage).
+    assert.equal(result.a.crude, 1);
+    assert.equal(result.a.standardized, 1);
+    assert.equal(result.a.weightCovered, 1);
+    // b: sighted once (a refusal, counted wrong), only at count 4.
+    assert.equal(result.b.n, 1);
+    assert.equal(result.b.ok, 0);
+    assert.equal(result.b.crude, 0);
+    assert.equal(result.b.standardized, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // T-084 clause 4: wrongRows carries colorOk for every WRONG-shaped row, so
 // "8 of 9 wrong rows named the colour correctly" is computed off the same
 // pass classify() already made, not re-derived by a reader.

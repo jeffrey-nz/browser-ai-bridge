@@ -121,6 +121,25 @@ export function auditShapes(dir) {
   // providerStrata's own totals cannot show. See the comment where it is
   // populated below for why this exists.
   const providerCountCells = {};
+  // T-096: providerStrata/providerCountCells above are the GRADED
+  // population — gated on `countOk !== undefined`, which is exactly the
+  // gate that drops SEES_NO/ECHO/NO_ANSWER out of a provider's own
+  // denominator before it is ranked. A provider that refuses on every hard
+  // turn removes those turns from its own scorecard rather than failing
+  // them. providerSighted/providerSightedCells/countStrataSighted mirror
+  // the graded structures exactly (same shape, same computeStandardizedRates
+  // contract) but over EVERY sighted row regardless of shape — a refusal
+  // counts as a row that did not state the count, i.e. wrong — so a
+  // provider cannot rank itself up by being excluded more.
+  const providerSighted = {};
+  const providerSightedCells = {};
+  const countStrataSighted = {};
+  // T-096 clause 4: EXCLUDED_SHAPES pools three different failure modes
+  // under one argument (transport failure) that only actually applies to
+  // SEES_NO. Tracked per provider so ECHO (bridge/extraction failure) and
+  // NO_ANSWER (empty/unmatched reply) are visible as what they are, not
+  // folded into "excluded" as if every one were "the image never arrived".
+  const providerExcludedByShape = {};
   // T-084 clause 4: vision-probe.mjs's header already argues WRONG is not
   // an upload bug — "the model saw *something* and was confidently mistaken
   // about it". Collected here so that argument has numbers behind it in an
@@ -218,6 +237,39 @@ export function auditShapes(dir) {
         const pcell = (pb[band] ??= { total: 0, excluded: 0 });
         pcell.total++;
         if (isExcluded) pcell.excluded++;
+
+        // T-096: the SIGHTED population — every row with a truth to grade
+        // against, regardless of shape. A refusal (SEES_NO/ECHO/NO_ANSWER)
+        // is a real row that did not tell the count; it counts here (n++)
+        // and does NOT count as right (only recomputed.countOk === true
+        // does), so a provider cannot raise its own rate by having more of
+        // its hard rows excluded.
+        const ps = (providerSighted[r.providerId] ??= {
+          countsShown: new Set(),
+          n: 0,
+          ok: 0,
+        });
+        ps.countsShown.add(j.truth.count);
+        ps.n++;
+        if (recomputed.countOk === true) ps.ok++;
+
+        const pc = (providerSightedCells[r.providerId] ??= new Map());
+        const sightedCell = pc.get(j.truth.count) ?? { n: 0, ok: 0 };
+        sightedCell.n++;
+        if (recomputed.countOk === true) sightedCell.ok++;
+        pc.set(j.truth.count, sightedCell);
+
+        const cs = (countStrataSighted[j.truth.count] ??= { n: 0 });
+        cs.n++;
+
+        if (isExcluded) {
+          const eb = (providerExcludedByShape[r.providerId] ??= {
+            SEES_NO: 0,
+            ECHO: 0,
+            NO_ANSWER: 0,
+          });
+          eb[recomputed.shape]++;
+        }
       }
 
       // Same denominator vision-probe.mjs's own summary line uses: the
@@ -280,6 +332,10 @@ export function auditShapes(dir) {
     providerStrata,
     providerCountCells,
     wrongRows,
+    providerSighted,
+    providerSightedCells,
+    countStrataSighted,
+    providerExcludedByShape,
   };
 }
 
@@ -463,6 +519,10 @@ function main() {
     providerStrata,
     providerCountCells,
     wrongRows,
+    providerSighted,
+    providerSightedCells,
+    countStrataSighted,
+    providerExcludedByShape,
   } = auditShapes(dir);
 
   // T-088: the headline used to read as the denominator for every table
@@ -542,35 +602,105 @@ function main() {
     providerCountCells,
     countStrata,
   );
-  const providerIds5 = Object.keys(providerStrata).sort((a, b) => {
-    const sa = standardized[a]?.standardized ?? -1;
-    const sb = standardized[b]?.standardized ?? -1;
-    return sb - sa;
+  // T-096: the block above's own predecessor ("Per-provider rate, WITH the
+  // strata it was actually shown") sorted and ranked on `providerStrata` —
+  // the GRADED population, gated on `countOk !== undefined`. That gate is
+  // exactly where a provider's own refusals (SEES_NO/ECHO/NO_ANSWER)
+  // leave the denominator, so a provider that refuses most of its hard
+  // rows is scored only on the easy remainder it chose to answer: measured
+  // on browser-ai-bridge 8b3182d, chatgpt read joint-first at 100.0% on 2
+  // graded rows of 17 sighted, and ninth of ten end to end at 11.8%. qwen
+  // (0 graded, 9 sighted, all excluded) was not in the ranking at all —
+  // `providerStrata` never even holds its key, since it is populated only
+  // inside the SAME countOk-gated block.
+  //
+  // stdSighted mirrors stdGraded (`standardized` above) exactly —
+  // computeStandardizedRates() takes any providerId -> Map(count ->
+  // {n, ok}) plus the matching per-count weights, so the SIGHTED
+  // population standardises the same way the GRADED one already does, over
+  // countStrataSighted (every sighted row at that count, all shapes) in
+  // place of countStrata (graded rows only). Same convention, same
+  // renormalisation, the crude/standardised gap is no longer a special
+  // case of the end-to-end column alone.
+  const stdSighted = computeStandardizedRates(
+    providerSightedCells,
+    countStrataSighted,
+  );
+  // Master list is every provider with a SIGHTED row — a superset of
+  // `providerStrata`'s keys (graded requires sighted; sighted does not
+  // require graded) — so a provider excluded on every turn still appears,
+  // at the bottom, instead of being invisible to the one block captioned
+  // as a ranking. Sorted by standardised END-TO-END rate: that is the rate
+  // a reader picking a provider can actually act on (T-096 clause 6), and
+  // sorting on it — rather than the graded rate beside it — means the
+  // order no longer asserts a ranking the graded column alone cannot
+  // support. Ties broken by sighted n, descending (more measured rows
+  // first), same tie-break the ticket's own probe used.
+  const providerIdsAll = Object.keys(providerSighted).sort((a, b) => {
+    const sa = stdSighted[a]?.standardized ?? -1;
+    const sb = stdSighted[b]?.standardized ?? -1;
+    if (sb !== sa) return sb - sa;
+    return providerSighted[b].n - providerSighted[a].n;
   });
-  if (providerIds5.length > 0) {
+  if (providerIdsAll.length > 0) {
     console.log(
-      "\nPer-provider rate, WITH the strata it was actually shown (T-084 —",
+      "\nPer-provider rate — GRADED (right/rows that stated a COUNT) and END",
     );
     console.log(
-      "a ranking over incomparable stimulus sets is not a ranking; sorted",
+      "TO END (right/every SIGHTED row, a refusal scored as not right) side",
     );
     console.log(
-      "by STANDARDISED rate, not crude, so the order does not assert what",
+      "by side, both crude and STANDARDISED to the corpus's own stratum mix",
     );
-    console.log("this caption denies — T-092):");
-    for (const p of providerIds5) {
-      const { n, ok, countsShown } = providerStrata[p];
-      const pct = ((ok / n) * 100).toFixed(0);
-      const shown = [...countsShown].sort((a, b) => a - b);
-      const std = standardized[p];
-      const stdPct =
-        std?.standardized != null ? (std.standardized * 100).toFixed(1) : "?";
-      const weightPct =
-        std?.weightCovered != null ? (std.weightCovered * 100).toFixed(1) : "?";
+    console.log(
+      "(T-096 — a ranking sorted on the graded rate is a ranking each",
+    );
+    console.log("provider's own exclusions built for itself; sorted here by");
+    console.log("standardised END TO END instead):");
+    for (const p of providerIdsAll) {
+      const sighted = providerSighted[p];
+      const graded = providerStrata[p];
+      const e2ePct = ((sighted.ok / sighted.n) * 100).toFixed(1);
+      const e2eStd = stdSighted[p];
+      const e2eStdPct =
+        e2eStd?.standardized != null
+          ? (e2eStd.standardized * 100).toFixed(1)
+          : "?";
+      const gradedStr = graded
+        ? (() => {
+            const gStd = standardized[p];
+            const gPct = ((graded.ok / graded.n) * 100).toFixed(1);
+            const gStdPct =
+              gStd?.standardized != null
+                ? (gStd.standardized * 100).toFixed(1)
+                : "?";
+            return `${graded.ok}/${graded.n} ${gPct}% (std ${gStdPct}%)`;
+          })()
+        : "never graded";
+      const excl = providerExcludedByShape[p] || {
+        SEES_NO: 0,
+        ECHO: 0,
+        NO_ANSWER: 0,
+      };
       console.log(
-        `  ${p.padEnd(11)} crude ${ok}/${n} ${pct.padStart(3)}%   standardised ${stdPct}%   corpus weight covered ${weightPct}%   strata shown (of ${COUNT_RANGE}): ${shown.length}/${COUNT_RANGE}  [${shown.join(",")}]`,
+        `  ${p.padEnd(11)} graded ${gradedStr.padEnd(30)} end-to-end ${sighted.ok}/${sighted.n} ${e2ePct}% (std ${e2eStdPct}%)   excluded SEES_NO=${excl.SEES_NO} ECHO=${excl.ECHO} NO_ANSWER=${excl.NO_ANSWER}`,
       );
     }
+    // T-096 clause 6: this board's product for every other board is "which
+    // provider do I send this to" — a named provider and its n, not a
+    // table to interpret. Read off the top of the same sort the table
+    // itself uses (standardised end-to-end), so the recommendation and the
+    // ranking above it can never disagree about which provider is first.
+    const top = providerIdsAll[0];
+    const topSighted = providerSighted[top];
+    const topStd = stdSighted[top];
+    const topStdPct =
+      topStd?.standardized != null
+        ? `, standardised ${(topStd.standardized * 100).toFixed(1)}%`
+        : "";
+    console.log(
+      `\nRECOMMENDATION: ${top} — end to end ${topSighted.ok}/${topSighted.n} = ${((topSighted.ok / topSighted.n) * 100).toFixed(1)}% (n=${topSighted.n}${topStdPct}).`,
+    );
   }
 
   // T-092 clause 4: the two within-region provider effects, stated as
