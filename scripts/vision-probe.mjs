@@ -264,9 +264,13 @@ async function gradingProvenance(baseUrl) {
   // fixture-generation code produced this run" — not the fixture image.
   // It used to be named probeSha256 and read across this board as fixture
   // identity ("same probeSha256 means same picture"); it never could mean
-  // that, since two runs sharing this same source file draw a fresh random
-  // fixture each time. See fixtureSha256 in main()'s own write, below,
-  // for the field that actually hashes the PNG bytes sent.
+  // that, because it never reads a picture at all — two runs sharing this
+  // same source file can draw DIFFERENT truths when neither is pinned
+  // (generateTestImage's own random count+colour draw, :1360), and this
+  // hash would read identical across both. See fixtureSha256 in main()'s
+  // own write, below, for the field that actually hashes the PNG bytes
+  // sent — and its own comment for why a PINNED truth draws the same
+  // picture every time, not a fresh one.
   const graderSha256 = createHash("sha256")
     .update(src)
     .digest("hex")
