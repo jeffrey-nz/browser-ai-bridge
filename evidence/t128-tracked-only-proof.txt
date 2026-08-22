@@ -1,0 +1,24 @@
+T-128 clause 2 — proving scripts/provenance-census.mjs's tracked-only enforcement (git ls-files, not readdirSync alone), at bee00c53662affb286dd096849c874f37c23d0ac.
+
+=== BEFORE: dropped an untracked file in ===
+
+$ echo '{"fake":"untracked probe for T-128 clause 2","results":[]}' > reports/vision-probe/t128-untracked-test.json
+$ git status --short reports/vision-probe/t128-untracked-test.json
+?? reports/vision-probe/t128-untracked-test.json
+
+$ node scripts/provenance-census.mjs
+tracked report json in reports/vision-probe: 148   (untracked, EXCLUDED: 1 — t128-untracked-test.json)
+
+=== AFTER: removed it, reran ===
+
+$ rm reports/vision-probe/t128-untracked-test.json
+$ git status --short reports/vision-probe/t128-untracked-test.json
+(nothing — clean)
+
+$ node scripts/provenance-census.mjs
+tracked report json in reports/vision-probe: 148   (untracked, EXCLUDED: 0)
+
+Excluded count moved 0 -> 1 -> 0 across the three runs; the tracked total (148)
+never moved. The untracked file, though it sits inside reports/vision-probe/
+and matches the *.json glob readdirSync alone would pick up, was correctly
+excluded from the census while present.

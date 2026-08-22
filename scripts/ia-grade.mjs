@@ -388,6 +388,11 @@ if (
         // OCCURRING refutable population instead of the two looking
         // identical to a reader who only sees `imageAttached`/`raw`.
         plantedBreak: j.plantedBreak || null,
+        // T-128: read alongside plantedBreak in section 3's PLANTED block
+        // below — a plant is an uncommitted edit by construction, so its
+        // provenance is EXPECTED to read unverifiable/KEY-ABSENT, not a
+        // defect in the run.
+        serverProvenance: "serverProvenance" in j ? j.serverProvenance : null,
       });
     }
   }
@@ -549,8 +554,18 @@ if (
     );
     for (const r of planted)
       console.log(
-        `     ${r.f.padEnd(28)} ${r.p.padEnd(10)} said=${r.said} truth=${r.truth} right=${r.right} :: ${r.plantedBreak}`,
+        `     ${r.f.padEnd(28)} ${r.p.padEnd(10)} said=${r.said} truth=${r.truth} right=${r.right} prov=${r.serverProvenance ?? "KEY-ABSENT"} :: ${r.plantedBreak}`,
       );
+    // T-128: a plant edits a selector in the working tree, restarts the
+    // server so it loads the edit, then probes — HEAD never moves (so
+    // serverStale reads false) but the tree it started from was dirty (so
+    // serverTreeDirty reads true), which classifyServerProvenance correctly
+    // calls "unverifiable". That is the SIGNATURE of a deliberate control,
+    // not a defect in it — a plant reading anything other than unverifiable
+    // or KEY-ABSENT (pre-T-083 corpus) would be the surprising result.
+    console.log(
+      `   (a plant's own provenance is EXPECTED to read unverifiable/KEY-ABSENT — an uncommitted edit by construction, not a flaw in the control)`,
+    );
   }
   console.log(
     `   -> disagreements: ${refutable.filter((r) => r.right).length} of ${refutable.length} naturally-occurring refutable turns` +

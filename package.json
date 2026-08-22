@@ -51,7 +51,8 @@
     "test": "NODE_ENV=test node --test",
     "audit": "node src/audit/index.js",
     "audit:fix": "node src/audit/fix.js",
-    "check:reachable": "node scripts/check-reachable.cjs"
+    "check:reachable": "node scripts/check-reachable.cjs",
+    "census:provenance": "node scripts/provenance-census.mjs"
   },
   "dependencies": {
     "express": "^4.18.2",
