@@ -1,0 +1,39 @@
+{
+  "graderSha256": "193fe2ae32cadc5c",
+  "bridgeCommit": "8c8e6ec1321e3caa9ee07b9a51d6b5e7498124b3",
+  "treeDirty": false,
+  "serverLoadedCommit": "8c8e6ec1321e3caa9ee07b9a51d6b5e7498124b3",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-22T09:00:44.489Z",
+  "fixtureSha256": "f3f4987265d741fd430b2c36a45d4b07b5e84701c3345d9fd700ffb1a6cde8be",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 5,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787389218299.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 26069,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "onList": true,
+      "colorUnresolved": false,
+      "nearestPaletteMember": null,
+      "nearestPaletteDistance": null,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [data-test-id*=\"file-preview\" i], [class*=\"file-preview\" i], [class*=\"uploaded-file\" i], [class*=\"attachment-chip\" i]",
+        "strategy": "gemini_submenu",
+        "requireGrowth": false,
+        "grew": null
+      },
+      "raw": "SEES=yes COUNT=5 COLOR=teal"
+    }
+  ]
+}
