@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { auditShapes } from "../scripts/shape-audit.mjs";
+import { auditShapes, formatNoReplySection } from "../scripts/shape-audit.mjs";
 
 /**
  * T-109: shape-audit's per-provider ranking line assembles a denominator,
@@ -187,28 +187,80 @@ test("real corpus: providerCountCells (plant-including) sums to providerStrata's
   }
 });
 
-test("real corpus: the no-reply headline's per-provider n equals bridgeAttributable+unattributed, and the total equals the sum of every provider's n", () => {
-  // T-107's own two identities, named in this ticket's own log update as
-  // "exactly your class" — checked here as a real assertion rather than a
-  // one-off hand-computation. Both hold BY CONSTRUCTION today (n++ always
+test("real corpus: the no-reply headline's per-provider n equals bridgeAttributable+unattributed", () => {
+  // T-107's own identity — checked here as a real assertion rather than a
+  // one-off hand-computation. Holds BY CONSTRUCTION today (n++ always
   // runs, then exactly one of bridgeAttributable++/unattributed++ runs in
-  // the same branch; the total is a live .reduce() over the same
-  // structure printed) — asserted anyway so a future refactor that
+  // the same branch) — asserted anyway so a future refactor that
   // separates these increments is caught here, not by a reader doing the
   // arithmetic on a printed report.
   const { noReplyByProvider } = auditShapes(CORPUS_DIR);
 
-  const providers = Object.keys(noReplyByProvider).sort();
-  let total = 0;
-  for (const p of providers) {
+  for (const p of Object.keys(noReplyByProvider)) {
     const nr = noReplyByProvider[p];
     assert.equal(
       nr.n,
       nr.bridgeAttributable + nr.unattributed,
       `${p}: n should equal bridgeAttributable+unattributed`,
     );
-    total += nr.n;
   }
-  const reduceTotal = providers.reduce((s, p) => s + noReplyByProvider[p].n, 0);
-  assert.equal(total, reduceTotal);
+});
+
+test("real corpus: formatNoReplySection's printed per-provider lines sum to its own printed total, and that total plus sightedRowsWithRaw is the denominator it states", () => {
+  // T-109 review, finding 1: a prior version of this test compared
+  // `providers.reduce(...)` against `providers.reduce(...)` over the SAME
+  // array inside the test itself — a tautology that would pass on
+  // fabricated data and never touches production code at all.
+  // formatNoReplySection (scripts/shape-audit.mjs) is never imported by
+  // that version; it is here.
+  //
+  // Finding 2: the real cross-population risk in this section is that its
+  // headline total (`noReplyTotal`) reduces over
+  // Object.keys(noReplyByProvider) ALONE, while the per-provider lines
+  // printed below it iterate `allSweptProviders` — the UNION of
+  // Object.keys(providerSighted) and Object.keys(noReplyByProvider). Two
+  // different key sets feeding one printed block; a reader who sums the
+  // per-provider column and compares it to the headline is checking
+  // exactly the relation this test asserts, against the real, printed
+  // lines rather than against internal state formatNoReplySection never
+  // exposes directly.
+  const { noReplyByProvider, providerSighted, rowsWithRaw, blindRowsWithRaw } =
+    auditShapes(CORPUS_DIR);
+  const sightedRowsWithRaw = rowsWithRaw - blindRowsWithRaw;
+
+  const lines = formatNoReplySection(
+    noReplyByProvider,
+    providerSighted,
+    sightedRowsWithRaw,
+  );
+
+  const headlineMatch = lines[0].match(
+    /:\s*(\d+) of (\d+) sighted gradable rows/,
+  );
+  assert.ok(headlineMatch, `expected a parseable headline, got: ${lines[0]}`);
+  const printedTotal = Number(headlineMatch[1]);
+  const printedDenominator = Number(headlineMatch[2]);
+
+  let summedFromRows = 0;
+  let rowCount = 0;
+  for (const line of lines.slice(1)) {
+    const rowMatch = line.match(
+      /^\s*(\S+)\s+(\d+)\s+bridge-attributable=(\d+)\s+unattributed=(\d+)/,
+    );
+    assert.ok(rowMatch, `expected a parseable per-provider line, got: ${line}`);
+    summedFromRows += Number(rowMatch[2]);
+    rowCount++;
+  }
+  assert.ok(rowCount > 0, "expected at least one per-provider line");
+
+  assert.equal(
+    summedFromRows,
+    printedTotal,
+    "the per-provider lines should sum to the headline's own total",
+  );
+  assert.equal(
+    sightedRowsWithRaw + printedTotal,
+    printedDenominator,
+    "sightedRowsWithRaw + the headline's total should equal the headline's own denominator",
+  );
 });
