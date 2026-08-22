@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveVisibleInOrder } from "../src/ai/shared/locatorEngine.js";
+import {
+  resolveVisibleInOrder,
+  resolveSelector,
+} from "../src/ai/shared/locatorEngine.js";
 import {
   recordLocatorResolution,
   readLocatorResolutions,
@@ -220,4 +223,64 @@ test("recordLocatorResolution never throws when the log path cannot be written",
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+/**
+ * T-110: resolveSelector(page, selectorChain) looked like the one place in
+ * this codebase already walking a candidate list in order — but every
+ * deepseek caller passes a pre-joined comma STRING (DEEPSEEK_LOCATORS.*),
+ * not an array, so `Array.isArray(selectorChain)` was false and the whole
+ * string became a ONE-ELEMENT chain: the loop ran once, checking
+ * visibility of the entire comma list as a single Playwright selector —
+ * functionally identical to a joined-selector-plus-`.last()` resolution,
+ * DOM position deciding, list order inert. These tests pin the fix (a
+ * string chain is split into its real candidates before the loop runs)
+ * against the same fake-page harness used for resolveVisibleInOrder above.
+ */
+
+test("resolveSelector splits a comma-joined string chain and walks it in list order — the first LIST candidate that's visible wins, not the DOM-last one", async () => {
+  // Only "#b" is visible. A pre-T-110 resolveSelector would treat the
+  // WHOLE string as one candidate and check ITS OWN visibility (false,
+  // since the fake only recognises the three individual selectors) —
+  // returning the fallback instead of ever finding #b. Getting "#b" back
+  // here is only possible if the string was actually split into three
+  // real candidates and walked.
+  const page = fakePage(["#b"]);
+  const picked = await resolveSelector(page, "#a, #b, #c");
+  assert.equal(picked, "#b");
+});
+
+test("resolveSelector: the earlier candidate in the string wins when two are visible, regardless of which is DOM-last", async () => {
+  const page = fakePage(["#a", "#c"]);
+  const picked = await resolveSelector(page, "#a, #b, #c");
+  assert.equal(picked, "#a");
+
+  const pickedReversed = await resolveSelector(page, "#c, #b, #a");
+  assert.equal(pickedReversed, "#c");
+});
+
+test("resolveSelector does not split a comma that sits inside a functional pseudo-class", async () => {
+  // `:has(a, b)` is ONE selector; its inner comma is not a candidate
+  // separator. A naive `.split(",")` would break it into ":has(a" and
+  // "b)", neither a valid selector, and neither would ever be recognised
+  // as visible by anything. Only #wrap is visible, and it is only
+  // reachable under the literal, un-split selector string.
+  const page = fakePage(["div:has(span, em)", "#other"]);
+  const picked = await resolveSelector(page, "div:has(span, em), #other");
+  assert.equal(picked, "div:has(span, em)");
+});
+
+test("resolveSelector still accepts an array chain, unchanged", async () => {
+  const page = fakePage(["#b"]);
+  const picked = await resolveSelector(page, ["#a", "#b", "#c"]);
+  assert.equal(picked, "#b");
+});
+
+test("resolveSelector's fallback (nothing visible) is unchanged: the whole original string for a string chain, the first element for an array chain", async () => {
+  const page = fakePage([]);
+  const pickedFromString = await resolveSelector(page, "#a, #b, #c");
+  assert.equal(pickedFromString, "#a, #b, #c");
+
+  const pickedFromArray = await resolveSelector(page, ["#a", "#b", "#c"]);
+  assert.equal(pickedFromArray, "#a");
 });

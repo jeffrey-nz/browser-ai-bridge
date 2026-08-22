@@ -1,0 +1,13 @@
+=== Real transcript: resolveSelector() from src/ai/shared/locatorEngine.js, run via ===
+=== evidence/t110-verify-resolveSelector.mjs -- once with locatorEngine.js swapped ===
+=== back to its pre-T-110 content, once at this commit. Fixture: two elements ===
+=== matching different DEEPSEEK_LOCATORS.inputBox entries, list position 1 FIRST in ===
+=== the DOM, list position 4 (#chat-input) SECOND -- DOM-last and list-first disagree. ===
+
+OLD CODE (pre-T-110):
+resolveSelector returned "textarea[placeholder*="Message DeepSeek" i], textarea[placeholder*="DeepSeek" i], textarea.ds-scroll-area, #chat-input"
+  -> resolves to element #chat-input
+
+NEW CODE (this fix):
+resolveSelector returned "textarea[placeholder*="Message DeepSeek" i]"
+  -> resolves to element #pos1

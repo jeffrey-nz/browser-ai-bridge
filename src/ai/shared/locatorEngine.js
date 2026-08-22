@@ -63,8 +63,60 @@ export async function resolveVisibleInOrder(
     : page.locator(selectors[pickedIndex]).last();
 }
 
+// T-110: a CSS selector LIST uses top-level commas as separators — a
+// comma can also appear nested inside a functional pseudo-class
+// (`:has(a, b)`, `:not(a, b)`), where it does NOT separate candidates.
+// Splitting only at paren-depth 0 keeps those intact; none of deepseek's
+// current DEEPSEEK_LOCATORS values have a nested comma (checked), but a
+// naive `.split(",")` would silently mis-split one that ever did.
+function splitTopLevelSelectors(csv) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < csv.length; i++) {
+    const c = csv[i];
+    if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      parts.push(csv.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(csv.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+// T-110: this looked like the one place in the codebase already doing
+// what T-108's resolveVisibleInOrder now does everywhere else — a loop,
+// first visible wins, in the order written. It never was: every deepseek
+// caller passes a DEEPSEEK_LOCATORS value, and every one of those is a
+// pre-joined comma-separated STRING, not an array
+// (src/ai/deepseek/locators.js). `Array.isArray(selectorChain)` was false
+// for all of them, so `chain` became a ONE-ELEMENT array holding the
+// ENTIRE joined string — the for-loop ran once, checking visibility of
+// the whole comma-list-as-one-selector (Playwright's own union,
+// `.last()` picking by DOM position) — functionally identical to a
+// joined-selector-plus-.last() resolution, the exact class T-108 fixed
+// everywhere else. Splitting a string chain into its real candidates
+// (respecting paren nesting) makes the loop actually loop, in the order
+// DEEPSEEK_LOCATORS lists them, for every existing caller — with zero
+// change to DEEPSEEK_LOCATORS itself or to the few sites that use it
+// directly as a joined string outside this function
+// (src/ai/deepseek/interaction/chat.js, mode.js), which this ticket does
+// not touch.
 export async function resolveSelector(page, selectorChain, timeoutMs = 1000) {
-  const chain = Array.isArray(selectorChain) ? selectorChain : [selectorChain];
+  const chain = Array.isArray(selectorChain)
+    ? selectorChain
+    : splitTopLevelSelectors(selectorChain);
+  // The "nothing visible" fallback keeps its PRE-T-110 shape exactly: the
+  // whole original joined string for a string input (the same broad
+  // multi-selector Playwright query the old code fell back to), or the
+  // first array element for an array input (unchanged either way) — only
+  // the "something IS visible" path below changes, which is the actual
+  // fix.
+  const fallback = Array.isArray(selectorChain)
+    ? selectorChain[0]
+    : selectorChain;
 
   for (const selector of chain) {
     if (!selector) continue;
@@ -83,7 +135,7 @@ export async function resolveSelector(page, selectorChain, timeoutMs = 1000) {
   }
 
   logger.trace(
-    `[LocatorEngine] No visible selectors found. Falling back to primary: ${chain[0]}`,
+    `[LocatorEngine] No visible selectors found. Falling back to primary: ${fallback}`,
   );
-  return chain[0];
+  return fallback;
 }
