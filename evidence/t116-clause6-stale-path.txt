@@ -1,0 +1,5 @@
+reachability: 211 of 243 reachable, 32 allowlisted, 1 unexpected
+FAIL: 1 unreachable module(s) not in the allowlist:
+  src/heal/openai.js
+WARN: 1 allowlist entry is stale:
+  src/heal/this-path-does-not-exist.js — no longer exists in the tree

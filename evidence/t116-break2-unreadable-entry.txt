@@ -1,0 +1,43 @@
+FAIL: 1 declared entry point(s) in package.json do not resolve to a real file — the census silently narrowing its own start set is exactly the failure this gate exists to catch:
+  src/server.js
+reachability: 171 of 242 reachable, 32 allowlisted, 39 unexpected
+FAIL: 39 unreachable module(s) not in the allowlist:
+  src/agent/Orchestrator.js
+  src/agent/ToolRegistry.js
+  src/config/providerConstraints.js
+  src/heal/index.js
+  src/heal/localHealer.js
+  src/heal/patcher.js
+  src/middleware/errorHandler.js
+  src/middleware/respond.js
+  src/routes/agent.js
+  src/routes/ask/askOne.js
+  src/routes/ask/executor/coreTurn.js
+  src/routes/ask/executor/imageAttachments.js
+  src/routes/ask/executor/index.js
+  src/routes/ask/executor/metrics.js
+  src/routes/ask/executor/prompts.js
+  src/routes/ask/executor/rotator.js
+  src/routes/ask/executor/stallLoop.js
+  src/routes/ask/sessionHandler.js
+  src/routes/ask/tiers.js
+  src/routes/ask/validation.js
+  src/routes/ask/withSessionLock.js
+  src/routes/ask-all.js
+  src/routes/ask.js
+  src/routes/audio-ask.js
+  src/routes/click.js
+  src/routes/devserver.js
+  src/routes/evaluate.js
+  src/routes/health.js
+  src/routes/image-ask.js
+  src/routes/navigate.js
+  src/routes/page-inspect.js
+  src/routes/prompt.js
+  src/routes/screenshot.js
+  src/routes/sessions.js
+  src/routes/setup.js
+  src/routes/visual-ask.js
+  src/routes/wait-for.js
+  src/shims/utils/responseParser.js
+  src/shims/utils/urlSecurity.js

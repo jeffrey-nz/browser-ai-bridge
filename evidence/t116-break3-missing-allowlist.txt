@@ -1,0 +1,35 @@
+FAIL: allowlist file is missing: C:\Users\Work\browser-ai-bridge\scripts\reachability-allowlist.json
+reachability: 211 of 243 reachable, 0 allowlisted, 32 unexpected
+FAIL: 32 unreachable module(s) not in the allowlist:
+  src/ai/chatgpt/index.js
+  src/ai/chatgpt/locators.js
+  src/ai/copilot/client/interaction/prompt/compactor.js
+  src/ai/copilot/client/interaction/prompt/poll/stallDetector.js
+  src/ai/copilot/client/session/tabSelector.js
+  src/ai/copilot/client/session/tabSelector365.js
+  src/ai/copilot/client/validateBrowser.js
+  src/ai/deepseek/index.js
+  src/ai/gemini/index.js
+  src/ai/grok/index.js
+  src/ai/grok/locators.js
+  src/ai/shared/providerInit.js
+  src/audit/evaluator.js
+  src/audit/fix/generator.js
+  src/audit/fix/prompter.js
+  src/audit/fix/scanner.js
+  src/audit/fix.js
+  src/audit/index.js
+  src/audit/io.js
+  src/audit/locatorProbe.js
+  src/audit/motion.js
+  src/audit/providers.js
+  src/audit/steps/contextReset.js
+  src/audit/steps/dataExtraction.js
+  src/audit/steps/deepseekModeToggle.js
+  src/audit/steps/geminiModelDropdown.js
+  src/audit/steps/generationPolling.js
+  src/audit/steps/inputInjection.js
+  src/audit/steps/submission.js
+  src/heal/openai.js
+  src/shims/utils/sleep.js
+  src/shims/web/inputBridge.js

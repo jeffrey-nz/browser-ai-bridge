@@ -1,0 +1,36 @@
+FAIL: 0 declared entry points resolved — package.json's exports/main/bin, or bin/, changed shape under this gate. A census with no entry points is not a census.
+FAIL: 0 tracked src/ modules found — the src/ walk returned nothing. A census over an empty set is not a clean result.
+reachability: 0 of 0 reachable, 32 allowlisted, 0 unexpected
+WARN: 32 allowlist entries are stale:
+  src/audit/evaluator.js — no longer exists in the tree
+  src/audit/fix.js — no longer exists in the tree
+  src/audit/index.js — no longer exists in the tree
+  src/audit/io.js — no longer exists in the tree
+  src/audit/locatorProbe.js — no longer exists in the tree
+  src/audit/motion.js — no longer exists in the tree
+  src/audit/providers.js — no longer exists in the tree
+  src/audit/steps/contextReset.js — no longer exists in the tree
+  src/audit/steps/dataExtraction.js — no longer exists in the tree
+  src/audit/steps/deepseekModeToggle.js — no longer exists in the tree
+  src/audit/steps/geminiModelDropdown.js — no longer exists in the tree
+  src/audit/steps/generationPolling.js — no longer exists in the tree
+  src/audit/steps/inputInjection.js — no longer exists in the tree
+  src/audit/steps/submission.js — no longer exists in the tree
+  src/audit/fix/generator.js — no longer exists in the tree
+  src/audit/fix/prompter.js — no longer exists in the tree
+  src/audit/fix/scanner.js — no longer exists in the tree
+  src/ai/chatgpt/index.js — no longer exists in the tree
+  src/ai/chatgpt/locators.js — no longer exists in the tree
+  src/ai/grok/index.js — no longer exists in the tree
+  src/ai/grok/locators.js — no longer exists in the tree
+  src/ai/deepseek/index.js — no longer exists in the tree
+  src/ai/gemini/index.js — no longer exists in the tree
+  src/ai/shared/providerInit.js — no longer exists in the tree
+  src/ai/copilot/client/session/tabSelector.js — no longer exists in the tree
+  src/ai/copilot/client/session/tabSelector365.js — no longer exists in the tree
+  src/ai/copilot/client/interaction/prompt/compactor.js — no longer exists in the tree
+  src/ai/copilot/client/interaction/prompt/poll/stallDetector.js — no longer exists in the tree
+  src/ai/copilot/client/validateBrowser.js — no longer exists in the tree
+  src/heal/openai.js — no longer exists in the tree
+  src/shims/utils/sleep.js — no longer exists in the tree
+  src/shims/web/inputBridge.js — no longer exists in the tree

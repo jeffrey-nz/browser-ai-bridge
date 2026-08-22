@@ -1,0 +1,3 @@
+reachability: 211 of 244 reachable, 32 allowlisted, 1 unexpected
+FAIL: 1 unreachable module(s) not in the allowlist:
+  src/ai/t116-throwaway-canary.js

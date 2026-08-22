@@ -1,0 +1,130 @@
+[
+  {
+    "path": "src/audit/evaluator.js",
+    "reason": "src/audit/ (T-115): an apparently-standalone selector-health subsystem never wired to an entry point. Not this ticket's or T-115's subject."
+  },
+  {
+    "path": "src/audit/fix.js",
+    "reason": "src/audit/ (T-115): same unwired subsystem as evaluator.js."
+  },
+  {
+    "path": "src/audit/index.js",
+    "reason": "src/audit/ (T-115): the subsystem's own entry point — not one of this package's four declared entry points, so its whole tree is unreachable from them."
+  },
+  {
+    "path": "src/audit/io.js",
+    "reason": "src/audit/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/locatorProbe.js",
+    "reason": "src/audit/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/motion.js",
+    "reason": "src/audit/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/providers.js",
+    "reason": "src/audit/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/contextReset.js",
+    "reason": "src/audit/steps/ (T-115): a step file for the same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/dataExtraction.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/deepseekModeToggle.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/geminiModelDropdown.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/generationPolling.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/inputInjection.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/steps/submission.js",
+    "reason": "src/audit/steps/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/fix/generator.js",
+    "reason": "src/audit/fix/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/fix/prompter.js",
+    "reason": "src/audit/fix/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/audit/fix/scanner.js",
+    "reason": "src/audit/fix/ (T-115): same unwired subsystem."
+  },
+  {
+    "path": "src/ai/chatgpt/index.js",
+    "reason": "T-116: exports initChatGptProvider(), an abandoned init pathway (via #ai/shared/providerInit.js) — the live path is src/session/Creator.js's direct `new ChatGPTProvider()` from ./session.js."
+  },
+  {
+    "path": "src/ai/chatgpt/locators.js",
+    "reason": "T-116: an orphaned CHATGPT_LOCATORS table nothing imports — chatgpt's live selectors are inline in interaction/prompt/*.js."
+  },
+  {
+    "path": "src/ai/grok/index.js",
+    "reason": "T-116: exports initGrokProvider(), the same abandoned init pathway as chatgpt/index.js — the live path is Creator.js's direct `new GrokProvider()`."
+  },
+  {
+    "path": "src/ai/grok/locators.js",
+    "reason": "T-116: an orphaned locators table, same shape as chatgpt/locators.js."
+  },
+  {
+    "path": "src/ai/deepseek/index.js",
+    "reason": "T-116: exports initDeepSeekProvider(), the same abandoned init pathway — the live path is Creator.js's direct `new DeepSeekProvider()`."
+  },
+  {
+    "path": "src/ai/gemini/index.js",
+    "reason": "T-116: exports initGeminiProvider(), the same abandoned init pathway — the live path is Creator.js's direct `new GeminiProvider()`."
+  },
+  {
+    "path": "src/ai/shared/providerInit.js",
+    "reason": "T-116: initProvider(), the shared helper all four abandoned index.js files above call — no live caller reaches it either."
+  },
+  {
+    "path": "src/ai/copilot/client/session/tabSelector.js",
+    "reason": "T-116: selectCopilotTab() — not investigated further; no importer found."
+  },
+  {
+    "path": "src/ai/copilot/client/session/tabSelector365.js",
+    "reason": "T-116: selectCopilot365Tab() — same shape as tabSelector.js, no importer found."
+  },
+  {
+    "path": "src/ai/copilot/client/interaction/prompt/compactor.js",
+    "reason": "T-112/T-115 shadow-pair census: a 1-line facade (`export * from \"./compactor/index.js\"`) that is itself unimported — the directory it re-exports IS imported directly by send/index.js. One of the three facade pairs T-115 explicitly left untouched."
+  },
+  {
+    "path": "src/ai/copilot/client/interaction/prompt/poll/stallDetector.js",
+    "reason": "T-116: checkStallCondition() — not investigated further; no importer found."
+  },
+  {
+    "path": "src/ai/copilot/client/validateBrowser.js",
+    "reason": "T-116: validateBrowserConnection(), a diagnostic helper — not investigated further; no importer found."
+  },
+  {
+    "path": "src/heal/openai.js",
+    "reason": "The file's own first line: \"DEPRECATED: external OpenAI API removed per self-upgrade task. Use localHealer.js for selector suggestions.\""
+  },
+  {
+    "path": "src/shims/utils/sleep.js",
+    "reason": "T-116: a one-line sleep() shim — not investigated further; no importer found."
+  },
+  {
+    "path": "src/shims/web/inputBridge.js",
+    "reason": "T-116: webPromptFeedback/webPromptText/webPromptChoice stubs — not investigated further; no importer found."
+  }
+]
