@@ -459,15 +459,14 @@ test("auditShapes flags a sighted row with no gradable truth, and a blind row th
   try {
     writeCorpus(dir, {
       // Sighted (not blind), but no truth.count at all — the mismatch
-      // clause 2 exists to surface. raw is "SEES=no", not a structured
-      // reply: classify()'s structured branch dereferences truth.count
-      // unconditionally on a non-blind file (only the blind path gets the
-      // {count:null,color:""} sentinel) and would throw on a truly absent
-      // truth — the SAME crash risk this file's own T-088 comment already
-      // names for the blind path, just not yet sentinel-guarded on this
-      // one. Not this ticket's fix to make; avoided in the fixture instead.
+      // clause 2 exists to surface. raw is a STRUCTURED reply (T-101: this
+      // used to have to be "SEES=no" instead, because classify()'s
+      // structured branch threw on a truly absent truth before that
+      // ticket fixed it at the source — a structured raw here is now the
+      // actual proof this row can reach sightedNoTruthRows at all, not
+      // just a row that happens not to trigger the crash).
       "sighted-no-truth.json": {
-        results: [{ providerId: "a", raw: "SEES=no" }],
+        results: [{ providerId: "a", raw: "SEES=yes COUNT=4 COLOR=teal" }],
       },
       // Blind, but carries a truth.count anyway — the other direction of
       // the same mismatch.

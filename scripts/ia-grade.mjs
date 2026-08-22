@@ -60,12 +60,18 @@ export function gradeReply(raw, truth) {
 // --blind) has no picture, so there is nothing real to grade COUNT/COLOR
 // against, only whether a count was STATED at all. Mirrors gradeReply's
 // shape (recompute fresh from `raw` via classify(), never trust a stored
-// verdict — T-027's policy) with the same sentinel-truth trick vision-probe's
-// own classifyBlind() uses, so an echoed prompt (which contains the literal
+// verdict — T-027's policy), relying on classify()'s own handling of an
+// absent truth (T-101) so an echoed prompt (which contains the literal
 // "COUNT=<how many..." text) is never misread as a stated count.
+//
+// T-101: used to pass classify() an explicit {count:null,color:""}
+// sentinel by hand — classify() now resolves an absent truth to exactly
+// that internally, so passing nothing does the same thing. Left with no
+// second argument rather than `classify(cleaned, undefined)` explicitly,
+// since a blind reply never has a truth to name in the first place.
 export function gradeBlindReply(raw) {
   const cleaned = (raw || "").replace(/\s+/g, " ").trim();
-  const shape = classify(cleaned, { count: null, color: "" }).shape;
+  const shape = classify(cleaned).shape;
   const m = shape === "ECHO" ? null : cleaned.match(/COUNT\s*=\s*(\d+)/i);
   return { raw: cleaned, shape, stated: m ? Number(m[1]) : null };
 }

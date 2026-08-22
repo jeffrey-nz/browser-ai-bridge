@@ -757,6 +757,18 @@ function buildPrompt(truth) {
 // hand-typed pattern that can drift from this one.
 export function classify(replyText, truth) {
   const text = (replyText || "").trim();
+  // T-101: an absent or incomplete truth (undefined, null, {}) must not
+  // throw — resolved PER FIELD, not with a single `truth ?? {...}`
+  // object-level fallback, because `classify(raw, {})` would still crash on
+  // `undefined.toLowerCase()` for colour if only the whole-object case were
+  // guarded. These are the SAME values shape-audit.mjs's own blind-row
+  // ternary and ia-grade.mjs's gradeBlindReply() already substituted by
+  // hand at their call sites for exactly this reason — computed here once
+  // instead, so a caller no longer has to know to check first, and both of
+  // those sentinels are now redundant (see the comments at their own call
+  // sites for what changed there).
+  const safeCount = truth?.count ?? null;
+  const safeColor = truth?.color ?? "";
 
   // Prompt-echo MUST be checked first: the prompt's own text contains the
   // literal string "SEES=no" (in its "...or reply with EXACTLY this" clause),
@@ -779,8 +791,8 @@ export function classify(replyText, truth) {
   );
   if (m) {
     const [, count, color] = m;
-    const countOk = Number(count) === truth.count;
-    const colorOk = color.toLowerCase() === truth.color.toLowerCase();
+    const countOk = Number(count) === safeCount;
+    const colorOk = color.toLowerCase() === safeColor.toLowerCase();
     // T-086: colorOk=false has always collapsed two different disagreements
     // into one bit — "named a different member of OUR palette" (a genuine
     // miss: the model saw a colour and named the wrong one) versus "named a
@@ -803,8 +815,8 @@ export function classify(replyText, truth) {
         colorOk,
         onList,
         detail: onList
-          ? `COUNT=${count} correct, COLOR=${color} is a different listed colour (expected ${truth.color})`
-          : `COUNT=${count} correct, COLOR=${color} not on the list (expected ${truth.color})`,
+          ? `COUNT=${count} correct, COLOR=${color} is a different listed colour (expected ${safeColor})`
+          : `COUNT=${count} correct, COLOR=${color} not on the list (expected ${safeColor})`,
       };
     }
     // T-076: a WRONG count outside MIN_COUNT..MAX_COUNT names a picture
@@ -834,7 +846,7 @@ export function classify(replyText, truth) {
       // assumed".
       outOfRange: Number(count) < MIN_COUNT || Number(count) > MAX_COUNT,
       detail:
-        `got COUNT=${count} COLOR=${color}, expected COUNT=${truth.count} COLOR=${truth.color}` +
+        `got COUNT=${count} COLOR=${color}, expected COUNT=${safeCount} COLOR=${safeColor}` +
         (colorOk
           ? ""
           : onList

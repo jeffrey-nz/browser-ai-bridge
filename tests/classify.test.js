@@ -127,3 +127,48 @@ test.describe("classify — onList", () => {
     assert.equal(g.onList, true);
   });
 });
+
+// T-101: classify()'s structured-reply branch used to dereference
+// `truth.count`/`truth.color` unconditionally, throwing on an absent truth.
+// Two callers already worked around it at the call site (shape-audit.mjs's
+// blind-row ternary, ia-grade.mjs's gradeBlindReply() sentinel) rather than
+// at the fault — and the workaround only covered a WHOLLY absent truth,
+// not an incomplete one ({} would still crash on colour). classify() must
+// now return a real shape, never throw, for every raw form the corpus
+// contains, under every way "no truth" can arrive: undefined, null, {}.
+test.describe("classify — absent or incomplete truth does not throw (T-101)", () => {
+  for (const [label, truth] of [
+    ["undefined", undefined],
+    ["null", null],
+    ["{}", {}],
+  ]) {
+    test(`structured reply, truth=${label}: WRONG, not a throw — nothing to compare against`, () => {
+      const g = classify("SEES=yes COUNT=4 COLOR=teal", truth);
+      assert.equal(g.shape, "WRONG");
+      assert.equal(g.countOk, false);
+      assert.equal(g.colorOk, false);
+    });
+
+    test(`bare SEES=no, truth=${label}: SEES_NO`, () => {
+      assert.deepEqual(classify("SEES=no", truth), { shape: "SEES_NO" });
+    });
+
+    test(`echo, truth=${label}: ECHO`, () => {
+      const echoed =
+        "Look at the attached image ONLY — do not guess. Reply with EXACTLY one line, no other text.";
+      assert.deepEqual(classify(echoed, truth), { shape: "ECHO" });
+    });
+
+    test(`empty reply, truth=${label}: NO_ANSWER`, () => {
+      const g = classify("", truth);
+      assert.equal(g.shape, "NO_ANSWER");
+    });
+  }
+
+  test("structured reply with truth={} behaves identically to truth=undefined", () => {
+    assert.deepEqual(
+      classify("SEES=yes COUNT=4 COLOR=teal", {}),
+      classify("SEES=yes COUNT=4 COLOR=teal", undefined),
+    );
+  });
+});

@@ -205,22 +205,19 @@ export function auditShapes(dir) {
         blindWithTruthRows.push({ file: f, providerId: r.providerId });
       }
       storedHistogram[r.shape] = (storedHistogram[r.shape] || 0) + 1;
-      // T-088: a blind file carries no `truth` (nothing was drawn or
-      // sent), so `j.truth` is undefined here on every blind row. Calling
-      // classify(r.raw, undefined) is not merely ungraded — classify()'s
-      // structured-reply branch dereferences `truth.count` unconditionally
-      // and THROWS on undefined, confirmed live. It has never fired
-      // because 0 of every blind turn recorded so far states a count
-      // (T-072), but that is a fact about today's corpus, not a guarantee.
-      // Mirrors ia-grade.mjs's own gradeBlindReply(), which already passes
-      // this exact sentinel to classify() for the same reason: a
-      // structured reply on a blind row correctly lands as WRONG (countOk
-      // false against a count of null, colorOk false against an empty
-      // string) instead of crashing the audit.
-      const recomputed = classify(
-        r.raw,
-        isBlindFile ? { count: null, color: "" } : j.truth,
-      );
+      // T-088 filed this sentinel because a blind file carries no `truth`
+      // (nothing was drawn or sent) and classify()'s structured-reply
+      // branch used to dereference `truth.count` unconditionally, throwing
+      // on undefined. T-101 fixed that inside classify() itself — an
+      // absent OR incomplete truth now resolves to the same {count:null,
+      // color:""} classify() always needed here, so this ternary is
+      // redundant: `j.truth` is already undefined on every blind row (a
+      // blind file has no truth to carry), and passing it straight through
+      // now produces the identical result the ternary used to force by
+      // hand. Removed rather than left beside a fix that makes it a no-op
+      // — a caller reading both would otherwise have to work out for
+      // themselves which one is doing the guarding.
+      const recomputed = classify(r.raw, j.truth);
       recomputedHistogram[recomputed.shape] =
         (recomputedHistogram[recomputed.shape] || 0) + 1;
       if (recomputed.shape !== r.shape) {
