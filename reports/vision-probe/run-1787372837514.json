@@ -1,0 +1,44 @@
+{
+  "graderSha256": "d32ac048f37d0b6f",
+  "bridgeCommit": "49340fae5d518a6410057317beb2059994b74d00",
+  "treeDirty": true,
+  "dirtyPaths": [
+    "src/ai/chatgpt/interaction/prompt/input.js"
+  ],
+  "serverLoadedCommit": "49340fae5d518a6410057317beb2059994b74d00",
+  "serverStale": false,
+  "serverTreeDirty": true,
+  "serverProvenance": "unverifiable",
+  "gradedAt": "2026-08-22T04:27:17.644Z",
+  "fixtureSha256": "072cc674d167a7364b860f69eadb2ffa34338fa1f5cebe6c72a375a8512e44b3",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 7,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787372787777.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 49729,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "onList": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]",
+        "matchedAlternatives": [
+          "img[src^=\"blob:\" i]",
+          "button[aria-label*=\"uploaded image\" i]"
+        ],
+        "requireGrowth": true,
+        "grew": true,
+        "elapsedMs": 372,
+        "strategy": "direct_input"
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    }
+  ]
+}
