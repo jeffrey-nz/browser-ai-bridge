@@ -94,4 +94,37 @@ test.describe("selectDeepSeekVisionMode", () => {
     assert.deepEqual(result, { verdict: "not-confirmed" });
     assert.equal(clickSpy.called, true);
   });
+
+  // T-080 clause 3: the two tests above prove a "not-confirmed" verdict
+  // FOLLOWS a real observation (waitFor throwing, or a false post-click
+  // read) — this one proves the observation is not skippable. A stub that
+  // counts its own getAttribute("aria-checked") calls, both answering
+  // "false": if a future edit ever decided "not-confirmed" from the
+  // PRE-click read alone (skipping the required post-click re-read this
+  // ticket is about), the call count would drop from 2 to 1 while the
+  // verdict stayed the same — this assertion is what catches that, not
+  // just the verdict string on its own.
+  test("not-confirmed is reached only via a genuine post-click read — the observation itself is pinned, not just its outcome", async () => {
+    let getAttributeCalls = 0;
+    const locatorObj = {
+      async waitFor() {},
+      async getAttribute(name) {
+        assert.equal(name, "aria-checked");
+        getAttributeCalls++;
+        return "false";
+      },
+      async click() {},
+      first() {
+        return locatorObj;
+      },
+    };
+    const page = { locator: () => locatorObj };
+
+    const result = await selectDeepSeekVisionMode(page);
+
+    assert.deepEqual(result, { verdict: "not-confirmed" });
+    // One read for isCurrentlyOn (pre-click), one for confirmedOn
+    // (post-click) — both required to reach this verdict honestly.
+    assert.equal(getAttributeCalls, 2);
+  });
 });

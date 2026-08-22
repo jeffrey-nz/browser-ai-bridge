@@ -63,6 +63,17 @@ export async function selectDeepSeekVisionMode(page) {
       return { verdict: "already-on" };
     }
     await vision.click();
+    // T-080, 2026-08-22: this single-shot read (no waitFor, unlike every
+    // other state read in this file) was measured stable, not assumed to
+    // be. Driven live 12 times from a state where Vision was NOT already
+    // selected (so this click path ran every time, not the "already-on"
+    // short-circuit above) — 12/12 clicked-and-confirmed-on, 0 false
+    // alarms against an independent settled re-read taken 500ms later
+    // (evidence/t080-vision-mode-verdict-runs.json). The failure direction
+    // this ticket worried about — a genuinely-selected Vision read back as
+    // "not-confirmed" — did not occur in this sample. Re-measure if this
+    // page's own render timing changes (a redesign, a slower connection
+    // profile) rather than assuming this note still holds indefinitely.
     const confirmedOn = (await vision.getAttribute("aria-checked")) === "true";
     if (confirmedOn) {
       log(`  ${colors.green("✔")} DeepSeek Vision mode selected.`);

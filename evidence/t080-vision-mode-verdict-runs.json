@@ -1,0 +1,91 @@
+{
+  "ticket": "T-080",
+  "measured": "selectDeepSeekVisionMode's aria-checked re-read false-alarm rate",
+  "n": 12,
+  "serverProvenance": {
+    "reachable": true,
+    "loadedCommit": "53bf0dffdfdb874923e11aa3de76a9302fc63fed",
+    "loadedTreeDirty": false,
+    "fieldsPresent": {
+      "loadedCommit": true,
+      "loadedTreeDirty": true
+    }
+  },
+  "confirmed": 12,
+  "notConfirmed": 0,
+  "falseAlarms": 0,
+  "results": [
+    {
+      "run": 1,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 2,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 3,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 4,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 5,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 6,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 7,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 8,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 9,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 10,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 11,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    },
+    {
+      "run": 12,
+      "preCheckAriaChecked": "false",
+      "verdict": "clicked-and-confirmed-on",
+      "groundTruthOnAfterSettle": true
+    }
+  ]
+}
