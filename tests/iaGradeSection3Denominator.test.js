@@ -153,6 +153,45 @@ test("ia-grade.mjs section 3: naturally-occurring and planted denominators are a
       section4Total,
       "naturally-occurring + planted denominators must sum to section 4's own total",
     );
+
+    // T-098: section 3's OWN partition line — "confirming + refutable +
+    // planted + neither" — must also reconcile against the fixture's total
+    // row count, using the SAME planted figure the denominator line above
+    // prints (plantedTotal, 4 — every planted imageAttached=false row,
+    // whether it states a count or not), not the narrower plant-refutable
+    // subset (3, the rows that state a count). The fixture's no-COUNT
+    // planted row (planted-no-count.json) is exactly what makes this fail
+    // if the partition line uses the narrower population: that row would
+    // be counted once as "planted" (in the denominator line) and again as
+    // "neither" (never subtracted from the partition), one row more than
+    // the corpus holds.
+    const totalRowsMatch = output.match(/graded rows (\d+)/);
+    assert.ok(
+      totalRowsMatch,
+      `graded rows total not found in output:\n${output}`,
+    );
+    const totalRows = Number(totalRowsMatch[1]);
+
+    const confirmingMatch = output.match(
+      /agreements resting on (?:a MEASURED prior[^:]*|an arithmetic reference): (\d+), every one imageAttached=true/,
+    );
+    assert.ok(
+      confirmingMatch,
+      `confirming line not found in output:\n${output}`,
+    );
+    const confirmingCount = Number(confirmingMatch[1]);
+
+    const neitherMatch = output.match(
+      /turns graded by the model's own testimony about its own input, or by nothing: (\d+)/,
+    );
+    assert.ok(neitherMatch, `partition line not found in output:\n${output}`);
+    const neitherCount = Number(neitherMatch[1]);
+
+    assert.equal(
+      confirmingCount + refutableCount + plantedTotal + neitherCount,
+      totalRows,
+      `confirming (${confirmingCount}) + refutable (${refutableCount}) + planted (${plantedTotal}) + neither (${neitherCount}) must equal the fixture's own row total (${totalRows})`,
+    );
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

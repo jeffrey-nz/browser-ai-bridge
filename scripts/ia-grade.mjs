@@ -584,8 +584,20 @@ if (
   // same as the line above), but were never subtracted out here, so this
   // count silently absorbed every plant, growing by exactly planted.length
   // each time one landed.
+  //
+  // T-098: that fix itself used `planted` (refutableAll's plant subset —
+  // said !== null, i.e. only planted rows that STATE a count), not
+  // `plantedFalseCount` (every planted imageAttached=false row, said or
+  // not — the same population the denominator four lines above prints as
+  // "planted"). chatgpt's own plantedBreak row states no count, so it is
+  // in `plantedFalseCount` but not in `planted`: subtracting `planted`
+  // here left that one row still inside "neither", double-counted against
+  // the SAME row the header line had already accounted for as planted. One
+  // definition of "planted" for this whole section: `plantedFalseCount`,
+  // because that is the population the reader sees named "planted" four
+  // lines up — not a second, narrower one reused under the same word.
   console.log(
-    `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length - planted.length}`,
+    `   -> turns graded by the model's own testimony about its own input, or by nothing: ${rows.length - confirming.length - refutable.length - plantedFalseCount}`,
   );
 
   // T-038: WHICH cause a false row carries, where one was ever computed.
