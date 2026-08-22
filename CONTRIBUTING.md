@@ -49,7 +49,7 @@ Pass/fail screenshots land in `reports/`. If a provider fails, check the `*-fail
 - ESM modules throughout (`"type": "module"`)
 - No TypeScript — plain JS with JSDoc where helpful
 - Format with `prettier` (config in `.prettierrc`)
-- No comments explaining *what* code does — only comments explaining *why* (non-obvious constraints, workarounds, invariants)
+- No comments explaining _what_ code does — only comments explaining _why_ (non-obvious constraints, workarounds, invariants)
 
 ## Pull requests
 
@@ -60,6 +60,7 @@ Pass/fail screenshots land in `reports/`. If a provider fails, check the `*-fail
 ## Selector stability tips
 
 AI chat interfaces update frequently. When writing selectors:
+
 - Prefer `data-testid` attributes over class names (more stable)
 - Use `aria-label` as a fallback (semantic, less likely to change)
 - Avoid deep structural selectors (`.parent > .child > .grandchild`) — brittle
@@ -68,6 +69,7 @@ AI chat interfaces update frequently. When writing selectors:
 ## Reporting bugs
 
 Open an issue with:
+
 - Which provider failed
 - The step name (from audit output)
 - The `reports/<provider>-failure.html` file (strip personal info from chat content if any)
