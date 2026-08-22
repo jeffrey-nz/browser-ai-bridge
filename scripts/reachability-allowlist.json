@@ -69,11 +69,11 @@
   },
   {
     "path": "src/ai/chatgpt/locators.js",
-    "reason": "T-119: CORRECTED from T-116's own reason (\"nothing imports it\"). The reachable writer is src/heal/patcher.js's PROVIDER_LOCATOR_PATHS, which maps chatgpt to this exact path and rewrites it at runtime via patchLocatorsFile() (node:fs) — src/heal/ is live, imported by src/routes/sessions.js and src/routes/ask/executor/stallLoop.js. That reference is a string path, invisible to the static reachability census. src/audit/providers.js also imports CHATGPT_LOCATORS from here, but src/audit/ is itself unwired (see src/audit/ entries above), so that import alone would not save this file. Left in place — deleting it would break the live self-heal path's writes for chatgpt."
+    "reason": "T-122: RE-CORRECTED from T-119's own reason. T-119 credited src/heal/patcher.js's PROVIDER_LOCATOR_PATHS as a reachable runtime writer because src/heal/ is imported by src/routes/sessions.js and src/routes/ask/executor/stallLoop.js — true at the file level, but both of those only import capturePageContext. patchLocatorsFile's one and only caller was selfHeal(), which had zero call sites anywhere in src/ (T-122) — the write path was never live. patcher.js is deleted (T-122), taking that reason with it. The remaining reference is src/audit/providers.js's import of CHATGPT_LOCATORS from here, and src/audit/ is itself unwired (see src/audit/ entries above) — same shape as every other unwired-subsystem entry in this file, no longer a special case."
   },
   {
     "path": "src/ai/grok/locators.js",
-    "reason": "T-119: same correction and same reason as chatgpt/locators.js — src/heal/patcher.js's PROVIDER_LOCATOR_PATHS maps grok to this exact path and rewrites it at runtime via patchLocatorsFile(); src/audit/providers.js also imports GROK_LOCATORS from here but src/audit/ is itself unwired, so it's the secondary reference, not the load-bearing one."
+    "reason": "T-122: same re-correction as chatgpt/locators.js — patcher.js and its PROVIDER_LOCATOR_PATHS are deleted, the only remaining reference is src/audit/providers.js importing GROK_LOCATORS, and src/audit/ is itself unwired."
   },
   {
     "path": "src/ai/copilot/client/session/tabSelector.js",
