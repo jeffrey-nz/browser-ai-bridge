@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: npx prettier --check "src/**/*.js" "tests/**/*.js"
+        run: npx prettier --check "src/**/*.js" "tests/**/*.js" "scripts/**"
 
       - name: Run unit tests
         run: npm test
