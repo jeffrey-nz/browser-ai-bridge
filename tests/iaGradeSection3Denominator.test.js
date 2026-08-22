@@ -36,7 +36,7 @@ function writeReport(dir, name, { count, color, results }) {
   );
 }
 
-test("ia-grade.mjs section 3: naturally-occurring denominator excludes planted rows (2 natural, 3 planted, 43 natural false total)", () => {
+test("ia-grade.mjs section 3: naturally-occurring and planted denominators are a real partition of section 4's total, even when a planted row states no COUNT", () => {
   const cwd = mkdtempSync(join(tmpdir(), "ia-grade-section3-test-"));
   const reportsDir = join(cwd, "reports", "vision-probe");
   mkdirSync(reportsDir, { recursive: true });
@@ -78,8 +78,9 @@ test("ia-grade.mjs section 3: naturally-occurring denominator excludes planted r
         ],
       });
     }
-    // 3 planted rows — imageAttached=false, correct count stated, but
-    // marked with a top-level plantedBreak field (T-053's own shape).
+    // 3 planted rows that state a COUNT — imageAttached=false, correct
+    // count stated, marked with a top-level plantedBreak field (T-053's
+    // own shape).
     for (let i = 0; i < 3; i++) {
       writeReport(reportsDir, `planted-${i}.json`, {
         count: 6,
@@ -98,6 +99,28 @@ test("ia-grade.mjs section 3: naturally-occurring denominator excludes planted r
       j.plantedBreak = `test plant ${i}`;
       writeFileSync(path, JSON.stringify(j));
     }
+    // T-094 REDO: a 4th planted row that states NO count at all (the shape
+    // T-094's own review found already on disk — chatgpt's plantedBreak
+    // row is a bare "SEES=no"). This row never enters `refutableAll`
+    // (said === null), so it can never land in `planted`, but it is still
+    // an imageAttached=false row with plantedBreak set — the first fix
+    // attempt's naturalFalseCount excluded it from the natural denominator
+    // without it ever reaching the planted side either, silently losing a
+    // row (naturalFalseCount + planted.length stopped summing to the
+    // section-4 total). Without this row the arithmetic bug is invisible:
+    // this is exactly the shape that let a green test sit next to a line
+    // that could not add up.
+    writeReport(reportsDir, "planted-no-count.json", {
+      count: 6,
+      color: "goldenrod",
+      results: [{ providerId: "p3", raw: "SEES=no", imageAttached: false }],
+    });
+    {
+      const path = join(reportsDir, "planted-no-count.json");
+      const j = JSON.parse(readFileSync(path, "utf8"));
+      j.plantedBreak = "test plant 3 (no count stated)";
+      writeFileSync(path, JSON.stringify(j));
+    }
 
     const output = execFileSync(
       "node",
@@ -105,13 +128,30 @@ test("ia-grade.mjs section 3: naturally-occurring denominator excludes planted r
       { cwd, encoding: "utf8" },
     );
 
-    // THE ASSERTION THIS TICKET IS ABOUT: the denominator must read 43
-    // (2 natural refutable + 41 natural non-refutable), not 46 (+ the 3
-    // planted rows folded in) — asserted against the actual printed
-    // number, not just the word "planted" appearing somewhere.
-    assert.match(
-      output,
-      /imageAttached=false turns that state a COUNT at all: 2 naturally-occurring of 43 \(\+ 3 planted, listed separately\)/,
+    // THE ASSERTION THIS TICKET IS ABOUT: naturally-occurring reads 2 of 43
+    // (2 natural refutable + 41 natural non-refutable) and planted reads 3
+    // of 4 (3 that state a count + 1 that doesn't) — asserted against the
+    // actual printed numbers, not just the word "planted" appearing
+    // somewhere. And the two denominators must RECONCILE: 43 + 4 = 47, the
+    // same total section 4 reports independently for this fixture.
+    const match = output.match(
+      /imageAttached=false turns that state a COUNT at all: (\d+) of (\d+) naturally-occurring \(\+ (\d+) of (\d+) planted, listed separately\)/,
+    );
+    assert.ok(match, `section 3 line not found in output:\n${output}`);
+    const [, refutableCount, naturalTotal, plantedRefutable, plantedTotal] =
+      match.map(Number);
+    assert.equal(refutableCount, 2);
+    assert.equal(naturalTotal, 43);
+    assert.equal(plantedRefutable, 3);
+    assert.equal(plantedTotal, 4);
+
+    const section4Match = output.match(/(\d+) imageAttached=false rows/);
+    assert.ok(section4Match, `section 4 total not found in output:\n${output}`);
+    const section4Total = Number(section4Match[1]);
+    assert.equal(
+      naturalTotal + plantedTotal,
+      section4Total,
+      "naturally-occurring + planted denominators must sum to section 4's own total",
     );
   } finally {
     rmSync(cwd, { recursive: true, force: true });

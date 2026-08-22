@@ -511,13 +511,27 @@ if (
   // numerator (`refutable`, above) already excludes them. Section 4's own
   // "N imageAttached=false rows" reads the same unfiltered total, so the
   // two agreed with each other and neither was the naturally-occurring
-  // population the line claims to report. The effect: the printed rate
-  // FALLS every time the board plants a deliberate break, for a reason
-  // the line never states. Excluding planted rows here too — the same
-  // predicate `refutable` itself already applies.
+  // population the line claims to report.
+  //
+  // T-094 REDO: a first pass excluded planted rows from the denominator on
+  // the SAME predicate as `refutable` (imageAttached=false, !plantedBreak)
+  // but `refutable`/`planted` are drawn from `refutableAll`, which is
+  // additionally restricted to `said !== null` — a planted row that states
+  // no COUNT at all (this corpus has one: chatgpt's plantedBreak row is a
+  // bare "SEES=no") is subtracted out of the naturally-occurring
+  // denominator but never lands in `planted` either, since it never enters
+  // `refutableAll`. The printed pair silently lost a row: naturalFalseCount
+  // + planted.length stopped summing to section 4's own total. Fixed by
+  // printing the PLANTED denominator too — `cell(false, (r) =>
+  // !!r.plantedBreak)`, every planted imageAttached=false row regardless of
+  // whether it states a count — so the two denominators are a real
+  // partition of section 4's total and the line reconciles with it,
+  // instead of silently dropping whichever planted row never got the
+  // chance to disagree.
   const naturalFalseCount = cell(false, (r) => !r.plantedBreak);
+  const plantedFalseCount = cell(false, (r) => !!r.plantedBreak);
   console.log(
-    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${naturalFalseCount} (+ ${planted.length} planted, listed separately)`,
+    `   imageAttached=false turns that state a COUNT at all: ${refutable.length} of ${naturalFalseCount} naturally-occurring (+ ${planted.length} of ${plantedFalseCount} planted, listed separately)`,
   );
   for (const r of refutable)
     console.log(
