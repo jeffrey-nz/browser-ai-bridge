@@ -358,6 +358,29 @@ it, at a measured rate too unreliable to add it to the "verified receiving" set 
 2 of 3 is not the same claim as the 4 providers that have had no observed non-rate-limit
 failures across this board's sweeps (see the n=8 text-turn list below). The raciness
 itself is filed separately (crew board T-127) rather than treated as fixed here.
+
+T-127's own sample, 8 more pinned turns minutes later (same conversation/tab, bridge
+restarted again to `020a9af`, `serverProvenance: "verified"` and the same
+`fixtureSha256` on all eight), came back 0 of 8 `PASS` — a sharp drop from T-018's 2 of
+3 immediately prior, not a contradiction of it. 7 of the 8 were `imageAttachedCause:
+"unconfirmed"` (Strategy 1's `setInputFiles` did not throw, but no evidence appeared
+within the 6s verify window) — a DIFFERENT cause from T-018's one `not_offered` row
+(no input found at all), confirmed from each report's own `imageAttachedCause` rather
+than assumed. The 8th is sharper still: `imageAttached: true` (real evidence matched,
+including the `backend-api/estuary`-pattern thumbnail, `grew: true`, confirmed at 575ms
+— fast enough to be a client-side blob preview rather than a network round trip) but
+the model's own answer was `SEES=no`. Checking the account's upload-quota menu
+(`[data-testid="composer-plus-btn"]`) right after this run showed a freshly-restarted
+"Get Plus for more uploads — Or wait 20 hours to upload again", where the same menu had
+read as fully open when T-018 ran minutes earlier — timing consistent with (not proven
+to be caused by) the burst of 8 upload attempts re-tripping an account-level quota.
+That would mean the DOM evidence this section's `imageAttached` flag relies on
+(`img[src^="blob:" i]` among others) can be satisfied by a local browser-rendered
+preview that does not depend on the image actually reaching the model — a possible
+false-positive path distinct from every previously-documented `imageAttached` failure
+mode, un-confirmed here (would need a CDP network trace of a failing attempt, T-103's
+method, not run this session) and filed separately as crew board T-130 rather than
+asserted.
 `kimi` and
 `zai` could not complete a turn at all in that same measurement; `kimi`'s cause was found
 and fixed (crew board T-006): its `responseBlock` selector (`.message-list`) no longer

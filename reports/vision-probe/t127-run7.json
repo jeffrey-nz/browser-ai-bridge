@@ -1,0 +1,32 @@
+{
+  "graderSha256": "193fe2ae32cadc5c",
+  "bridgeCommit": "020a9af64f6fb14241965b2ddabc32c790439fc8",
+  "treeDirty": false,
+  "serverLoadedCommit": "020a9af64f6fb14241965b2ddabc32c790439fc8",
+  "serverStale": false,
+  "serverTreeDirty": false,
+  "serverProvenance": "verified",
+  "gradedAt": "2026-08-22T08:06:05.372Z",
+  "fixtureSha256": "53d0e49de5209068ac8522c386191d0ba57810395666283ee47f15a9b26350f8",
+  "endpoint": "ask",
+  "stimulusSource": "pinned",
+  "truth": {
+    "count": 5,
+    "color": "indigo"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787385910836.png",
+  "results": [
+    {
+      "providerId": "chatgpt",
+      "elapsedMs": 54360,
+      "shape": "SEES_NO",
+      "imageAttached": false,
+      "imageAttachedCause": "unconfirmed",
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": "img[src^=\"blob:\" i], [class*=\"attachment\" i], [class*=\"thumbnail\" i], [aria-label*=\"attachment\" i], [aria-label^=\"Attachment\" i], [data-testid*=\"attachment\" i], [class*=\"file-preview\" i], [class*=\"filePreview\" i], button[aria-label*=\"uploaded image\" i], img[src*=\"backend-api/estuary\" i], img[src*=\"backend-api/files\" i]"
+      },
+      "warning": "The image was handed to the provider's composer but no evidence confirmed it landed before the bridge gave up waiting — this response may or may not reflect the image, and should not be trusted as a visual answer.",
+      "raw": "SEES=no"
+    }
+  ]
+}
