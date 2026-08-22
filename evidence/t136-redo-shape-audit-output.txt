@@ -1,0 +1,133 @@
+rows with raw: 181   (166 sighted, 15 blind — the histogram below includes both; every table after it is sighted-only)   disagreements: 6
+   no reply at all (dropped before rowsWithRaw, excluded from the ranking below): 39 of 205 sighted gradable rows
+     chatgpt     1   bridge-attributable=0  unattributed=1
+     copilot     0   bridge-attributable=0  unattributed=0
+     deepseek    2   bridge-attributable=0  unattributed=2
+     gemini      0   bridge-attributable=0  unattributed=0
+     grok        0   bridge-attributable=0  unattributed=0
+     kimi        4   bridge-attributable=0  unattributed=4
+     mistral     2   bridge-attributable=0  unattributed=2
+     perplexity  11   bridge-attributable=10  unattributed=1
+     qwen        0   bridge-attributable=0  unattributed=0
+     zai         19   bridge-attributable=17  unattributed=2
+   predicate check: 0 sighted row(s) with no gradable truth, 0 blind row(s) with a gradable truth (0 and 0 is what makes the headline's sighted count and every truth-gated table below agree on the same denominator):
+   after-ask.json  mistral  SEES_NO -> ECHO
+   result-ask-qwen.json  qwen  SEES_NO -> ECHO
+   run-1787282393215.json  zai  WRONG -> COUNT_ONLY
+   run-1787282676781.json  gemini  WRONG -> COUNT_ONLY
+   run-1787282676781.json  grok  WRONG -> COUNT_ONLY
+   run-1787282676781.json  copilot  WRONG -> COUNT_ONLY
+stored histogram:     {"SEES_NO":74,"PASS":69,"ECHO":16,"NO_ANSWER":9,"WRONG":13}
+recomputed histogram: {"SEES_NO":72,"PASS":69,"ECHO":18,"NO_ANSWER":9,"COUNT_ONLY":4,"WRONG":9}
+
+COUNT right, by truth.count (T-050 — a rate on the
+stimulus, not on the provider — see the file header):
+  truth.count=3   5/6   83.3%   (5 providers)
+  truth.count=4   18/18   100.0%   (7 providers)
+  truth.count=5   23/25   92.0%   (6 providers)
+  truth.count=6   6/6   100.0%   (4 providers)
+  truth.count=7   13/13   100.0%   (6 providers)
+  truth.count=8   2/2   100.0%   (2 providers)
+  truth.count=9   6/12   50.0%   (7 providers)
+
+PROVIDER x TRUTH.COUNT, ok/n (T-092 — the table the
+per-provider rate below has never shown; '.' = no rows at that stratum):
+                c=3   c=4   c=5   c=6   c=7   c=8   c=9  pooled
+  chatgpt       1/1   2/2   1/1   1/1   1/1      .   1/1  7/7
+  copilot       2/2   5/5   4/4      .      .   1/1   0/3  12/15
+  deepseek      0/1   2/2  8/10   2/2      .      .      .  12/15
+  gemini        1/1   4/4   5/5   2/2   5/5   1/1   2/2  20/20
+  grok          1/1   2/2   4/4      .      .      .   1/1  8/8
+  kimi             .      .      .      .   4/4      .   1/1  5/5
+  mistral          .   2/2   1/1      .   1/1      .   0/3  4/7
+  perplexity       .      .      .      .   1/1      .   1/1  2/2
+  zai              .   1/1      .   1/1   1/1      .      .  3/3
+
+5 planted row(s) excluded from the ranking below (deliberate evidence-break tests — vision-probe.mjs --planted-break; unaffected: the per-truth.count table and cross-tab above, a different question).
+
+Per-provider rate — GRADED (right/rows that stated a COUNT) and END
+TO END (right/every SIGHTED row, a refusal scored as not right) side
+by side, both crude and STANDARDISED to the corpus's own stratum mix,
+each standardised figure beside its OWN corpus-weight-covered and
+strata-shown (T-096 — a ranking sorted on the graded rate is a
+ranking each provider's own exclusions built for itself; sorted here
+by standardised END TO END instead. T-099 — *THIN* marks a row ranked
+on less than 50% of corpus weight; read its standardised rate as
+provisional, not as comparable to a fully-covered row.
+T-106 — SEES_NO/ECHO/NO_ANSWER all count as 'not right' in END TO
+END: this column answers 'gave me a usable answer', not 'whose fault
+was it' — the excluded breakdown on each row is how to ask the
+second question. GROK's ECHO mechanism is settled (T-059: not this
+bridge's own prompt echoed back) and length is ruled out as its
+cause (T-133: 0/12 echoed across 4 rungs bracketing the known 313-
+char length). Grok's ECHO rows (7 below, sighted/no-plant; 9 across
+every recorded grok row) cluster in one ~8-hour window, 2026-08-21
+18:41Z-2026-08-22 02:45Z, with every other grok row clean. The
+corpus's other ECHO rows are NOT grok's — deepseek has 7, all
+before that window, untested by either ticket; this caption makes
+no claim about them. This column's rule does not depend
+on any of it either way):
+  gemini      graded 19/19 100.0% (std 100.0%, weight 100.0%, strata 7/7 [3,4,5,6,7,8,9]) end-to-end 19/19 100.0% (std 100.0%, weight 100.0%, strata 7/7 [3,4,5,6,7,8,9])   excluded SEES_NO=0 ECHO=0 NO_ANSWER=0
+  perplexity  graded 2/2 100.0% (std 100.0%, weight 30.4%, strata 2/7 [7,9]) end-to-end 2/3 66.7% (std 73.8%, weight 24.8%, strata 2/7 [7,9]) *THIN*   excluded SEES_NO=1 ECHO=0 NO_ANSWER=0
+  copilot     graded 12/15 80.0% (std 80.6%, weight 78.5%, strata 5/7 [3,4,5,8,9]) end-to-end 12/18 66.7% (std 68.2%, weight 88.8%, strata 6/7 [3,4,5,7,8,9])   excluded SEES_NO=3 ECHO=0 NO_ANSWER=0
+  grok        graded 8/8 100.0% (std 100.0%, weight 75.9%, strata 4/7 [3,4,5,9]) end-to-end 8/17 47.1% (std 56.2%, weight 88.8%, strata 6/7 [3,4,5,7,8,9])   excluded SEES_NO=2 ECHO=7 NO_ANSWER=0
+  deepseek    graded 11/14 78.6% (std 79.6%, weight 67.1%, strata 4/7 [3,4,5,6]) end-to-end 11/26 42.3% (std 46.6%, weight 82.6%, strata 5/7 [3,4,5,6,9])   excluded SEES_NO=5 ECHO=7 NO_ANSWER=0
+  zai         graded 3/3 100.0% (std 100.0%, weight 44.3%, strata 3/7 [4,6,7]) end-to-end 3/8 37.5% (std 45.9%, weight 83.2%, strata 5/7 [4,5,6,7,8])   excluded SEES_NO=0 ECHO=0 NO_ANSWER=5
+  kimi        graded 5/5 100.0% (std 100.0%, weight 30.4%, strata 2/7 [7,9]) end-to-end 5/9 55.6% (std 40.8%, weight 60.9%, strata 5/7 [4,6,7,8,9])   excluded SEES_NO=4 ECHO=0 NO_ANSWER=0
+  chatgpt     graded 7/7 100.0% (std 100.0%, weight 97.5%, strata 6/7 [3,4,5,6,7,9]) end-to-end 7/37 18.9% (std 34.3%, weight 95.7%, strata 6/7 [3,4,5,6,7,9])   excluded SEES_NO=30 ECHO=0 NO_ANSWER=0
+  mistral     graded 3/6 50.0% (std 71.4%, weight 53.2%, strata 3/7 [4,7,9]) end-to-end 3/15 20.0% (std 17.6%, weight 95.0%, strata 6/7 [4,5,6,7,8,9])   excluded SEES_NO=4 ECHO=1 NO_ANSWER=4
+  qwen        graded never graded                                            end-to-end 0/9 0.0% (std 0.0%, weight 95.7%, strata 6/7 [3,4,5,6,7,9])   excluded SEES_NO=8 ECHO=1 NO_ANSWER=0
+  *THIN*: perplexity — ranked on less than 50% of corpus weight (end-to-end coverage).
+  NO_ANSWER, attribution UNKNOWN: 9 row(s) total {"zai":5,"mistral":4} — neither the provider nor this bridge's own extractor is established as the cause; counted against the provider above (T-106 clause 2's single rule) without that claim being made.
+
+RECOMMENDATION: gemini — end to end 19/19 = 100.0% (n=19, standardised 100.0%).
+
+At truth.count=9: chatgpt/gemini/grok/kimi/perplexity 6 right, 0 wrong   vs   copilot/mistral 0 right, 6 wrong   Fisher exact two-sided p = 2.16e-3
+At counts 3-8: deepseek 12 right, 3 wrong   vs   every other provider 55 right, 0 wrong   Fisher exact two-sided p = 8.31e-3
+
+COVERAGE HOLE: deepseek has never been graded at truth.count 7, 8 or 9 (67.1% of corpus weight covered) and is the ONLY provider with a recorded error outside truth.count=9 — whether it fails at the top like the providers above, or holds like the rest, is unmeasured, and that gap decides whether the count=9 effect belongs to two providers or three.
+  count 3-5 (pooled, all providers): 46/49 93.9%   count 6-9 (pooled): 27/33 81.8%
+  count 3-5 (paired providers only, N=7): 46/49 93.9%   count 6-9 (paired): 20/26 76.9%
+  unpaired (rows in one band only, excluded from the paired line): kimi (hard only), perplexity (hard only)
+
+Excluded from COUNT (SEES_NO/ECHO/NO_ANSWER), by truth.count —
+checking whether the exclusion itself tracks count:
+  truth.count=3   2/8 excluded   25.0%
+  truth.count=4   15/33 excluded   45.5%
+  truth.count=5   32/57 excluded   56.1%
+  truth.count=6   14/20 excluded   70.0%
+  truth.count=7   9/22 excluded   40.9%
+  truth.count=8   5/7 excluded   71.4%
+  truth.count=9   7/19 excluded   36.8%
+  overall: 84/166 excluded   50.6%   spread across counts: 46.4 points
+
+Same exclusion, by band vs by provider (T-065 — by-count spread
+above is the provider mix again, not a count effect):
+  by band:      easy 3-5 49/98 50.0%   hard 6-9 35/68 51.5%   spread: 1.5 points
+  by provider:  chatgpt 32/39 82.1%   copilot 3/18 16.7%   deepseek 12/27 44.4%   gemini 0/20 0.0%   grok 9/17 52.9%   kimi 4/9 44.4%   mistral 9/16 56.3%   perplexity 1/3 33.3%   qwen 9/9 100.0%   zai 5/8 62.5%
+  provider spread: 100.0 points
+  fully excluded (0 surviving rows, contribute nothing to any COUNT rate above): qwen
+  unpaired providers, classified:
+    kimi (easy): 2 rows, all excluded
+    perplexity (easy): no rows — genuinely absent
+
+Out-of-range COUNT (generator draws 3..9 only) — 8 rows:
+  boundary miscount (said 10 at truth 9, off by one): 6
+    t030-mistral-run1.json  mistral  truth=9 said=10  imageAttached=true
+    t030-mistral-run2.json  mistral  truth=9 said=10  imageAttached=true
+    t040-post-t039-sweep.json  copilot  truth=9 said=10  imageAttached=true
+    t040-post-t039-sweep.json  mistral  truth=9 said=10  imageAttached=true
+    t050-copilot-count9-run1.json  copilot  truth=9 said=10  imageAttached=true
+    t050-copilot-count9-run2.json  copilot  truth=9 said=10  imageAttached=true
+  below the floor / not adjacent — cannot be a miscount: 2
+    t045-fix-verify.json  deepseek  truth=5 said=1  gap=-4  imageAttached=true
+    t045-refix-verify2.json  deepseek  truth=5 said=1  gap=-4  imageAttached=true
+  NOTE: this check is one-directional — out of range proves the reply
+  is not a reading of any drawable picture; IN range proves nothing.
+  A total of 0 here is not evidence nobody fabricated, only that
+  nobody fabricated conspicuously.
+
+WRONG bucket: upload failure, or a model that saw something and got
+it wrong? (T-084)
+  WRONG rows: 9   colour named correctly among them: 8/9  (88.9%)
+  Cross-reference (T-072): 0 of every informative BLIND turn recorded on this board has ever stated a count at all — a stated count is itself evidence a picture arrived. Together: the WRONG bucket is not an arrival signal in either direction, and most of it carries positive evidence of arrival — a colour named correctly — on the one field it got right while missing the other.

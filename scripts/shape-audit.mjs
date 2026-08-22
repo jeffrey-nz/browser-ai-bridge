@@ -169,11 +169,13 @@ export function auditShapes(dir) {
   let plantedRowCount = 0;
   // T-096 clause 4: EXCLUDED_SHAPES pools three different failure modes
   // under one argument (transport failure) that only actually applies to
-  // SEES_NO. Tracked per provider so ECHO (T-136: mechanism settled as NOT
-  // this bridge's own extraction reading its own prompt bubble back — see
-  // the T-106/T-136 comment further below) and NO_ANSWER (empty/unmatched
-  // reply) are visible as what they are, not folded into "excluded" as if
-  // every one were "the image never arrived".
+  // SEES_NO. Tracked per provider so ECHO (T-136: GROK's mechanism is
+  // settled as NOT this bridge's own extraction reading its own prompt
+  // bubble back — see the T-106/T-136 comment further below; this is a
+  // grok-specific finding, not a claim about deepseek/mistral/qwen's own
+  // ECHO rows, which are untested) and NO_ANSWER (empty/unmatched reply)
+  // are visible as what they are, not folded into "excluded" as if every
+  // one were "the image never arrived".
   const providerExcludedByShape = {};
   // T-106 review: the ranking's own denominator (providerSightedNoPlant)
   // excludes planted rows, but this per-shape suffix did not — so a
@@ -988,23 +990,35 @@ function main() {
     // beside every rate below is exactly how a reader who wants the second
     // question can back it out for themselves, per provider.
     //
-    // T-136: ECHO's own cause, updated. T-059 (closed) settled the
-    // MECHANISM — 68 in-window samples across 2 live runs, `.last()` was
-    // never our own user bubble at any sampled tick, so grok's ECHO rows
-    // are not this bridge's extractor reading its own prompt back. T-133
-    // then ruled out PROMPT LENGTH as the trigger — a live ladder of 4
-    // rungs (93/313/2000/4500 chars, bracketing the known 313-char length
-    // and grok's 4000-char chunkSize boundary), 3 turns each, 0 of 12
-    // echoed, including the 313-char control that echoed in 100% of its 9
-    // prior recorded turns. What both tickets found instead: every one of
-    // those 9 ECHO rows falls inside one contiguous ~8-hour window,
-    // 2026-08-21T18:41Z-2026-08-22T02:45Z; every other grok row in the
-    // corpus, before and after that window, is clean. So the behaviour
-    // looks time/session-clustered, not a standing property of the
-    // provider or of any prompt this board has sent it — but WHAT inside
-    // that window triggered it is still not identified, and this column's
-    // rule does not depend on the answer either way, since a caller got
-    // nothing usable under any reading.
+    // T-136 (REDO — the first pass here generalised a grok-only finding
+    // to the whole corpus; caught in review, see the crew log): ECHO's
+    // cause, updated, SCOPED TO GROK — the corpus's stored histogram has
+    // 16 ECHO rows total (recomputed: 18), not 9, and this table's own
+    // per-provider ECHO counts below split them grok=7, deepseek=7,
+    // mistral=1, qwen=1 (sighted, no-plant — the population this table
+    // ranks). Neither T-059 nor T-133 tested anything but grok. T-059
+    // (closed) settled grok's MECHANISM — 68 in-window samples across 2
+    // live runs, `.last()` was never our own user bubble at any sampled
+    // tick, so grok's ECHO rows are not this bridge's extractor reading
+    // its own prompt back. T-133 then ruled out PROMPT LENGTH as grok's
+    // trigger — a live ladder of 4 rungs (93/313/2000/4500 chars,
+    // bracketing the known 313-char length and grok's 4000-char chunkSize
+    // boundary), 3 turns each, 0 of 12 echoed, including the 313-char
+    // control that echoed in 100% of its prior recorded turns. What both
+    // tickets found instead: every one of grok's ECHO rows (9 across every
+    // recorded grok row including the blind arm; 7 in this table's
+    // sighted/no-plant population below) falls inside one contiguous
+    // ~8-hour window, 2026-08-21T18:41Z-2026-08-22T02:45Z; every OTHER
+    // grok row in the corpus, before and after that window, is clean. So
+    // grok's ECHO behaviour looks time/session-clustered, not a standing
+    // property of that provider or of any prompt this board has sent it —
+    // but WHAT inside that window triggered it is still not identified.
+    // deepseek's 7 ECHO rows are a SEPARATE, untested population — all
+    // seven predate grok's window entirely (earliest 2026-08-21T08:51Z,
+    // latest 17:55Z, none after) — whether they cluster the same way is
+    // not answered here and this caption makes no claim about them. This
+    // column's rule does not depend on any of it either way, since a
+    // caller got nothing usable under any reading.
     console.log(
       "T-106 — SEES_NO/ECHO/NO_ANSWER all count as 'not right' in END TO",
     );
@@ -1015,7 +1029,7 @@ function main() {
       "was it' — the excluded breakdown on each row is how to ask the",
     );
     console.log(
-      "second question. ECHO's mechanism is settled (T-059: not this",
+      "second question. GROK's ECHO mechanism is settled (T-059: not this",
     );
     console.log(
       "bridge's own prompt echoed back) and length is ruled out as its",
@@ -1024,15 +1038,22 @@ function main() {
       "cause (T-133: 0/12 echoed across 4 rungs bracketing the known 313-",
     );
     console.log(
-      "char length). The 9 recorded ECHO rows cluster in one ~8-hour",
+      "char length). Grok's ECHO rows (7 below, sighted/no-plant; 9 across",
     );
     console.log(
-      "window (2026-08-21T18:41Z-2026-08-22T02:45Z), none before or since —",
+      "every recorded grok row) cluster in one ~8-hour window, 2026-08-21",
     );
     console.log(
-      "apparently non-recurring, not a standing property. This column's",
+      "18:41Z-2026-08-22 02:45Z, with every other grok row clean. The",
     );
-    console.log("rule does not depend on the answer either way):");
+    console.log(
+      "corpus's other ECHO rows are NOT grok's — deepseek has 7, all",
+    );
+    console.log(
+      "before that window, untested by either ticket; this caption makes",
+    );
+    console.log("no claim about them. This column's rule does not depend");
+    console.log("on any of it either way):");
     for (const p of providerIdsAll) {
       const sighted = providerSightedNoPlant[p];
       const graded = providerStrataNoPlant[p];
@@ -1085,10 +1106,12 @@ function main() {
       );
     }
     // T-106 clause 5: NO_ANSWER, UNKNOWN ATTRIBUTION — unlike SEES_NO (a
-    // transport argument, T-096) and ECHO (mechanism settled and length
-    // ruled out as the trigger, T-059/T-133 — see the T-136 comment
-    // above; the rows cluster in one ~8-hour window with the trigger
-    // inside it still unidentified), no investigation on this board has
+    // transport argument, T-096) and grok's own ECHO rows specifically
+    // (mechanism settled and length ruled out as the trigger, T-059/T-133
+    // — see the T-136 comment above; those rows cluster in one ~8-hour
+    // window with the trigger inside it still unidentified — this does
+    // NOT extend to deepseek/mistral/qwen's own ECHO rows, untested), no
+    // investigation on this board has
     // established whether a NO_ANSWER row (an empty or off-format reply,
     // matching none of classify()'s expected shapes) is evidence about the
     // PROVIDER (declined to follow the format), this bridge's own
