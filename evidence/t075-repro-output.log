@@ -1,51 +1,54 @@
-[2026-08-22T03:10:58.219Z] Spawning bridge A (victim) — spawns its OWN throwaway Chrome
+[2026-08-22T03:31:24.922Z] Spawning bridge A (victim) — spawns its OWN throwaway Chrome
 [A] 
 ╔════════════════════════════════════════╗
 [A] ║     AI Browser Automation API          ║
 ╚════════════════════════════════════════╝
-[A] [2026-08-22 13:10:59.000 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-3347.pid[39m
-[A] [2026-08-22 13:10:59.004 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3347 (requestTimeout disabled)[39m
-[2026-08-22 13:10:59.006 +1000] [32mINFO[39m: [36m[Config] Bound port 3347 written to config files[39m
-[A] [2026-08-22 13:10:59.020 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
-[A] [2026-08-22 13:10:59.020 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9241...[39m
-[A] [2026-08-22 13:10:59.314 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
-[A] [2026-08-22 13:10:59.824 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
-[A] [2026-08-22 13:11:00.290 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9241...[39m
-[A] [2026-08-22 13:11:00.296 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
-[2026-08-22 13:11:00.337 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
+[A] [2026-08-22 13:31:25.760 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-3347.pid[39m
+[A] [2026-08-22 13:31:25.765 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3347 (requestTimeout disabled)[39m
+[2026-08-22 13:31:25.766 +1000] [32mINFO[39m: [36m[Config] Bound port 3347 written to config files[39m
+[2026-08-22 13:31:25.782 +1000] [32mINFO[39m: [36m[Browser] No existing Chrome found. Launching fresh instance...[39m
+[2026-08-22 13:31:25.782 +1000] [32mINFO[39m: [36m[Browser] No tracked PID; killing process on CDP port 9241...[39m
+[A] [2026-08-22 13:31:26.016 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
+[A] [2026-08-22 13:31:26.539 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
+[A] [2026-08-22 13:31:26.850 +1000] [32mINFO[39m: [36m[Browser] Spawning Chrome with debugging on port 9241...[39m
+[A] [2026-08-22 13:31:26.856 +1000] [32mINFO[39m: [36m[Browser] Waiting for Chrome to bind CDP port...[39m
+[A] [2026-08-22 13:31:27.053 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
+[A] [2026-08-22 13:31:27.360 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
+[A] [2026-08-22 13:31:27.360 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
 [A] 
 =============================================
 [A]    AI Provider Authentication & Tab Setup
 =============================================
-
+[A] 
 -> Configuring [1mChatGPT[0m...
 [A]    [New Tab] Opening dedicated tab for ChatGPT...
-[A] [2026-08-22 13:11:00.798 +1000] [32mINFO[39m: [36m[Browser] CDP port is open.[39m
-[A] [2026-08-22 13:11:00.799 +1000] [32mINFO[39m: [36m[Browser] Connecting to CDP... (1/15)[39m
-[2026-08-22 13:11:00.844 +1000] [33mWARN[39m: [36mPing failed: Browser not connected or unresponsive[39m
-[2026-08-22 13:11:00.865 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
-[2026-08-22 13:11:00.865 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
+[A] [2026-08-22 13:31:27.455 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[A] [2026-08-22 13:31:27.455 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
 [A] [93m   [Pending] Manual login or navigation may be required in Chrome.[0m
 [A]    [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
 
 =============================================
-   Setup Complete. Active providers ready.
+[A]    Setup Complete. Active providers ready.
 =============================================
 
-[A] [2026-08-22 13:11:01.200 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
-[2026-08-22T03:11:01.363Z] Bridge A ready: loadedCommit=120136fc76c080bf03985c1c7cd7628b8ec0195c loadedTreeDirty=true
-[2026-08-22T03:11:01.623Z] Bridge A's own Chrome main process PID: 35368
-[2026-08-22T03:11:01.623Z] Spawning bridge B (sharer) — evidence/t075-bridge-b-selfshutdown.mjs, points at A's Chrome via matching CDP_URL/CDP_PORT, and will call the real init() + emit its own SIGINT once ready
+[A] [2026-08-22 13:31:27.787 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
+[2026-08-22T03:31:28.079Z] Bridge A ready: loadedCommit=a406482a22fd02844f5833d4c449ce95ab27748c loadedTreeDirty=false
+[2026-08-22T03:31:28.463Z] Bridge A's own Chrome main process PID: 35452
+[2026-08-22T03:31:28.463Z] Spawning bridge B (sharer) — evidence/t075-bridge-b-selfshutdown.mjs, points at A's Chrome via matching CDP_URL/CDP_PORT, and will call the real init() + emit its own SIGINT once ready
 [B] 
 ╔════════════════════════════════════════╗
 [B] ║     AI Browser Automation API          ║
 ╚════════════════════════════════════════╝
+[B] [2026-08-22 13:31:29.463 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3348 (requestTimeout disabled)[39m
+[B] [2026-08-22 13:31:29.464 +1000] [32mINFO[39m: [36m[Config] Bound port 3348 written to config files[39m
 [B] 
 =============================================
 [B]    AI Provider Authentication & Tab Setup
 =============================================
-
+[B] 
 -> Configuring [1mChatGPT[0m...
+[B] [2026-08-22 13:31:29.554 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
+[B] [2026-08-22 13:31:29.554 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
 [B] [93m   [Pending] Manual login or navigation may be required in Chrome.[0m
 [B]    [93m⚡[0m [Auto] Non-interactive mode — assuming ChatGPT is ready.
 
@@ -54,33 +57,34 @@
 =============================================
 
 [B] B_CHROME_PID=null
-[B] [2026-08-22 13:11:02.424 +1000] [32mINFO[39m: [36mServer listening on http://localhost:3348 (requestTimeout disabled)[39m
-[B] [2026-08-22 13:11:02.426 +1000] [32mINFO[39m: [36m[Config] Bound port 3348 written to config files[39m
-[2026-08-22 13:11:02.496 +1000] [32mINFO[39m: [36m[Browser] Download behaviour set → ~/Downloads[39m
-[2026-08-22 13:11:02.496 +1000] [32mINFO[39m: [36m[Browser] Connected successfully.[39m
-[2026-08-22 13:11:02.524 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
+[B] [2026-08-22 13:31:29.584 +1000] [32mINFO[39m: [36mInitializing connection pool (lazy — tabs open on first use)...[39m
 [B] B_EMITTING_SIGINT
 [B] 
-[B] [2026-08-22 13:11:02.826 +1000] [32mINFO[39m: [36m[Shutdown] Closing server and active AI sessions...[39m
-[B] [2026-08-22 13:11:02.827 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-3348.pid[39m
-[2026-08-22 13:11:02.827 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-config.json[39m
-[2026-08-22 13:11:02.827 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\automation-api-config.json[39m
-[2026-08-22 13:11:02.828 +1000] [32mINFO[39m: [36m[Shutdown] No Chrome process owned by this bridge — leaving a shared/borrowed Chrome running.[39m
-[2026-08-22T03:11:02.997Z] Bridge B process exited: code=0 signal=null
-[2026-08-22T03:11:02.997Z] Bridge B's real, live internalState.chromePid (read AFTER boot, not asserted): null
-[2026-08-22T03:11:02.997Z] Bridge B emitted its own SIGINT: true
-[2026-08-22T03:11:02.997Z] Bridge B's shutdown() printed the "skip the kill" log line: true
-[2026-08-22T03:11:04.176Z] Bridge A's Chrome (PID 35368) alive AFTER bridge B's real shutdown(): true
-[2026-08-22T03:11:04.176Z] Cleaning up bridge A (force — teardown, not part of the test)
+[B] [2026-08-22 13:31:29.896 +1000] [32mINFO[39m: [36m[Shutdown] Closing server and active AI sessions...[39m
+[B] [2026-08-22 13:31:29.897 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-3348.pid[39m
+[2026-08-22 13:31:29.897 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\browser-ai-bridge-config.json[39m
+[2026-08-22 13:31:29.897 +1000] [32mINFO[39m: [36m[Cleanup] Removed temporary file: C:\Users\Work\AppData\Local\Temp\automation-api-config.json[39m
+[2026-08-22 13:31:29.898 +1000] [32mINFO[39m: [36m[Shutdown] No Chrome process owned by this bridge — leaving a shared/borrowed Chrome running.[39m
+[2026-08-22T03:31:29.958Z] Bridge B process exited: code=0 signal=null
+[2026-08-22T03:31:29.958Z] Bridge B's real, live internalState.chromePid (read AFTER boot, not asserted): null
+[2026-08-22T03:31:29.958Z] Bridge B emitted its own SIGINT: true
+[2026-08-22T03:31:29.958Z] Bridge B's shutdown() printed the "skip the kill" log line: true
+[2026-08-22T03:31:31.145Z] Bridge A's Chrome (PID 35452) alive AFTER bridge B's real shutdown(): true
+[2026-08-22T03:31:31.146Z] Cleaning up bridge A (force — teardown, not part of the test)
 
 === RESULT ===
 {
   "pingA": {
     "status": "ready",
-    "loadedCommit": "120136fc76c080bf03985c1c7cd7628b8ec0195c",
-    "loadedTreeDirty": true
+    "reachable": true,
+    "loadedCommit": "a406482a22fd02844f5833d4c449ce95ab27748c",
+    "loadedTreeDirty": false,
+    "fieldsPresent": {
+      "loadedCommit": true,
+      "loadedTreeDirty": true
+    }
   },
-  "aChromePid": 35368,
+  "aChromePid": 35452,
   "bExit": {
     "code": 0,
     "signal": null
