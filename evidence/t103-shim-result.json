@@ -1,0 +1,10 @@
+{
+  "ts": "2026-08-22T07:34:48.210Z",
+  "shimInstallResult": true,
+  "menuItemVisibleAtClick": true,
+  "shimAfter": {
+    "called": true,
+    "argsJson": "[{\"multiple\":true}]",
+    "hadOriginal": true
+  }
+}
