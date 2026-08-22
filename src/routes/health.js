@@ -72,7 +72,11 @@ const LOADED_TREE_DIRTY = (() => {
   }
 })();
 
-function buildProvidersPayload(sessions) {
+// T-097: exported (same reason buildAskOneSuccessResult was pulled out of
+// askOne.js) so the cooldown field's tri-state behaviour is unit-testable
+// against a real cooldownManager.trigger() call, without a live bridge or
+// a real session array.
+export function buildProvidersPayload(sessions) {
   const byProvider = {};
   for (const id of ALL_PROVIDER_IDS) {
     const cooldown = cooldownManager.check(id);
@@ -88,8 +92,14 @@ function buildProvidersPayload(sessions) {
       // the number that actually answers "is anything stuck" for them.
       awaitingOperator: 0,
       idle: 0,
+      // T-097: cooldownManager.check() is now tri-state — null for a
+      // provider with no writer at all (see CooldownManager.js's own
+      // WRITABLE_PROVIDERS note), not just true/false. `?? 0` here would
+      // silently turn "cannot compute" back into "0.0 seconds", the exact
+      // conflation this ticket is about; passed through unchanged so a
+      // reader sees null, not a manufactured zero.
       cooldown: cooldown.active,
-      cooldownSeconds: cooldown.remainingSeconds ?? 0,
+      cooldownSeconds: cooldown.remainingSeconds,
     };
   }
   for (const s of sessions) {

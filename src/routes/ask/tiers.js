@@ -71,6 +71,24 @@ export function resolveTiers(body) {
  * worth making is a decision worth naming.
  *
  * `isCoolingDown` is injected so a test does not need a real rate limit.
+ *
+ * T-097, decided in writing rather than left as an accident of who wrote a
+ * cooldown call first: this can only ever skip GEMINI. Its only input is
+ * cooldownManager, and cooldownManager has exactly one writer
+ * (CooldownManager.js's own WRITABLE_PROVIDERS note). chatgpt's
+ * `err.rateLimited` and deepseek's `isRateLimited` are detected independently
+ * (chat.js, poll.js, domState.js) but feed nothing here -- a rate limit this
+ * bridge already saw on a previous turn is rediscovered at full cost on the
+ * next request for those two, rather than skipped. Measured cost: a turn on
+ * this bridge runs 13s-46s (roles/method.md's own latency table), so a chain
+ * that includes chatgpt or deepseek pays a full turn to relearn what it
+ * already knew, once per request, until the account-side limit clears on its
+ * own. Chose NOT to wire them into cooldownManager here: gemini's 120s is an
+ * unargued literal (errorHandler.js) with no stated source, and copying an
+ * equally unargued number onto two more providers would be worse than
+ * leaving the gap named. If chatgpt/deepseek get a real per-provider TTL from
+ * a measured source, wire it through WRITABLE_PROVIDERS in the same commit
+ * that adds it here.
  */
 export function skipTier(id, isCoolingDown = null) {
   const check = isCoolingDown ?? ((p) => cooldownManager.check(p));
