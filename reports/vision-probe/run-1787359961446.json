@@ -1,0 +1,52 @@
+{
+  "graderSha256": "b9d92df779eb9c5a",
+  "bridgeCommit": "8235b504d36e4e71f380f00903afba157252ea14",
+  "treeDirty": false,
+  "serverLoadedCommit": "f209109667cd1f8555165ea31dd21f52a9e29f15",
+  "serverStale": true,
+  "serverTreeDirty": false,
+  "serverProvenance": "stale-confirmed",
+  "gradedAt": "2026-08-22T00:52:41.558Z",
+  "fixtureSha256": "072cc674d167a7364b860f69eadb2ffa34338fa1f5cebe6c72a375a8512e44b3",
+  "endpoint": "ask",
+  "truth": {
+    "count": 7,
+    "color": "teal"
+  },
+  "imagePath": "reports\\vision-probe\\probe-1787359921090.png",
+  "results": [
+    {
+      "providerId": "gemini",
+      "elapsedMs": 20722,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "strategy": "gemini_submenu",
+        "requireGrowth": false,
+        "grew": null
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    },
+    {
+      "providerId": "kimi",
+      "elapsedMs": 19625,
+      "shape": "PASS",
+      "countOk": true,
+      "colorOk": true,
+      "imageAttached": true,
+      "imageAttachedEvidence": {
+        "evidenceSelectorUsed": ".image-thumbnail.success",
+        "matchedAlternatives": [
+          ".image-thumbnail.success"
+        ],
+        "requireGrowth": true,
+        "grew": true,
+        "elapsedMs": 2191,
+        "strategy": "file_chooser"
+      },
+      "raw": "SEES=yes COUNT=7 COLOR=teal"
+    }
+  ]
+}
