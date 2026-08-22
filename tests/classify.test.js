@@ -172,3 +172,160 @@ test.describe("classify — absent or incomplete truth does not throw (T-101)", 
     );
   });
 });
+
+// T-089: onList (T-086) told "named a different palette member" apart from
+// "named an off-list word", but the off-list bucket was itself two things —
+// a synonym for the true colour, and a word naming a different colour (or a
+// non-reading) entirely. adjudicateColorWord (via classify()'s own fields)
+// resolves the said word to RGB (scripts/cssColorTable.json, GENERATED —
+// see its own header) and asks which COLORS member it is nearest to.
+test.describe("classify — colorUnresolved / nearestPaletteMember (T-089)", () => {
+  test("a real palette member (onList=true): colorUnresolved false, no nearest-member fields", () => {
+    const g = classify("SEES=yes COUNT=5 COLOR=teal", {
+      count: 9,
+      color: "crimson",
+    });
+    assert.equal(g.shape, "WRONG");
+    assert.equal(g.onList, true);
+    assert.equal(g.colorUnresolved, false);
+    assert.equal(g.nearestPaletteMember, null);
+    assert.equal(g.nearestPaletteDistance, null);
+  });
+
+  test("PASS: colorUnresolved false, no nearest-member fields (colorOk true implies onList true)", () => {
+    const g = classify("SEES=yes COUNT=5 COLOR=crimson", {
+      count: 5,
+      color: "crimson",
+    });
+    assert.equal(g.shape, "PASS");
+    assert.equal(g.onList, true);
+    assert.equal(g.colorUnresolved, false);
+    assert.equal(g.nearestPaletteMember, null);
+    assert.equal(g.nearestPaletteDistance, null);
+  });
+
+  test("a synonym (goldenrod said as 'yellow'), COUNT correct: COUNT_ONLY, nearest member goldenrod — the exact shape T-086 measured", () => {
+    const g = classify("SEES=yes COUNT=3 COLOR=yellow", {
+      count: 3,
+      color: "goldenrod",
+    });
+    assert.equal(g.shape, "COUNT_ONLY");
+    assert.equal(g.colorOk, false); // UNCHANGED — this adds a record, not leniency
+    assert.equal(g.onList, false);
+    assert.equal(g.colorUnresolved, false);
+    assert.equal(g.nearestPaletteMember, "goldenrod");
+    assert.ok(
+      Math.abs(g.nearestPaletteDistance - 102.4) < 0.5,
+      `expected ~102.4, got ${g.nearestPaletteDistance}`,
+    );
+    assert.match(g.detail, /nearest palette member goldenrod/);
+  });
+
+  test("a non-reading (goldenrod said as 'black'), COUNT wrong too: WRONG, nearest member is a DIFFERENT colour (indigo) — the exact shape T-086 measured", () => {
+    const g = classify("SEES=yes COUNT=6 COLOR=black", {
+      count: 3,
+      color: "goldenrod",
+    });
+    assert.equal(g.shape, "WRONG");
+    assert.equal(g.colorOk, false);
+    assert.equal(g.onList, false);
+    assert.equal(g.colorUnresolved, false);
+    assert.equal(g.nearestPaletteMember, "indigo");
+    assert.notEqual(g.nearestPaletteMember, "goldenrod");
+    // Distance to the WINNING member (indigo), not to the truth colour
+    // (goldenrod, d=275.3 — a different number, reported nowhere here since
+    // classify() has no reference to truth.color's own distance from the
+    // said word, only to its nearest member).
+    assert.ok(
+      Math.abs(g.nearestPaletteDistance - 150.1) < 0.5,
+      `expected ~150.1, got ${g.nearestPaletteDistance}`,
+    );
+  });
+
+  test("a word the table cannot resolve at all: colorUnresolved true, never treated as a colour error the other two states are", () => {
+    const g = classify("SEES=yes COUNT=5 COLOR=zibblequorf", {
+      count: 9,
+      color: "crimson",
+    });
+    assert.equal(g.shape, "WRONG");
+    assert.equal(g.onList, false);
+    assert.equal(g.colorUnresolved, true);
+    assert.equal(g.nearestPaletteMember, null);
+    assert.equal(g.nearestPaletteDistance, null);
+    assert.match(g.detail, /not a resolvable colour word/);
+  });
+
+  // Clause 2's own requirement, proved rather than stated: resolving an
+  // off-list word to its nearest palette member must never flip colorOk —
+  // no reply that failed before this ticket may start passing now.
+  test("resolving to the CORRECT nearest member does not make colorOk true — this adds a record, not leniency", () => {
+    const g = classify("SEES=yes COUNT=3 COLOR=yellow", {
+      count: 3,
+      color: "goldenrod",
+    });
+    assert.equal(g.nearestPaletteMember, "goldenrod"); // resolves to the TRUE colour
+    assert.equal(g.colorOk, false); // and still fails — onList/exact-string is unchanged
+    assert.equal(g.shape, "COUNT_ONLY"); // not PASS
+  });
+
+  // Clause 4: the 5 recorded colour disagreements, re-adjudicated by classify()
+  // ITSELF (not a diagnostic script) — reproducing T-086's own 5-of-5 table.
+  test("all 5 recorded colour disagreements, re-adjudicated by classify() — reproduces T-086's 5-of-5 table", () => {
+    const cases = [
+      {
+        provider: "zai",
+        truth: { count: 6, color: "crimson" },
+        raw: "SEES=yes COUNT=6 COLOR=red",
+        countOk: true,
+        expectNearest: "crimson",
+      },
+      {
+        provider: "gemini",
+        truth: { count: 3, color: "goldenrod" },
+        raw: "SEES=yes COUNT=3 COLOR=yellow",
+        countOk: true,
+        expectNearest: "goldenrod",
+      },
+      {
+        provider: "grok",
+        truth: { count: 3, color: "goldenrod" },
+        raw: "SEES=yes COUNT=3 COLOR=yellow",
+        countOk: true,
+        expectNearest: "goldenrod",
+      },
+      {
+        provider: "copilot",
+        truth: { count: 3, color: "goldenrod" },
+        raw: "SEES=yes COUNT=3 COLOR=yellow",
+        countOk: true,
+        expectNearest: "goldenrod",
+      },
+      {
+        provider: "deepseek",
+        truth: { count: 3, color: "goldenrod" },
+        raw: "SEES=yes COUNT=6 COLOR=black",
+        countOk: false,
+        expectNearest: "indigo",
+      },
+    ];
+    for (const c of cases) {
+      const g = classify(c.raw, c.truth);
+      assert.equal(g.countOk, c.countOk, `${c.provider}: countOk`);
+      assert.equal(
+        g.nearestPaletteMember,
+        c.expectNearest,
+        `${c.provider}: nearestPaletteMember`,
+      );
+      // The claim this ticket rests on: nearest-member agrees with COUNT —
+      // right on every synonym (nearest === truth.color), wrong on the one
+      // non-reading (nearest !== truth.color) — same split, two instruments
+      // sharing no feature.
+      const nearestAgreesWithTruth = g.nearestPaletteMember === c.truth.color;
+      assert.equal(
+        nearestAgreesWithTruth,
+        c.countOk,
+        `${c.provider}: nearest-member-agrees-with-truth should match countOk`,
+      );
+    }
+  });
+});

@@ -96,6 +96,7 @@ import zlib from "node:zlib";
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
 import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -435,6 +436,87 @@ export const COLORS = {
   indigo: [75, 0, 130],
 };
 
+// T-089: the off-list half of a colour disagreement — "named a word that
+// isn't one of our four" (onList=false, above) — was itself one bucket
+// holding two different things: a model reaching for an everyday synonym
+// ("yellow" for goldenrod) versus one that was not reading the picture at
+// all ("black" for goldenrod, a 275-unit RGB distance whose nearest
+// palette member is indigo, not goldenrod). Resolving the said word to RGB
+// and asking which COLORS member it is nearest to separates them — with no
+// synonym list, and no threshold chosen by anybody (the rule is "nearest
+// member"; the palette's own minimum inter-member separation is reported
+// as the margin this rests on, never used as a cutoff).
+//
+// CSS_COLOR_TABLE is GENERATED, never typed — scripts/generateCssColorTable.mjs,
+// which drives a real Chromium's own CSS engine (`el.style.color = <name>;
+// getComputedStyle(el).color`) rather than asserting any RGB value by hand.
+// A hand-typed table of ~148 entries is the same object T-012's own comment
+// (below) already refused once as "a guess wearing a unit" — this is not
+// that, because no colour value here is asserted by this file; every one is
+// read back from a browser's own resolution and committed alongside the
+// exact command that produced it (re-running that command reproduces the
+// file byte for byte — verified, not assumed).
+const CSS_COLOR_TABLE = JSON.parse(
+  readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "cssColorTable.json"),
+    "utf8",
+  ),
+).table;
+
+// THE HONEST GAP THIS ADJUDICATOR CARRIES: nearest-palette-member is
+// measured on exactly FIVE historical rows (this corpus's entire recorded
+// colour-disagreement history as of T-089) — four of which are one word
+// ("yellow") reused across four providers on ONE image. It agrees with
+// COUNT (an independent instrument — graded against a number the prompt
+// never states) 5 of 5 on those rows. That is not validation at scale; it
+// is an adjudicator that has not yet been wrong on the cases this board
+// has actually recorded. Treat a new disagreement it has not seen the
+// shape of with the same scepticism T-086's own goldenrod deferral was
+// filed with — measure, don't assume the pattern holds.
+function adjudicateColorWord(saidWord) {
+  const w = saidWord.toLowerCase();
+  const onList = Object.prototype.hasOwnProperty.call(COLORS, w);
+  if (onList) {
+    return {
+      onList: true,
+      colorUnresolved: false,
+      nearestPaletteMember: null,
+      nearestPaletteDistance: null,
+    };
+  }
+  const rgb = CSS_COLOR_TABLE[w];
+  if (!rgb) {
+    // Not one of our four, AND not a CSS colour word this table can
+    // resolve at all — its own state, same rule onList/outOfRange already
+    // set: always present, never collapsed into "wrong" by omission.
+    return {
+      onList: false,
+      colorUnresolved: true,
+      nearestPaletteMember: null,
+      nearestPaletteDistance: null,
+    };
+  }
+  let nearestPaletteMember = null;
+  let nearestPaletteDistance = Infinity;
+  for (const [name, paletteRgb] of Object.entries(COLORS)) {
+    const d = Math.hypot(
+      rgb[0] - paletteRgb[0],
+      rgb[1] - paletteRgb[1],
+      rgb[2] - paletteRgb[2],
+    );
+    if (d < nearestPaletteDistance) {
+      nearestPaletteDistance = d;
+      nearestPaletteMember = name;
+    }
+  }
+  return {
+    onList: false,
+    colorUnresolved: false,
+    nearestPaletteMember,
+    nearestPaletteDistance: Math.round(nearestPaletteDistance * 10) / 10,
+  };
+}
+
 // COUNT range the generator draws from — named here rather than left as
 // literals in generateTestImage() so KEY_SPACE below (and anything else
 // that wants the true odds) is derived, not typed (T-012: "1-in-45" was
@@ -740,20 +822,56 @@ function buildPrompt(truth) {
  * on pain of a grader that under-reports arrival exactly when this ticket's
  * board is inclined to believe that story anyway.
  *
- * READER-FACING NOTE (T-086), for anyone reading a raw run-file's JSON
- * rather than this source: a structured reply (PASS / COUNT_ONLY / WRONG)
- * always carries `colorOk` (did the stated word match truth.color exactly)
- * AND `onList` (is the stated word one of COLORS' own four names at all).
- * The two bits together tell apart the disagreement that colorOk alone
- * cannot: colorOk=false + onList=true means the model named a DIFFERENT
- * real palette colour — a genuine miss. colorOk=false + onList=false means
- * it reached for an everyday word not in our four (measured: 5 of 5
- * recorded colorOk=false rows in this corpus have been this second kind,
- * none the first — see the deferral note above COLORS for the numbers).
+ * READER-FACING NOTE (T-086/T-089), for anyone reading a raw run-file's
+ * JSON rather than this source: a structured reply (PASS / COUNT_ONLY /
+ * WRONG) always carries `colorOk` (did the stated word match truth.color
+ * exactly), `onList` (is the stated word one of COLORS' own four names at
+ * all), `colorUnresolved` (T-089: is the stated word not even a CSS colour
+ * word this repo's generated table can resolve), `nearestPaletteMember`,
+ * and `nearestPaletteDistance`. THREE states, not two, tell apart the
+ * disagreement colorOk alone cannot:
+ *
+ *   colorOk=false, onList=true                  — named a DIFFERENT real
+ *                                                  palette colour, a
+ *                                                  genuine miss.
+ *   colorOk=false, onList=false,
+ *     colorUnresolved=false                     — an off-list word this
+ *                                                  repo's CSS colour table
+ *                                                  CAN resolve to RGB;
+ *                                                  `nearestPaletteMember`
+ *                                                  names which COLORS
+ *                                                  member it lands nearest
+ *                                                  to, `nearestPaletteDistance`
+ *                                                  the RGB distance to it —
+ *                                                  a synonym for the true
+ *                                                  colour reads as landing
+ *                                                  nearest ITS true member;
+ *                                                  a non-reading reads as
+ *                                                  landing nearest a
+ *                                                  DIFFERENT one.
+ *   colorOk=false, onList=false,
+ *     colorUnresolved=true                      — a word nothing could
+ *                                                  resolve at all. Never
+ *                                                  read as a colour error
+ *                                                  the other two states
+ *                                                  are — it is its own
+ *                                                  state, same rule
+ *                                                  onList/outOfRange
+ *                                                  already set: always
+ *                                                  present, never
+ *                                                  collapsed by omission.
+ *
  * `onList` is mechanical (Object.keys(COLORS)), never a hand-typed synonym
- * list; it does not attempt to resolve an off-list word to its nearest
- * palette member by colour distance — that refinement was scoped out of
- * T-086, not built and silently skipped.
+ * list. `nearestPaletteMember`/`nearestPaletteDistance` resolve the said
+ * word via scripts/cssColorTable.json — GENERATED by a real browser's own
+ * CSS engine (scripts/generateCssColorTable.mjs), never a hand-typed RGB
+ * value. Measured, 5 of 5 recorded colorOk=false rows in this corpus
+ * separate cleanly this way — 4 synonyms landing nearest their own true
+ * colour, 1 non-reading landing nearest a different one — agreeing with
+ * COUNT (an independent instrument) on every one. THE HONEST GAP: that is
+ * five historical rows, four of them one word reused across four
+ * providers on one image — not validation at scale. See
+ * adjudicateColorWord's own comment for the full account.
  */
 // T-025: exported so ia-grade.mjs (and anything else that needs to know
 // whether a recorded reply is a prompt echo) decides it from the SAME code
@@ -807,20 +925,43 @@ export function classify(replyText, truth) {
     // (never a hand-typed synonym list — that guess was already refused
     // once, T-012), and — same rule T-076 set for outOfRange — always
     // present, true or false, never omitted.
-    const onList = Object.prototype.hasOwnProperty.call(
-      COLORS,
-      color.toLowerCase(),
-    );
-    if (countOk && colorOk) return { shape: "PASS", countOk, colorOk, onList };
+    //
+    // T-089: the off-list bucket (onList=false) was ITSELF two different
+    // things — a synonym for the true colour versus a word that names a
+    // different colour entirely (or a non-reading) — separated by
+    // adjudicateColorWord's nearest-palette-member resolution. colorOk is
+    // UNCHANGED by this — this adds a record, not leniency; no reply that
+    // failed before can pass now.
+    const {
+      onList,
+      colorUnresolved,
+      nearestPaletteMember,
+      nearestPaletteDistance,
+    } = adjudicateColorWord(color);
+    if (countOk && colorOk)
+      return {
+        shape: "PASS",
+        countOk,
+        colorOk,
+        onList,
+        colorUnresolved,
+        nearestPaletteMember,
+        nearestPaletteDistance,
+      };
     if (countOk) {
       return {
         shape: "COUNT_ONLY",
         countOk,
         colorOk,
         onList,
+        colorUnresolved,
+        nearestPaletteMember,
+        nearestPaletteDistance,
         detail: onList
           ? `COUNT=${count} correct, COLOR=${color} is a different listed colour (expected ${safeColor})`
-          : `COUNT=${count} correct, COLOR=${color} not on the list (expected ${safeColor})`,
+          : colorUnresolved
+            ? `COUNT=${count} correct, COLOR=${color} not on the list and not a resolvable colour word (expected ${safeColor})`
+            : `COUNT=${count} correct, COLOR=${color} not on the list, nearest palette member ${nearestPaletteMember} at distance ${nearestPaletteDistance} (expected ${safeColor})`,
       };
     }
     // T-076: a WRONG count outside MIN_COUNT..MAX_COUNT names a picture
@@ -843,6 +984,9 @@ export function classify(replyText, truth) {
       countOk,
       colorOk,
       onList,
+      colorUnresolved,
+      nearestPaletteMember,
+      nearestPaletteDistance,
       // Always present, true or false — never omitted. This board has
       // three tickets (T-038, T-046, T-052) about absence-of-a-field
       // silently reading as false; an omitted outOfRange would repeat
@@ -855,7 +999,9 @@ export function classify(replyText, truth) {
           ? ""
           : onList
             ? " (COLOR is a different listed colour)"
-            : " (COLOR is not on the list)"),
+            : colorUnresolved
+              ? " (COLOR is not on the list and not a resolvable colour word)"
+              : ` (COLOR is not on the list, nearest palette member ${nearestPaletteMember} at distance ${nearestPaletteDistance})`),
     };
   }
 
