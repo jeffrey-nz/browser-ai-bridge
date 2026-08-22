@@ -30,3 +30,6 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
+
+      - name: Check src/ module reachability (T-116)
+        run: npm run check:reachable

@@ -97,13 +97,22 @@ function computeReachability() {
   };
   addEntry(pkg.exports);
   addEntry(pkg.main);
+  // T-116 redo: the probe this was copied from ALSO pushed every bin/*.js
+  // straight into `entries` here, unconditionally — bypassing addEntry()
+  // (and its `unreadable` tracking) entirely. Harmless for today's tree
+  // (bin/ holds exactly the one file pkg.bin already declares), but it
+  // meant `uniqEntries` could never be empty as long as bin/ held any .js
+  // file at all, regardless of whether package.json's own exports/main/bin
+  // fields resolved to anything real — the "0 declared entry points
+  // resolved" guard below could never fire in this repo, a dead guard that
+  // read as protection. addEntry(pkg.bin) above already resolves
+  // `bin/browser-ai-bridge.js` correctly (the bin/ walk that populates
+  // `all` now runs before this point) — the separate unconditional push
+  // added nothing but the ability to mask that guard, so it's gone. `bin`'s
+  // own entry points are now, like `exports` and `main`, exactly what
+  // package.json DECLARES — not every file physically sitting in the
+  // directory.
   addEntry(pkg.bin);
-  if (fs.existsSync("bin")) {
-    for (const f of fs.readdirSync("bin")) {
-      const p = norm(path.join("bin", f));
-      if (/\.(js|mjs|cjs)$/.test(f)) entries.push(p);
-    }
-  }
   const uniqEntries = [...new Set(entries)];
   const edgesFrom = (f) => {
     const src = fs.readFileSync(f, "utf8");

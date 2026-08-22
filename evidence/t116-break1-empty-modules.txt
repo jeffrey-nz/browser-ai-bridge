@@ -1,4 +1,9 @@
 FAIL: 0 declared entry points resolved — package.json's exports/main/bin, or bin/, changed shape under this gate. A census with no entry points is not a census.
+FAIL: 4 declared entry point(s) in package.json do not resolve to a real file — the census silently narrowing its own start set is exactly the failure this gate exists to catch:
+  src/index.js
+  src/client/index.js
+  src/server.js
+  bin/browser-ai-bridge.js
 FAIL: 0 tracked src/ modules found — the src/ walk returned nothing. A census over an empty set is not a clean result.
 reachability: 0 of 0 reachable, 32 allowlisted, 0 unexpected
 WARN: 32 allowlist entries are stale:
