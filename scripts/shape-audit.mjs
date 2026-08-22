@@ -41,6 +41,18 @@ export function auditShapes(dir) {
     .sort();
 
   let rowsWithRaw = 0;
+  // T-088: `rowsWithRaw` counts EVERY row with raw text — blind (no
+  // picture at all, vision-probe.mjs --blind) and sighted alike — while
+  // every truth-gated table below (countStrata, providerStrata, the
+  // exclusion tables, out-of-range, and now wrongRows) runs on sighted
+  // rows only, because a blind row carries no `truth` to grade a COUNT or
+  // COLOR against. Blind rows correctly stay IN the shape histogram (a
+  // blind SEES_NO is still a real, correctly-shaped reply — the histogram
+  // is a shape tally, not a correctness rate) but the headline must say so
+  // explicitly, or a reader has no way to know the histogram's denominator
+  // and the tables' denominator are two different populations that happen
+  // to both be printed under one number.
+  let blindRowsWithRaw = 0;
   const disagreements = [];
   const storedHistogram = {};
   const recomputedHistogram = {};
@@ -128,11 +140,28 @@ export function auditShapes(dir) {
     } catch {
       continue;
     }
+    const isBlindFile = j.blind === true;
     for (const r of j.results || []) {
       if (r.raw == null) continue;
       rowsWithRaw++;
+      if (isBlindFile) blindRowsWithRaw++;
       storedHistogram[r.shape] = (storedHistogram[r.shape] || 0) + 1;
-      const recomputed = classify(r.raw, j.truth);
+      // T-088: a blind file carries no `truth` (nothing was drawn or
+      // sent), so `j.truth` is undefined here on every blind row. Calling
+      // classify(r.raw, undefined) is not merely ungraded — classify()'s
+      // structured-reply branch dereferences `truth.count` unconditionally
+      // and THROWS on undefined, confirmed live. It has never fired
+      // because 0 of every blind turn recorded so far states a count
+      // (T-072), but that is a fact about today's corpus, not a guarantee.
+      // Mirrors ia-grade.mjs's own gradeBlindReply(), which already passes
+      // this exact sentinel to classify() for the same reason: a
+      // structured reply on a blind row correctly lands as WRONG (countOk
+      // false against a count of null, colorOk false against an empty
+      // string) instead of crashing the audit.
+      const recomputed = classify(
+        r.raw,
+        isBlindFile ? { count: null, color: "" } : j.truth,
+      );
       recomputedHistogram[recomputed.shape] =
         (recomputedHistogram[recomputed.shape] || 0) + 1;
       if (recomputed.shape !== r.shape) {
@@ -144,7 +173,13 @@ export function auditShapes(dir) {
         });
       }
 
-      if (recomputed.shape === "WRONG") {
+      // T-088 clause 3: gated the SAME way every other truth-dependent
+      // table in this file is (countStrata, providerStrata, exclusion,
+      // out-of-range) — a blind row has no truth for colorOk to mean
+      // anything against, so it does not belong in the WRONG-bucket
+      // population even on the day classify() (now sentinel-truthed
+      // above) stops throwing and starts returning a shape for one.
+      if (recomputed.shape === "WRONG" && j.truth?.count !== undefined) {
         wrongRows.push({
           file: f,
           providerId: r.providerId,
@@ -216,6 +251,7 @@ export function auditShapes(dir) {
 
   return {
     rowsWithRaw,
+    blindRowsWithRaw,
     disagreements,
     storedHistogram,
     recomputedHistogram,
@@ -317,6 +353,7 @@ function main() {
   const dir = path.join(process.cwd(), "reports", "vision-probe");
   const {
     rowsWithRaw,
+    blindRowsWithRaw,
     disagreements,
     storedHistogram,
     recomputedHistogram,
@@ -330,8 +367,15 @@ function main() {
     wrongRows,
   } = auditShapes(dir);
 
+  // T-088: the headline used to read as the denominator for every table
+  // beneath it, and it is not — blind rows (no truth, nothing drawn or
+  // sent) stay in the shape histogram just below (a real, correctly-
+  // shaped reply, not a correctness verdict) but are excluded from every
+  // truth-gated table after it. Stating both counts here means a reader
+  // reaches the exclusion table's denominator by reading, not subtracting.
+  const sightedRowsWithRaw = rowsWithRaw - blindRowsWithRaw;
   console.log(
-    `rows with raw: ${rowsWithRaw}   disagreements: ${disagreements.length}`,
+    `rows with raw: ${rowsWithRaw}   (${sightedRowsWithRaw} sighted, ${blindRowsWithRaw} blind — the histogram below includes both; every table after it is sighted-only)   disagreements: ${disagreements.length}`,
   );
   for (const d of disagreements) {
     console.log(

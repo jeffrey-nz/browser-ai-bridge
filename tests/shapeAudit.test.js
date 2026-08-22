@@ -185,6 +185,120 @@ test("bandStats: every provider paired means no unpaired entries", () => {
   assert.deepEqual(unpaired, []);
 });
 
+// T-088: a blind file (vision-probe.mjs --blind) carries no `truth` at
+// all — nothing was drawn or sent. Before this fix, auditShapes called
+// classify(r.raw, j.truth) unconditionally, which THROWS on a structured
+// reply when truth is undefined (confirmed live before writing this fix).
+// It never fired because 0 of every blind turn recorded so far states a
+// count (T-072), but that is a fact about the corpus, not a guarantee —
+// this pins the fix at the unit level, independent of what's on disk.
+test("auditShapes does not crash on a blind file whose reply happens to be structured", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "blind-hypothetical.json": {
+        blind: true,
+        results: [
+          {
+            providerId: "fake",
+            raw: "SEES=yes COUNT=5 COLOR=crimson", // never observed live, but must not crash
+          },
+        ],
+      },
+    });
+
+    assert.doesNotThrow(() => auditShapes(dir));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-088 clause 3: wrongRows must be gated the SAME way every other
+// truth-dependent table in this file is — a blind row has no truth for
+// colorOk to mean anything against, so a structured-but-blind reply must
+// not enter the WRONG-bucket population even though (with the crash fixed
+// above) classify() now returns a WRONG shape for it.
+test("auditShapes excludes a blind row's structured-but-WRONG reply from wrongRows", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "blind-hypothetical.json": {
+        blind: true,
+        results: [
+          { providerId: "fake", raw: "SEES=yes COUNT=5 COLOR=crimson" },
+        ],
+      },
+      "sighted-wrong.json": {
+        truth: { count: 4, color: "teal" },
+        results: [
+          { providerId: "real", raw: "SEES=yes COUNT=6 COLOR=teal" }, // genuinely WRONG, sighted
+        ],
+      },
+    });
+
+    const { wrongRows } = auditShapes(dir);
+
+    assert.equal(wrongRows.length, 1);
+    assert.equal(wrongRows[0].file, "sighted-wrong.json");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-088: rowsWithRaw counts everything (blind and sighted); every
+// truth-gated table runs on sighted rows only. blindRowsWithRaw is the
+// number that lets a reader get from one population to the other by
+// reading, not subtracting.
+test("auditShapes tallies blindRowsWithRaw separately from rowsWithRaw", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "blind.json": {
+        blind: true,
+        results: [
+          { providerId: "a", raw: "SEES=no" },
+          { providerId: "b", raw: "SEES=no" },
+        ],
+      },
+      "sighted.json": {
+        truth: { count: 4, color: "teal" },
+        results: [{ providerId: "c", raw: "SEES=yes COUNT=4 COLOR=teal" }],
+      },
+    });
+
+    const { rowsWithRaw, blindRowsWithRaw } = auditShapes(dir);
+
+    assert.equal(rowsWithRaw, 3);
+    assert.equal(blindRowsWithRaw, 2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-088: the histogram is a SHAPE tally and blind rows keep a real shape
+// (SEES_NO here) — they belong in it. Only the truth-gated tables exclude
+// them. This pins that a blind SEES_NO still lands in storedHistogram/
+// recomputedHistogram, so a future "fix" that filters the histogram by
+// truth presence would be caught here.
+test("auditShapes still counts a blind row's shape in the histogram", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "blind.json": {
+        blind: true,
+        results: [{ providerId: "a", raw: "SEES=no", shape: "SEES_NO" }],
+      },
+    });
+
+    const { storedHistogram, recomputedHistogram } = auditShapes(dir);
+
+    assert.equal(storedHistogram.SEES_NO, 1);
+    assert.equal(recomputedHistogram.SEES_NO, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("auditShapes skips rows with no raw (ERROR shapes, pre-field runs)", () => {
   const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
   try {
