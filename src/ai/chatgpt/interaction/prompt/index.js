@@ -18,14 +18,17 @@ export async function sendPromptWithFile(
   logger.info(`[ChatGPT] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053/T-058: `evidenceSelectorUsed` is set by uploadFileToChatGpt
-  // (via uploadFile.js) BEFORE anything that can throw — a false row needs
-  // this proof exactly as much as a true row does, which is why
-  // imageAttachedEvidence below is no longer gated behind `imageAttached`.
-  // The rest of evidenceOut's fields (matchedAlternatives, requireGrowth/
-  // grew, elapsedMs, strategy) are still populated only on a successful
-  // verify(). `false` still also carries a cause via imageAttachedCause
-  // (T-038).
+  // T-053/T-058/T-093 review: uploadFileToChatGpt is a direct pass-through
+  // to uploadFile.js's own uploadFileToPage (no bespoke code of its own
+  // that could throw first, unlike gemini/copilot) — `evidenceSelectorUsed`
+  // is set before every throw EXCEPT uploadFileToPage's own fs.access
+  // NOT_OFFERED check at its very top, which genuinely has no selector yet
+  // to name. A false row needs this proof exactly as much as a true row
+  // needs its match details, which is why imageAttachedEvidence below is
+  // no longer gated behind `imageAttached`. The rest of evidenceOut's
+  // fields (matchedAlternatives, requireGrowth/grew, elapsedMs, strategy)
+  // are still populated only on a successful verify(). `false` still also
+  // carries a cause via imageAttachedCause (T-038).
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToChatGpt(page, filePath, evidenceOut);

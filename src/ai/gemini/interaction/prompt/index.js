@@ -15,9 +15,14 @@ export async function sendPromptWithFile(
   logger.info(`[Gemini] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053/T-058: see uploadFile.js's evidenceOut comment — evidenceSelectorUsed
-  // is set before anything can throw, so imageAttachedEvidence below is not
-  // gated behind imageAttached.
+  // T-053/T-058/T-093: uploadFileToGemini sets evidenceOut.evidenceSelectorUsed
+  // before every throw in its submenu branch (the normal path) EXCEPT the
+  // shared fs.access NOT_OFFERED check at its very top, common to every
+  // provider, which genuinely has no selector yet to name. The fallback
+  // branch (submenu button never found) goes through uploadFile.js's own
+  // uploadFileToPage, which sets it the same way for the same reason.
+  // Either way, imageAttachedEvidence below is not gated behind
+  // imageAttached.
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToGemini(page, filePath, evidenceOut);

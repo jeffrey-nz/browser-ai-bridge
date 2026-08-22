@@ -64,6 +64,21 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
   }
 
   if (menuVisible) {
+    // T-093 review: hoisted to the TOP of this branch, not just above
+    // waitForAttachmentEvidence — menuBtn.click, uploadItem.waitFor,
+    // page.waitForEvent("filechooser"), and fileChooser.setFiles can all
+    // throw before that later point (this branch polls up to three times
+    // for the menu button precisely because the composer toolbar can take
+    // several seconds to mount, so these are not hypothetical failures),
+    // and every one of them used to leave evidenceOut at {} for a row that
+    // then reached gemini/index.js's catch with no evidence at all — the
+    // same fault this ticket opened with, at copilot. Setting it here
+    // makes it survive every throw in this branch except the fs.access
+    // check ~40 lines above (that one is common to every provider and
+    // genuinely has no selector yet to name — see this file's own
+    // READER-FACING comment at the caller for the line this covers).
+    if (evidenceOut)
+      evidenceOut.evidenceSelectorUsed = GEMINI_ATTACHMENT_EVIDENCE;
     await menuBtn.click({ force: true });
     // The menu item is "Files" in current builds; older builds used
     // "Upload from computer".
@@ -98,15 +113,9 @@ export async function uploadFileToGemini(page, filePath, evidenceOut = null) {
       settleMs = Math.min(30000, 1500 + Math.round(size / 1024 / 1024) * 1000);
     } catch {}
     await page.waitForTimeout(settleMs);
-    // T-093: set BEFORE waitForAttachmentEvidence, not after — this branch
-    // never calls the shared uploadFileToPage(), so it is the only place
-    // that can record which selector this call actually checked, and a
-    // FALSE row (the UNCONFIRMED throw a few lines down) needs that proof
-    // exactly as much as a true row needs its match details. T-058 added a
-    // comment at this file's call site claiming this was already true; it
-    // was not — this line is what makes it true.
-    if (evidenceOut)
-      evidenceOut.evidenceSelectorUsed = GEMINI_ATTACHMENT_EVIDENCE;
+    // evidenceOut.evidenceSelectorUsed was already set at the top of this
+    // branch (T-093 review) — not repeated here, so there is only one
+    // place to keep in sync with GEMINI_ATTACHMENT_EVIDENCE.
     const attached = await waitForAttachmentEvidence(page, {
       selector: GEMINI_ATTACHMENT_EVIDENCE,
       timeoutMs: 6000,

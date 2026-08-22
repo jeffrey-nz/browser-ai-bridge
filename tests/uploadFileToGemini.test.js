@@ -19,12 +19,16 @@ import { UploadOutcomeError } from "../src/ai/shared/uploadOutcome.js";
 // with a minimal fake `page` and asserts evidenceSelectorUsed survives.
 
 // A locator stub whose every method is independently configurable —
-// `visible` controls isVisible()/waitFor() outcomes.
-function makeLocator({ visible = true } = {}) {
+// `visible` controls isVisible()/waitFor() outcomes, `clickThrows` lets a
+// test drive a throw INSIDE the menuVisible branch, before the branch's
+// own later UNCONFIRMED throw is ever reached.
+function makeLocator({ visible = true, clickThrows = false } = {}) {
   const loc = {
     first: () => loc,
     isVisible: async () => visible,
-    click: async () => {},
+    click: async () => {
+      if (clickThrows) throw new Error("mock: click intercepted");
+    },
     waitFor: async ({ state } = {}) => {
       if (!visible) throw new Error(`mock: not ${state ?? "visible"}`);
     },
@@ -75,6 +79,40 @@ test("uploadFileToGemini submenu branch: evidenceSelectorUsed survives onto the 
     assert.equal(evidenceOut.evidenceSelectorUsed, GEMINI_ATTACHMENT_EVIDENCE);
     // The success-only fields must NOT appear — this is the failure branch.
     assert.equal("strategy" in evidenceOut, false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// T-093 review round 2: the fix above (evidenceOut set immediately before
+// waitForAttachmentEvidence) only survives the branch's OWN final
+// UNCONFIRMED throw — four EARLIER throw points in the same branch
+// (menuBtn.click, uploadItem.waitFor, page.waitForEvent, fileChooser.
+// setFiles) reached gemini/index.js's catch with evidenceOut still {}.
+// This drives one of them (menuBtn.click, the very first thing the
+// menuVisible branch does) and asserts evidenceSelectorUsed survives THAT
+// throw too — the fix that closes it is hoisting the assignment to the
+// top of the branch, not just above the later call.
+test("uploadFileToGemini submenu branch: evidenceSelectorUsed survives an EARLY throw (menuBtn.click), not only the final UNCONFIRMED one", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "gemini-upload-test-"));
+  const filePath = join(dir, "fixture.png");
+  writeFileSync(filePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  try {
+    const page = {
+      locator: (selector) => {
+        if (/Upload & tools|upload file menu/i.test(selector)) {
+          // Visible (so the menuVisible branch is entered at all), but
+          // its click throws — the first thing that branch does.
+          return makeLocator({ visible: true, clickThrows: true });
+        }
+        return makeLocator({ visible: true });
+      },
+      waitForEvent: async () => ({ setFiles: async () => {} }),
+      waitForTimeout: async () => {},
+    };
+    const evidenceOut = {};
+    await assert.rejects(() => uploadFileToGemini(page, filePath, evidenceOut));
+    assert.equal(evidenceOut.evidenceSelectorUsed, GEMINI_ATTACHMENT_EVIDENCE);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -25,9 +25,13 @@ export async function sendPromptWithFile(
   logger.info(`[Grok] Uploading file for visual analysis: ${filePath}`);
   let imageAttached = false;
   let imageAttachedCause;
-  // T-053/T-058: see uploadFile.js's evidenceOut comment — evidenceSelectorUsed
-  // is set before anything can throw, so imageAttachedEvidence below is not
-  // gated behind imageAttached.
+  // T-053/T-058/T-093 review: uploadFileToGrok is a direct pass-through to
+  // uploadFile.js's own uploadFileToPage (no bespoke code of its own that
+  // could throw first, unlike gemini/copilot) — so evidenceSelectorUsed is
+  // set before every throw EXCEPT uploadFileToPage's own fs.access
+  // NOT_OFFERED check at its very top, which genuinely has no selector yet
+  // to name. imageAttachedEvidence below is not gated behind imageAttached
+  // either way.
   const evidenceOut = {};
   try {
     imageAttached = await uploadFileToGrok(page, filePath, evidenceOut);
