@@ -496,6 +496,41 @@ test("auditShapes flags a sighted row with no gradable truth, and a blind row th
   }
 });
 
+// T-101 review: a blind row is ungradable BY CONSTRUCTION — no picture was
+// shown, so there is nothing a structured reply could correctly describe,
+// however closely a corrupt record's `truth` field happens to match it.
+// The isBlindFile ternary at the classify() call site is the statement of
+// that rule, not scaffolding around classify()'s old crash — grading a
+// blind row against whatever truth it happens to carry would manufacture a
+// PASS out of a picture that was never shown, exactly the shape
+// blindWithTruthRows (above) exists to catch, one level further in.
+test("a blind row that carries a truth is graded ungradable, not PASS, even when its structured reply matches that truth", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shape-audit-test-"));
+  try {
+    writeCorpus(dir, {
+      "blind-with-matching-truth.json": {
+        blind: true,
+        truth: { count: 5, color: "teal" },
+        results: [{ providerId: "b", raw: "SEES=yes COUNT=5 COLOR=teal" }],
+      },
+    });
+
+    const { recomputedHistogram, wrongRows, blindWithTruthRows } =
+      auditShapes(dir);
+
+    // Not PASS: a blind row must never be gradable, whatever truth a
+    // corrupt record happens to carry.
+    assert.equal(recomputedHistogram.PASS, undefined);
+    assert.equal(recomputedHistogram.WRONG, 1);
+    assert.equal(wrongRows.length, 1);
+    assert.equal(wrongRows[0].colorOk, false);
+    // And the mismatch is still visible on its own terms (T-091).
+    assert.equal(blindWithTruthRows.length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // T-096: the test above pins the fault this ticket is about at the DATA
 // level — provider "b" answers only SEES=no and is entirely absent from
 // providerStrata (the GRADED population), which is exactly what let it

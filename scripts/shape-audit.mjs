@@ -205,19 +205,23 @@ export function auditShapes(dir) {
         blindWithTruthRows.push({ file: f, providerId: r.providerId });
       }
       storedHistogram[r.shape] = (storedHistogram[r.shape] || 0) + 1;
-      // T-088 filed this sentinel because a blind file carries no `truth`
-      // (nothing was drawn or sent) and classify()'s structured-reply
+      // T-088 filed this ternary because classify()'s structured-reply
       // branch used to dereference `truth.count` unconditionally, throwing
-      // on undefined. T-101 fixed that inside classify() itself — an
-      // absent OR incomplete truth now resolves to the same {count:null,
-      // color:""} classify() always needed here, so this ternary is
-      // redundant: `j.truth` is already undefined on every blind row (a
-      // blind file has no truth to carry), and passing it straight through
-      // now produces the identical result the ternary used to force by
-      // hand. Removed rather than left beside a fix that makes it a no-op
-      // — a caller reading both would otherwise have to work out for
-      // themselves which one is doing the guarding.
-      const recomputed = classify(r.raw, j.truth);
+      // on a blind row's absent truth. T-101 fixed classify() itself, so
+      // the CRASH half of this is no longer this ternary's job — but the
+      // ternary is not a crash guard that became redundant, it is a
+      // SEPARATE statement that must stay: a blind row is ungradable BY
+      // CONSTRUCTION, whatever `j.truth` happens to hold. `j.truth` being
+      // absent on every blind row today is a fact about this corpus, not
+      // an invariant anything enforces — the same gap `blindWithTruthRows`
+      // above exists to catch. Passing `j.truth` straight through on a
+      // blind row would grade a model's structured guess against a
+      // picture it was never shown, manufacturing a PASS out of a corrupt
+      // record the moment one exists. `undefined` reads better than the
+      // old sentinel object now that classify() resolves it to the exact
+      // same values, so kept in that shorter form — but the isBlindFile
+      // branch itself stays.
+      const recomputed = classify(r.raw, isBlindFile ? undefined : j.truth);
       recomputedHistogram[recomputed.shape] =
         (recomputedHistogram[recomputed.shape] || 0) + 1;
       if (recomputed.shape !== r.shape) {
