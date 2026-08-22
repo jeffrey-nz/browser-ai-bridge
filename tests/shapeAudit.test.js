@@ -1006,6 +1006,29 @@ test("auditShapes excludes a planted row from the ranking populations but keeps 
           },
         ],
       },
+      // T-106 review: a SECOND provider whose plant is SEES_NO-shaped, NOT
+      // a right answer — the actual shape of chatgpt's own plant
+      // (run-1787366633944.json) that produced a NEGATIVE residual in the
+      // first landing. The ranking's own denominator
+      // (providerSightedNoPlant) excluded this plant, but the per-shape
+      // suffix (providerExcludedByShape) did not, so provider "b"'s printed
+      // line showed a SEES_NO count that included a row already removed
+      // from its own n — the exact defect this redo fixes.
+      "planted-seesno.json": {
+        plantedBreak: "test plant, SEES_NO shaped",
+        truth: { count: 4, color: "teal" },
+        results: [{ providerId: "b", raw: "SEES=no", imageAttached: false }],
+      },
+      "natural-b.json": {
+        truth: { count: 5, color: "teal" },
+        results: [
+          {
+            providerId: "b",
+            raw: "SEES=yes COUNT=5 COLOR=teal",
+            imageAttached: true,
+          },
+        ],
+      },
     });
 
     const {
@@ -1014,11 +1037,14 @@ test("auditShapes excludes a planted row from the ranking populations but keeps 
       providerSightedNoPlant,
       providerStrata,
       providerStrataNoPlant,
+      providerExcludedByShape,
+      providerExcludedByShapeNoPlant,
     } = auditShapes(dir);
 
-    assert.equal(plantedRowCount, 1);
+    assert.equal(plantedRowCount, 2);
 
-    // Original (plant-including) populations: both rows counted.
+    // Original (plant-including) populations: both of provider a's rows
+    // counted.
     assert.equal(providerSighted.a.n, 2);
     assert.equal(providerSighted.a.ok, 2);
     assert.equal(providerStrata.a.n, 2);
@@ -1029,6 +1055,38 @@ test("auditShapes excludes a planted row from the ranking populations but keeps 
     assert.equal(providerSightedNoPlant.a.ok, 1);
     assert.equal(providerStrataNoPlant.a.n, 1);
     assert.equal(providerStrataNoPlant.a.ok, 1);
+
+    // Provider b: the ORIGINAL excluded-shape count includes the planted
+    // SEES_NO (1); the NoPlant structure never gets a "b" entry at all,
+    // because b's only excluded row IS the plant — this is the mirror the
+    // review asked for (undefined, not zero, since nothing non-planted was
+    // ever excluded for b).
+    assert.equal(providerExcludedByShape.b.SEES_NO, 1);
+    assert.equal(providerExcludedByShapeNoPlant.b, undefined);
+
+    // T-106 review: the invariant itself, asserted for EVERY provider key
+    // the ranking's own denominator holds — not just the one this test
+    // constructs. sighted.n - graded.n - (SEES_NO+ECHO+NO_ANSWER of the
+    // NoPlant exclusion breakdown) must be exactly 0: the ranking's printed
+    // denominator and its own per-row suffix must always describe the SAME
+    // population. A negative or positive residual means the two are
+    // computed from different populations, silently.
+    for (const p of Object.keys(providerSightedNoPlant)) {
+      const sighted = providerSightedNoPlant[p].n;
+      const graded = providerStrataNoPlant[p]?.n || 0;
+      const excl = providerExcludedByShapeNoPlant[p] || {
+        SEES_NO: 0,
+        ECHO: 0,
+        NO_ANSWER: 0,
+      };
+      const residual =
+        sighted - graded - (excl.SEES_NO + excl.ECHO + excl.NO_ANSWER);
+      assert.equal(
+        residual,
+        0,
+        `residual for ${p} should be 0, got ${residual}`,
+      );
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -173,6 +173,20 @@ export function auditShapes(dir) {
   // NO_ANSWER (empty/unmatched reply) are visible as what they are, not
   // folded into "excluded" as if every one were "the image never arrived".
   const providerExcludedByShape = {};
+  // T-106 review: the ranking's own denominator (providerSightedNoPlant)
+  // excludes planted rows, but this per-shape suffix did not — so a
+  // provider whose plant happens to be SEES_NO-shaped (chatgpt's is: run-
+  // 1787366633944.json, a plant that is NOT a right answer, unlike the
+  // other three) had its excluded-shape count include a row the ranking's
+  // own denominator had already removed, producing a NEGATIVE residual
+  // (n - graded.n - excluded ≠ 0) — an invariant that held for every
+  // provider before this file had any concept of a plant at all. Mirrors
+  // providerExcludedByShape exactly, gated on the same `isPlanted` the
+  // ranking's other NoPlant structures already use, populated at the same
+  // site. The ranking print loop reads this one; the ORIGINAL
+  // (plant-including) providerExcludedByShape is untouched and still feeds
+  // the NO_ANSWER-attribution line below, which is not a ranking figure.
+  const providerExcludedByShapeNoPlant = {};
   // T-084 clause 4: vision-probe.mjs's header already argues WRONG is not
   // an upload bug — "the model saw *something* and was confidently mistaken
   // about it". Collected here so that argument has numbers behind it in an
@@ -429,6 +443,15 @@ export function auditShapes(dir) {
             NO_ANSWER: 0,
           });
           eb[recomputed.shape]++;
+
+          if (!isPlanted) {
+            const ebn = (providerExcludedByShapeNoPlant[r.providerId] ??= {
+              SEES_NO: 0,
+              ECHO: 0,
+              NO_ANSWER: 0,
+            });
+            ebn[recomputed.shape]++;
+          }
         }
       }
 
@@ -526,6 +549,7 @@ export function auditShapes(dir) {
     providerSightedCells,
     countStrataSighted,
     providerExcludedByShape,
+    providerExcludedByShapeNoPlant,
     sightedNoTruthRows,
     blindWithTruthRows,
     providerStrataNoPlant,
@@ -723,6 +747,7 @@ function main() {
     providerSightedCells,
     countStrataSighted,
     providerExcludedByShape,
+    providerExcludedByShapeNoPlant,
     sightedNoTruthRows,
     blindWithTruthRows,
     providerStrataNoPlant,
@@ -1022,7 +1047,7 @@ function main() {
             return `${graded.ok}/${graded.n} ${gPct}% (std ${gStdPct}%, weight ${gWeightPct}%, strata ${gStrata.length}/${COUNT_RANGE} [${gStrata.join(",")}])`;
           })()
         : "never graded";
-      const excl = providerExcludedByShape[p] || {
+      const excl = providerExcludedByShapeNoPlant[p] || {
         SEES_NO: 0,
         ECHO: 0,
         NO_ANSWER: 0,
