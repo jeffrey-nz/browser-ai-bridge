@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveTiers, defaultTiers } from "../src/routes/ask/tiers.js";
+import {
+  resolveTiers,
+  defaultTiers,
+  anyRateLimited,
+} from "../src/routes/ask/tiers.js";
 
 /**
  * The chain is a PREFERENCE, not a pool. These pin the three properties a
@@ -146,4 +150,52 @@ test("a tier on cooldown is skipped, and says for how long", async () => {
     remainingSeconds: 47,
   });
   assert.deepEqual(skipTier("chatgpt", cooling), { skip: false });
+});
+
+/**
+ * T-113: the chain-exhausted 503 used to hardcode `rateLimited: true`
+ * unconditionally, reachable with every tier skipped purely for cooldown —
+ * zero rate-limit events that turn, `attempted` reading all `"cooldown"`,
+ * the body still claiming one happened. anyRateLimited() is the fix's own
+ * pure core: does `attempted` itself record a rate limit, going by the one
+ * outcome string ask.js's own loop writes for it (`"rate limit"`, a space —
+ * not `"rate_limited"`, not `"cooldown"`, not a raw error string).
+ */
+test("anyRateLimited is false when every tier was skipped for cooldown, never rate-limited", () => {
+  assert.equal(
+    anyRateLimited([
+      { provider: "gemini", outcome: "cooldown" },
+      { provider: "chatgpt", outcome: "cooldown" },
+    ]),
+    false,
+  );
+});
+
+test("anyRateLimited is true when at least one tier's outcome is the rate-limit spelling", () => {
+  assert.equal(
+    anyRateLimited([
+      { provider: "gemini", outcome: "cooldown" },
+      { provider: "chatgpt", outcome: "rate limit" },
+    ]),
+    true,
+  );
+});
+
+test("anyRateLimited does not mistake a raw resolveSession error string for a rate limit", () => {
+  // A session-resolution failure pushes the raw error message as `outcome`
+  // (ask.js:96) — free text, not the fixed "rate limit" spelling, even if
+  // it happens to contain related words.
+  assert.equal(
+    anyRateLimited([
+      {
+        provider: "gemini",
+        outcome: "Session creation failed: rate limited by upstream",
+      },
+    ]),
+    false,
+  );
+});
+
+test("anyRateLimited is false on an empty attempted array", () => {
+  assert.equal(anyRateLimited([]), false);
 });

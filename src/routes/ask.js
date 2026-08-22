@@ -5,7 +5,12 @@ import { validateRequest, validatePromptLimit } from "./ask/validation.js";
 import { resolveSession, cleanupAutoSession } from "./ask/sessionHandler.js";
 import { executeAskTurn } from "./ask/executor/index.js";
 import { withSessionLock } from "./ask/withSessionLock.js";
-import { resolveTiers, skipTier, logFallback } from "./ask/tiers.js";
+import {
+  resolveTiers,
+  skipTier,
+  logFallback,
+  anyRateLimited,
+} from "./ask/tiers.js";
 import { sendSuccess, sendError } from "../middleware/respond.js";
 import { logger } from "#utils/logger.js";
 import { eventBus } from "#web/eventBus.js";
@@ -321,7 +326,16 @@ router.post("/", async (req, res, next) => {
     res,
     503,
     "STALLED",
-    { stalled: true, rateLimited: true, retryAfter: lastRetryAfter, attempted },
+    {
+      stalled: true,
+      // T-113: this used to be a hardcoded `true` — the chain-exhausted 503
+      // is reachable with every tier skipped purely for cooldown, zero
+      // rate-limit events that turn. Computed from what `attempted` itself
+      // recorded instead, the same record the caller can already read.
+      rateLimited: anyRateLimited(attempted),
+      retryAfter: lastRetryAfter,
+      attempted,
+    },
     requestId,
   );
 });

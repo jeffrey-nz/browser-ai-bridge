@@ -98,6 +98,22 @@ export function skipTier(id, isCoolingDown = null) {
     : { skip: false };
 }
 
+/**
+ * Did any tier actually rate-limit, going by what `attempted` itself
+ * recorded? (T-113) The chain-exhausted 503 used to hardcode
+ * `rateLimited: true` unconditionally, but that response is reachable with
+ * every tier skipped purely for being on cooldown — zero rate-limit events
+ * that turn, `attempted` reading all `"cooldown"` outcomes, and the body
+ * still claiming one happened. `"rate limit"` (a space, not the
+ * `"rate_limited"` /api/ask-all uses — see API.md) is the ONE outcome
+ * string ask.js's own loop writes for that mechanism (ask.js:309, when
+ * `outcome.why` is `"rate limit"` from ask.js:282); every other write is
+ * either `"cooldown"` or a raw resolveSession error string.
+ */
+export function anyRateLimited(attempted) {
+  return attempted.some((a) => a.outcome === "rate limit");
+}
+
 export function logFallback(from, to, why) {
   logger.warn(
     `[Tiers] ${from} unavailable (${why}) — falling through to ${to}. ` +

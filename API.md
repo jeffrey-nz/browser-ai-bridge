@@ -932,6 +932,12 @@ The whole chain was exhausted:
 }
 ```
 
+On the exhausted response, `rateLimited` is computed from `attempted`
+itself — `true` only if at least one entry's `outcome` is `"rate limit"`,
+`false` when every tier was skipped for cooldown and none ever rate-limited
+(a real case: a chain that is entirely on cooldown reaches this response
+with `attempted` reading all `"cooldown"` and `rateLimited: false`).
+
 The two `503`s are different failures and `attempted` means something
 slightly different on each:
 
