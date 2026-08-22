@@ -897,17 +897,38 @@ reporting tier 0's would send you to sleep past a provider that was already free
 **Both `503 STALLED` responses carry an `attempted` array** — a per-provider
 record of what the chain tried before giving up (checked: a `200` success
 never carries it, and neither does any other error status this route
-returns):
+returns). Real bodies, one per path — `rateLimited` and `requestId` are on
+both (`requestId` is assigned before any branch runs and `sendError`
+appends it whenever it is defined), `retryAfter` only on the exhausted one:
+
+A tier's own turn stalled, tier 0 in this example (`attempted` empty — see
+below):
 
 ```json
 {
   "success": false,
   "error": "STALLED",
   "stalled": true,
+  "rateLimited": false,
+  "attempted": [],
+  "requestId": "a1b2c3d4-5678-90ab-cdef-1234567890ab"
+}
+```
+
+The whole chain was exhausted:
+
+```json
+{
+  "success": false,
+  "error": "STALLED",
+  "stalled": true,
+  "rateLimited": true,
+  "retryAfter": 42,
   "attempted": [
     { "provider": "gemini", "outcome": "cooldown" },
     { "provider": "chatgpt", "outcome": "rate limit" }
-  ]
+  ],
+  "requestId": "a1b2c3d4-5678-90ab-cdef-1234567890ab"
 }
 ```
 
@@ -915,14 +936,20 @@ The two `503`s are different failures and `attempted` means something
 slightly different on each:
 
 - **A tier's own turn stalled.** `attempted` lists whichever EARLIER tiers
-  were skipped (cooling down) or dropped with an error before the chain
-  reached the one that stalled — stalling itself never falls through to a
-  further tier, so this response can fire even on tier 0, with `attempted`
-  empty.
-- **The whole chain was exhausted.** Every tier was either skipped (cooling
-  down) or rate-limited with nowhere left to fall through to, and none of
-  them completed or stalled. `attempted` here covers every tier in the
-  chain.
+  were skipped (cooling down), rate-limited, or failed to resolve a
+  session — each with somewhere further to go at the time — before the
+  chain reached the one that stalled. Stalling itself never falls through
+  to a further tier, so this response can fire even on tier 0, with
+  `attempted` empty.
+- **The whole chain was exhausted.** This is reachable only one way: the
+  LAST tier in the chain was skipped for being on cooldown — a last tier
+  that instead rate-limits or fails to resolve a session has nowhere left
+  to fall through to, so it returns its own status immediately and never
+  reaches this response. Every EARLIER tier got here the same three ways
+  a tier can leave the loop without ending it: skipped (cooling down),
+  rate-limited with a further tier to try, or failed to resolve a session
+  with a further tier to try. `attempted` covers all of them, in order,
+  ending with the final tier's `"cooldown"`.
 
 **`outcome` is not drawn from the `reason` vocabulary above, even where a
 token looks the same.** Three call sites write it, three different ways:
