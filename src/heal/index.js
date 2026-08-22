@@ -1,18 +1,30 @@
+import { readFile } from "node:fs/promises";
 import { logger } from "#utils/logger.js";
 import { suggestSelectorsLocally } from "./localHealer.js";
 import {
   extractCodeBlock,
   parseLocatorValues,
   patchLocatorsFile,
+  PROVIDER_LOCATOR_PATHS,
+  resolveLocatorsPath,
 } from "./patcher.js";
 import { setProviderOverride } from "./overrides.js";
 
+// filePath here is repo-root-relative (a "src/..." string) because it's
+// shown to the LLM and the human reading a self-heal prompt, not used to
+// open the file directly — reads go through resolveLocatorsPath(providerId),
+// which is also PROVIDER_LOCATOR_PATHS' one other reader (patcher.js's
+// patchLocatorsFile). Deriving from PROVIDER_LOCATOR_PATHS instead of
+// hand-typing a second copy is what T-121 found missing: the two tables
+// disagreed about the "src/" prefix, and readCurrentLocators's own join
+// (srcRoot + this "src/..." string) silently doubled it and never found a
+// file, on all three providers, every time.
 const PROVIDER_CONTEXT = {
   deepseek: {
     name: "DeepSeek",
     url: "https://chat.deepseek.com/",
     exportName: "DEEPSEEK_LOCATORS",
-    filePath: "src/ai/deepseek/locators.js",
+    filePath: `src/${PROVIDER_LOCATOR_PATHS.deepseek}`,
     description: `
 The automation injects prompts into the DeepSeek chat UI and polls for completion.
 Currently failing step: detecting when the AI has finished generating a response.
@@ -28,7 +40,7 @@ The response was visually visible in the browser window but the selectors failed
     name: "ChatGPT",
     url: "https://chatgpt.com/",
     exportName: "CHATGPT_LOCATORS",
-    filePath: "src/ai/chatgpt/locators.js",
+    filePath: `src/${PROVIDER_LOCATOR_PATHS.chatgpt}`,
     description:
       "Automation injects prompts and polls for stop button disappearance and response element.",
   },
@@ -36,7 +48,7 @@ The response was visually visible in the browser window but the selectors failed
     name: "Gemini",
     url: "https://gemini.google.com/app",
     exportName: "GEMINI_LOCATORS",
-    filePath: "src/ai/gemini/locators.js",
+    filePath: `src/${PROVIDER_LOCATOR_PATHS.gemini}`,
     description: "Automation injects prompts and polls for completion.",
   },
 };
@@ -114,13 +126,11 @@ export const ${ctx.exportName} = {
 \`\`\``;
 }
 
-async function readCurrentLocators(filePath) {
+async function readCurrentLocators(providerId) {
+  const fullPath = resolveLocatorsPath(providerId);
+  if (!fullPath) return "(no locators path mapped)";
   try {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const { join, dirname } = await import("node:path");
-    const srcRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-    return await readFile(join(srcRoot, filePath), "utf8");
+    return await readFile(fullPath, "utf8");
   } catch {
     return "(could not read current locators)";
   }
@@ -140,7 +150,7 @@ export async function selfHeal(session) {
     session.page,
   );
 
-  const currentLocators = await readCurrentLocators(ctx.filePath);
+  const currentLocators = await readCurrentLocators(providerId);
 
   let gptResponse;
   try {

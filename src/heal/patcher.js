@@ -5,13 +5,18 @@ import { logger } from "#utils/logger.js";
 
 const SRC_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const PROVIDER_LOCATOR_PATHS = {
+export const PROVIDER_LOCATOR_PATHS = {
   deepseek: "ai/deepseek/locators.js",
   chatgpt: "ai/chatgpt/locators.js",
   gemini: "ai/gemini/locators.js",
   grok: "ai/grok/locators.js",
   copilot: "ai/copilot/client/locators.js",
 };
+
+export function resolveLocatorsPath(providerId) {
+  const rel = PROVIDER_LOCATOR_PATHS[providerId];
+  return rel ? path.join(SRC_ROOT, rel) : null;
+}
 
 export function extractCodeBlock(gptResponse) {
   const match = gptResponse.match(/```(?:javascript|js)\n([\s\S]*?)```/);
@@ -31,15 +36,14 @@ export function parseLocatorValues(codeBlock) {
 }
 
 export function patchLocatorsFile(providerId, codeBlock) {
-  const rel = PROVIDER_LOCATOR_PATHS[providerId];
-  if (!rel) {
+  const fullPath = resolveLocatorsPath(providerId);
+  if (!fullPath) {
     logger.warn(
       `[SelfHeal] No locators path mapped for providerId="${providerId}"`,
     );
     return null;
   }
 
-  const fullPath = path.join(SRC_ROOT, rel);
   if (!fs.existsSync(fullPath)) {
     logger.warn(`[SelfHeal] Locators file not found: ${fullPath}`);
     return null;
@@ -51,6 +55,8 @@ export function patchLocatorsFile(providerId, codeBlock) {
   } catch {}
 
   fs.writeFileSync(fullPath, codeBlock + "\n", "utf8");
-  logger.info(`[SelfHeal] Patched locators file: ${rel}`);
+  logger.info(
+    `[SelfHeal] Patched locators file: ${PROVIDER_LOCATOR_PATHS[providerId]}`,
+  );
   return fullPath;
 }
