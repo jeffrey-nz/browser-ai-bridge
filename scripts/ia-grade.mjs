@@ -111,7 +111,7 @@ export function computeCorpusPrior(entries) {
     }
   }
   const modalRowCount = modalCell ? byRowCell.get(modalCell) || 0 : 0;
-  const modalImages = modalCell ? imagesByCell.get(modalCell)?.size ?? 0 : 0;
+  const modalImages = modalCell ? (imagesByCell.get(modalCell)?.size ?? 0) : 0;
   return {
     totalFiles,
     totalRows,
@@ -395,7 +395,9 @@ if (
       `                              (mixture of drawn and pinned stimuli — no field distinguishes them yet, T-084)`,
     );
   } else {
-    console.log(`   realised   (this CORPUS ): no files carry both truth and results`);
+    console.log(
+      `   realised   (this CORPUS ): no files carry both truth and results`,
+    );
   }
   console.log(
     `   imageAttached=false turns that state a COUNT at all: ${refutable.length} naturally-occurring of ${cell(false, () => true)} (+ ${planted.length} planted, listed separately)`,
