@@ -1,6 +1,12 @@
 import { logger } from "#utils/logger.js";
 import { eventBus } from "#web/eventBus.js";
 import { pollUntil } from "#utils/poller.js";
+import {
+  readLimitSeconds,
+  limitNotice,
+  describeLimit,
+  UNKNOWN_LIMIT_SECONDS,
+} from "#ai/shared/usageLimit.js";
 
 const RATE_LIMIT_SEL =
   'div.text-primary:has-text("Message limit reached"), ' +
@@ -30,8 +36,32 @@ export async function waitForGrokCompletion(page) {
           .isVisible({ timeout: 200 })
           .catch(() => false);
         if (rateLimitVisible) {
-          const err = new Error("Grok rate limit reached — message limit hit");
+          //[[ GROK PRINTS HOW LONG THE LIMIT LASTS. READ IT.
+          //
+          //   This branch used to detect the limit and discard the only useful
+          //   thing on the page. Measured 2026-09-24, grok.com showed
+          //   "18 hours 49 minutes before limit is gone" — a DAILY quota — and
+          //   the only cooldown applied anywhere was the client's flat five
+          //   minutes. The tab list proved the cost: ten grok tabs, countdowns
+          //   18h49m, 18h50m … 18h56m, one per minute, each a new tab and a
+          //   full wasted turn to relearn what the first page had printed.
+          //
+          //   Attaching the seconds here is what lets cooldownManager hold grok
+          //   off for the real span, which in turn makes skipTier() skip it
+          //   BEFORE a tab is opened — so the pile-up stops at its cause. ]]
+          const seconds = await readLimitSeconds(page).catch(
+            () => UNKNOWN_LIMIT_SECONDS,
+          );
+          const body = await page
+            .evaluate(() => document.body?.innerText || "")
+            .catch(() => "");
+          const notice = limitNotice(body);
+          const err = new Error(
+            describeLimit("Grok", seconds ?? UNKNOWN_LIMIT_SECONDS, notice),
+          );
           err.rateLimited = true;
+          err.cooldownSeconds = seconds ?? UNKNOWN_LIMIT_SECONDS;
+          err.limitNotice = notice;
           throw err;
         }
 

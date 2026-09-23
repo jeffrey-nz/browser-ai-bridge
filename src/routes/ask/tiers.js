@@ -89,6 +89,25 @@ export function resolveTiers(body) {
  * leaving the gap named. If chatgpt/deepseek get a real per-provider TTL from
  * a measured source, wire it through WRITABLE_PROVIDERS in the same commit
  * that adds it here.
+ *
+ * 2026-09-24, taking that clause up: this NO LONGER skips only gemini, and the
+ * paragraph above is kept because its reasoning is what decided the shape of
+ * the change rather than because it still describes the code. Two more writers
+ * exist, and neither is an unargued constant:
+ *
+ *   deepseek (and any provider) — promptWorkflow's suspension branch, from a
+ *     notice that states its own end date;
+ *   grok — a usage limit that PRINTS its own countdown. Measured on grok.com:
+ *     "18 hours 49 minutes before limit is gone". src/ai/shared/usageLimit.js
+ *     parses it, grok's poll attaches it as err.cooldownSeconds, and
+ *     promptWorkflow records it.
+ *
+ * The distinction the original decision drew is the one that still governs: a
+ * span the PROVIDER stated is a measurement and is honoured; a span this
+ * codebase would have to invent is not, and a rate limit that states no
+ * countdown still records nothing here. What that gap cost before it was
+ * closed, for grok: ten tabs one minute apart, each a full turn, against a
+ * nineteen-hour limit.
  */
 export function skipTier(id, isCoolingDown = null) {
   const check = isCoolingDown ?? ((p) => cooldownManager.check(p));

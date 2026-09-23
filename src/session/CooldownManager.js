@@ -22,16 +22,53 @@ import { eventBus } from "#web/eventBus.js";
 // err.rateLimited or deepseek's isRateLimited feeding this store), add it here
 // in the SAME commit: a comment naming a writer set is only worth what its
 // currency is worth.
-export const WRITABLE_PROVIDERS = new Set(["gemini"]);
+//[[ 2026-09-22: a SECOND writer, as the note above asks for in the same commit.
+//   `promptWorkflow._injectAndSendWithRecovery` now calls `trigger()` whenever a
+//   page turns out to be showing a suspension notice rather than a composer, for
+//   WHICHEVER provider that is — so the writer set is no longer a single name.
+//   Measured cause: chat.deepseek.com answered "your account has been suspended
+//   until October 1, 2026 09:21" with no composer and no sign-in control. Before
+//   this, nothing wrote a cooldown for deepseek, so every turn paid 5 × (15s
+//   locator timeout + 120s backoff) to rediscover a block with a stated end date.
+//
+//   The tri-state contract below is unchanged and still matters: a provider with
+//   no writer must read `null`, not `false`. These are the ids that can now be
+//   written, and the list is the whole point — adding a provider here without a
+//   writer would put back exactly the conflation T-097 removed. Every generic
+//   provider is included because the suspension check is in the shared send path
+//   and applies to all of them. ]]
+export const WRITABLE_PROVIDERS = new Set([
+  "gemini",
+  "deepseek",
+  "kimi",
+  "qwen",
+  "zai",
+  "mistral",
+  "perplexity",
+  "chatgpt",
+  "copilot",
+  "grok",
+]);
 
 class CooldownManager {
   constructor() {
     this.cooldowns = new Map();
   }
 
-  trigger(providerId, seconds) {
+  //[[ WHY A COOLDOWN EXISTS IS NOT ALWAYS "TO PREVENT UI BANS".
+  //   That was true when gemini's 120s pacing was the only writer, and the 429
+  //   in routes/ask/validation.js still says it to everyone. It is now wrong for
+  //   the common case: grok's is a DAILY QUOTA the provider itself declared
+  //   ("18 hours 49 minutes before limit is gone"), and telling a caller to
+  //   "try again later" without saying it means tomorrow is close to useless.
+  //   The reason is optional so every existing trigger() call is unchanged. ]]
+  reasons = new Map();
+
+  trigger(providerId, seconds, reason = null) {
     const unlockTime = Date.now() + seconds * 1000;
     this.cooldowns.set(providerId, unlockTime);
+    if (reason) this.reasons.set(providerId, reason);
+    else this.reasons.delete(providerId);
     logger.warn(
       `[Cooldown] ${providerId} placed on cooldown for ${seconds}s (until ${new Date(unlockTime).toLocaleTimeString()})`,
     );
@@ -65,9 +102,13 @@ class CooldownManager {
         active: true,
         remainingSeconds: Math.ceil(remainingMs / 1000),
         until: unlockTime,
+        ...(this.reasons.has(providerId)
+          ? { reason: this.reasons.get(providerId) }
+          : {}),
       };
     } else {
       this.cooldowns.delete(providerId);
+      this.reasons.delete(providerId); // a lapsed reason must not outlive it
       eventBus.emit("sync_event", {
         type: "provider_cooldown",
         provider: providerId,

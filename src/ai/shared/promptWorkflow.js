@@ -2,16 +2,77 @@ import { logger } from "#utils/logger.js";
 import { createSpinner } from "#app/ui/spinner.js";
 import { handlePromptError } from "#ai/shared/promptError/index.js";
 import { dumpPageHtml } from "#ai/shared/domInteraction.js";
+import {
+  diagnoseBlockedPage,
+  describeBlock,
+} from "#ai/shared/blockedPage.js";
+import { cooldownManager } from "../../session/CooldownManager.js";
 
 export async function runPromptWorkflow(page, text, label, options) {
   try {
     return await _runPromptWorkflowInner(page, text, label, options);
   } catch (err) {
+    if (err.suspended) {
+      // A suspension has a stated end time and is already on the cooldown
+      // store; the chain must skip this provider, not wait on it.
+      logger.error(
+        `[Prompt Workflow] ${options.providerName} is SUSPENDED — on cooldown. ${err.message}`,
+      );
+      return {
+        ok: false,
+        rateLimited: true,
+        suspended: true,
+        reason: err.message,
+      };
+    }
+    if (err.signedOut) {
+      // Distinct from a rate limit: a rate limit clears on its own, this one
+      // needs a human to log in. Carried as rateLimited too so the executor's
+      // existing "skip this provider" path applies without change.
+      logger.error(
+        `[Prompt Workflow] ${options.providerName} is SIGNED OUT — skipping it. ${err.message}`,
+      );
+      return {
+        ok: false,
+        rateLimited: true,
+        signedOut: true,
+        reason: err.message,
+      };
+    }
     if (err.rateLimited) {
       logger.warn(
         `[Prompt Workflow] Rate limit detected for ${options.providerName}: ${err.message}`,
       );
-      return { ok: false, rateLimited: true, reason: err.message };
+      //[[ A LIMIT THAT STATED ITS OWN LENGTH IS RECORDED, NOT JUST REPORTED.
+      //
+      //   src/routes/ask/tiers.js names the precondition for wiring a provider
+      //   into cooldownManager: "If chatgpt/deepseek get a real per-provider TTL
+      //   from a measured source, wire it through WRITABLE_PROVIDERS in the same
+      //   commit that adds it here." `err.cooldownSeconds` IS that source — it is
+      //   set only where a provider printed its own countdown (grok's poll reads
+      //   "18 hours 49 minutes before limit is gone"), never guessed here. A
+      //   rate limit with no stated span still records nothing, exactly as
+      //   before, because an unargued constant was the thing that decision
+      //   refused.
+      //
+      //   Recording it is what stops the pile-up rather than merely reporting
+      //   it: skipTier() reads cooldownManager, so the next request skips the
+      //   provider BEFORE opening a tab. Ten grok tabs a minute apart, each a
+      //   wasted turn against a nineteen-hour limit, was the cost of returning
+      //   this fact and storing none of it. ]]
+      if (Number.isFinite(err.cooldownSeconds) && err.cooldownSeconds > 0) {
+        cooldownManager.trigger(
+          String(options.providerName || "").toLowerCase(),
+          err.cooldownSeconds,
+          err.limitNotice || err.message,
+        );
+      }
+      return {
+        ok: false,
+        rateLimited: true,
+        reason: err.message,
+        ...(err.cooldownSeconds ? { cooldownSeconds: err.cooldownSeconds } : {}),
+      };
     }
     if (err.busyGenerating) {
       logger.warn(
@@ -209,6 +270,25 @@ async function _injectAndSendWithRecovery(
     const msg = err.message || "";
     const isRecoverable = RECOVERABLE_RE.test(msg);
     if (!isRecoverable) throw err;
+
+    //[[ A reload fixes a half-loaded page. It does not fix a suspended account or
+    //   a sign-in wall, and retrying one costs a full locator timeout plus the
+    //   backoff, every turn, for as long as the block lasts. Ask the page which
+    //   it is before spending that. ]]
+    const blocked = await diagnoseBlockedPage(page).catch(() => null);
+    if (blocked) {
+      const reason = describeBlock(providerName, blocked);
+      if (blocked.kind === "suspended") {
+        // The notice states when it ends, so hold the provider off for exactly
+        // that long instead of meeting the same wall on the next turn.
+        cooldownManager.trigger(providerName.toLowerCase(), blocked.seconds);
+      }
+      const e = new Error(reason);
+      e.rateLimited = true;
+      if (blocked.kind === "suspended") e.suspended = true;
+      else e.signedOut = true;
+      throw e;
+    }
 
     logger.warn(
       `[Prompt Workflow] ${providerName} submission failed (${msg.split("\n")[0]}) — reloading page and retrying once.`,

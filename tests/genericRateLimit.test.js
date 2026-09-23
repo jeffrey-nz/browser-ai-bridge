@@ -49,7 +49,14 @@ test("checkRateLimitHit never even checks the page for a spec with rateLimit: nu
 
 test("checkRateLimitHit fires for kimi's REAL spec string when that exact text is visible", async () => {
   const { checkRateLimitHit } = makeInteraction(GENERIC_SPECS.kimi);
-  const page = fakePage(GENERIC_SPECS.kimi.rateLimit);
+  // `rateLimit` became a LIST on 2026-09-22 (see specs.js) — this test used to
+  // hand the field itself to fakePage, which only works while it is a single
+  // string. The phrase it was really pinning is the first entry, the sentence
+  // kimi.ai showed in 2026-08; the list's other entries get their own test
+  // below. Kept pointing at the spec rather than a copied literal so a change
+  // to that sentence still shows up here.
+  const [primaryPhrase] = GENERIC_SPECS.kimi.rateLimit;
+  const page = fakePage(primaryPhrase);
   assert.equal(await checkRateLimitHit(page), true);
 });
 
@@ -118,5 +125,101 @@ test("the two routes' phrase lists diverge on whitespace — a match for route A
   assert.equal(
     ROUTE_B_PATTERNS.some((re) => re.test(wrappedNotice)),
     false,
+  );
+});
+
+/**
+ * 2026-09-22: two gaps behind a "stuck on the Kimi modal" report.
+ *
+ *  1. `rateLimit` held ONE sentence. Kimi's overload notice is not a fixed
+ *     string, and any rewording silently disabled the per-provider gate — the
+ *     turn then sat out the full 300s completion poll and fell into manual
+ *     recovery instead of handing off. It now accepts a list.
+ *  2. Nothing checked capacity on the SEND path. When the notice arrives as a
+ *     modal it covers the composer, so the send never lands: four retries were
+ *     burned and a generic "failed to trigger send" was thrown, leaving the
+ *     provider un-flagged and the tab poisoned for the next turn.
+ */
+
+function pageSaying(...visible) {
+  return {
+    getByText(text) {
+      return {
+        first: () => ({
+          isVisible: async () => visible.some((v) => v.includes(text)),
+        }),
+      };
+    },
+    getByRole() {
+      return { first: () => ({ isVisible: async () => false, click: async () => {} }) };
+    },
+    locator() {
+      return { last: () => ({}), first: () => ({}) };
+    },
+  };
+}
+
+test("a single-string rateLimit still works — the array is additive, not a replacement", async () => {
+  const { checkRateLimitHit } = makeInteraction({
+    name: "legacy",
+    rateLimit: "Too many people are chatting with Kimi",
+    locators: {},
+  });
+  assert.equal(
+    await checkRateLimitHit(pageSaying("Too many people are chatting with Kimi")),
+    true,
+  );
+  assert.equal(await checkRateLimitHit(pageSaying("all fine here")), false);
+});
+
+test("kimi's real spec now catches a REWORDED overload notice, not just the 2026-08 sentence", async () => {
+  const { checkRateLimitHit } = makeInteraction(GENERIC_SPECS.kimi);
+  // The original sentence must still hit.
+  assert.equal(
+    await checkRateLimitHit(pageSaying("Too many people are chatting with Kimi right now.")),
+    true,
+  );
+  // And so must the other halves of the same notice, which a rewording keeps.
+  assert.equal(
+    await checkRateLimitHit(pageSaying("Subscribe to enter a dedicated priority queue!")),
+    true,
+  );
+  assert.equal(await checkRateLimitHit(pageSaying("Too many requests, slow down")), true);
+});
+
+test("the capacity list refuses phrases a good answer could contain", async () => {
+  const { checkRateLimitHit } = makeInteraction(GENERIC_SPECS.kimi);
+  // This gate reads the WHOLE page, so anything a model might legitimately
+  // write must not trip it — a hit throws away a turn that already succeeded.
+  for (const innocent of [
+    "The API has a rate limit of 60 requests per minute.",
+    "If that fails, try again later.",
+    "Demand for the course was high.",
+  ]) {
+    assert.equal(await checkRateLimitHit(pageSaying(innocent)), false, innocent);
+  }
+});
+
+test("a send that fails behind a capacity modal is reported as rateLimited, not as a broken button", async () => {
+  const spec = {
+    ...GENERIC_SPECS.kimi,
+    // Force clickOrFallbackToEnter to throw by giving it a page whose
+    // locators cannot be clicked; the point is what clickSend does with it.
+    locators: { ...GENERIC_SPECS.kimi.locators },
+  };
+  const { clickSend } = makeInteraction(spec);
+  const page = pageSaying("Too many people are chatting with Kimi right now.");
+  await assert.rejects(
+    () => clickSend(page),
+    (e) => e.rateLimited === true && /over capacity/i.test(e.message),
+  );
+});
+
+test("a send that fails with NO capacity notice still surfaces the original error", async () => {
+  const { clickSend } = makeInteraction(GENERIC_SPECS.kimi);
+  const page = pageSaying("nothing wrong here");
+  await assert.rejects(
+    () => clickSend(page),
+    (e) => e.rateLimited !== true,
   );
 });

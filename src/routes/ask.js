@@ -141,6 +141,10 @@ router.post("/", async (req, res, next) => {
         );
         session.locked = false;
         session.needsReset = true;
+        // Nobody is waiting for this turn any more: the rate-limit back-off in
+        // executor/index.js stops re-submitting for it, and TabJanitor treats it
+        // as abandoned. See src/session/TabJanitor.js.
+        session.clientGone = true;
         eventBus.emit(`session_abort:${session.id}`);
       }
     };
@@ -288,14 +292,31 @@ router.post("/", async (req, res, next) => {
         }
 
         if (err.stalled) {
+          //[[ A STALL THAT KNOWS WHEN IT ENDS MUST SAY SO ON THE FIRST REPLY.
+          //   The executor throws `cooldownSeconds` when a provider stated its
+          //   own quota window (grok: "18 hours 29 minutes before limit is
+          //   gone"). Dropping it here cost the caller a whole extra request to
+          //   learn the span: the first answer was a bare "STALLED", and only
+          //   the SECOND — refused by the cooldown gate — carried retryAfter.
+          //   A client that backs off on its own default instead of the stated
+          //   figure is the exact mistake this change exists to stop. ]]
+          const quotaSeconds = Number.isFinite(err.cooldownSeconds)
+            ? err.cooldownSeconds
+            : undefined;
+          if (quotaSeconds) res.set("Retry-After", String(quotaSeconds));
           return {
             done: true,
             send: () =>
               sendError(
                 res,
                 503,
-                "STALLED",
-                { stalled: true, rateLimited: !!err.rateLimited, attempted },
+                quotaSeconds ? err.message : "STALLED",
+                {
+                  stalled: true,
+                  rateLimited: !!err.rateLimited,
+                  attempted,
+                  ...(quotaSeconds ? { retryAfter: quotaSeconds } : {}),
+                },
                 requestId,
               ),
           };

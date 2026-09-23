@@ -7,6 +7,34 @@ import { handleRotationIfNeeded } from "./rotator.js";
 import { handleStalls } from "./stallLoop.js";
 import { gatherMetrics } from "./metrics.js";
 import { saveImagesToTempFiles, cleanupTempFiles } from "./imageAttachments.js";
+import { cooldownManager } from "../../../session/CooldownManager.js";
+
+//[[ A BACK-OFF CANNOT OUTLAST A DAILY QUOTA, SO IT MUST NOT TRY.
+//
+//   The retry ladder below is 90s, 90s, 120s, 300s, and its own comment says
+//   what it was sized for: "DeepSeek 'Messages too frequent' typically resets in
+//   1-2 min; ChatGPT hourly." Those are PACING limits, and waiting one out is
+//   the right move.
+//
+//   A daily quota is a different animal and the ladder is hopeless against it.
+//   Measured 2026-09-24, grok, with everything else in this change already
+//   working — the limit detected in 4.5s and a cooldown correctly recorded for
+//   18.5 hours — the route then logged "waiting 141.23s then retrying in a fresh
+//   chat", then 329.883s, then 355.64s, re-submitting the prompt each time into
+//   an account that had told it, in writing, to come back tomorrow. One request
+//   spent over ten minutes doing that before the caller's own timeout fired.
+//
+//   The ladder's whole budget is ten minutes. If the provider has already stated
+//   a wait longer than that, every rung is futile by construction, so this
+//   returns at once and lets the caller go elsewhere. Shorter than the budget
+//   and the ladder is exactly right — unchanged, because that is the case it
+//   was built for. ]]
+function beyondBackoffReach(providerId, budgetMs) {
+  const cd = cooldownManager.check(providerId);
+  if (!cd?.active) return null;
+  const remainingMs = cd.remainingSeconds * 1000;
+  return remainingMs > budgetMs ? cd : null;
+}
 
 export async function executeAskTurn(
   session,
@@ -223,11 +251,52 @@ async function runAskTurn(
     const waits = [90000, 90000, 120000, 300000].map((w) =>
       Math.floor(w * (0.75 + Math.random() * 0.5)),
     );
+    const backoffBudgetMs = waits.reduce((a, b) => a + b, 0);
+
+    // A quota longer than the whole ladder cannot be waited out here — see the
+    // note on beyondBackoffReach.
+    const tooLong = beyondBackoffReach(session.providerId, backoffBudgetMs);
+    if (tooLong) {
+      const hrs = (tooLong.remainingSeconds / 3600).toFixed(1);
+      logger.warn(
+        `[Ask] ${session.providerId} is out of quota for ${hrs}h` +
+          (tooLong.reason ? ` ("${tooLong.reason}")` : "") +
+          ` — skipping the ${Math.round(backoffBudgetMs / 1000)}s back-off, which cannot outlast it.`,
+      );
+      const err = new Error(
+        `${session.providerId} is out of quota for ${hrs}h — retrying cannot succeed before then.`,
+      );
+      err.stalled = true;
+      err.rateLimited = true;
+      err.cooldownSeconds = tooLong.remainingSeconds;
+      throw err;
+    }
+    //[[ NOBODY IS WAITING — STOP.
+    //   This back-off is up to ~9.5 minutes and RE-SUBMITS the prompt after each
+    //   wait. For a caller that has disconnected (a race loser, a client whose
+    //   HTTP timeout fired) that holds a tab busy and sends more requests to an
+    //   account that is already throttled — 2026-09-13 left 17 chatgpt.com tabs
+    //   open during one throttle. The wait is sliced so a disconnect ends it
+    //   within seconds. ]]
+    const abandon = () => {
+      const err = new Error("CLIENT_GONE: caller disconnected during rate-limit back-off");
+      err.stalled = true;
+      err.rateLimited = true;
+      err.clientGone = true;
+      return err;
+    };
     for (const waitMs of waits) {
+      if (session.clientGone) throw abandon();
       logger.warn(
         `[Ask] Rate-limit detected for session ${session.id} — waiting ${waitMs / 1000}s then retrying in a fresh chat.`,
       );
-      await new Promise((r) => setTimeout(r, waitMs));
+      for (let waited = 0; waited < waitMs; waited += 2000) {
+        if (session.clientGone) {
+          logger.info(`[Ask] Caller gone for session ${session.id.slice(0, 8)} — abandoning rate-limit back-off.`);
+          throw abandon();
+        }
+        await new Promise((r) => setTimeout(r, Math.min(2000, waitMs - waited)));
+      }
       try {
         if (typeof session.engine?.startNewChat === "function") {
           await session.engine.startNewChat();
@@ -246,6 +315,22 @@ async function runAskTurn(
         { attachmentPaths },
       );
       if (!response.rateLimited) break;
+      // The retry itself may be what discovered the stated span — stop as soon
+      // as it is known to outlast what is left of the ladder.
+      const nowTooLong = beyondBackoffReach(session.providerId, backoffBudgetMs);
+      if (nowTooLong) {
+        const hrs = (nowTooLong.remainingSeconds / 3600).toFixed(1);
+        logger.warn(
+          `[Ask] ${session.providerId} is out of quota for ${hrs}h — abandoning the rest of the back-off.`,
+        );
+        const err = new Error(
+          `${session.providerId} is out of quota for ${hrs}h — retrying cannot succeed before then.`,
+        );
+        err.stalled = true;
+        err.rateLimited = true;
+        err.cooldownSeconds = nowTooLong.remainingSeconds;
+        throw err;
+      }
       logger.warn(
         `[Ask] Still rate-limited after ${waitMs / 1000}s wait — extending back-off.`,
       );
