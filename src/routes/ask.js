@@ -130,10 +130,34 @@ router.post("/", async (req, res, next) => {
     // may still be running — needsReset ensures it cleans up before the next
     // caller uses the session.
     //
-    // Use req.on("close") not res.on("close"): res "close" only fires after the
-    // server actually tries to write to a broken socket (i.e. after the browser
-    // automation finishes), which can be 7+ minutes later. req "close" fires
-    // immediately when the client drops the TCP connection.
+    //[[ req "close" STOPPED MEANING "THE CLIENT LEFT", AND NOTHING NOTICED.
+    //
+    //   The note that used to sit here said: use req.on("close") not
+    //   res.on("close"), because req close "fires immediately when the client
+    //   drops the TCP connection". That was true of older Node. Since Node 16 an
+    //   IncomingMessage emits "close" when the REQUEST STREAM completes — for a
+    //   POST, as soon as body-parser has read the body — which is BEFORE
+    //   withSessionLock below sets session.locked = true. The guard therefore saw
+    //   locked === false, did nothing, and the event never came again.
+    //
+    //   Measured 2026-09-24: "Client disconnected mid-turn" had fired ZERO times
+    //   in the whole log, and a deliberate abort probe — start an ask, abort at
+    //   6s — produced none either. So the bridge never learned that any caller
+    //   had gone, clientGone was never set on any session, and TabJanitor's
+    //   abandoned-turn rule (which requires it) could never fire. Nothing else
+    //   can reclaim a LOCKED session: the per-provider ceiling only evicts idle
+    //   ones. Result, while generating tl-en/learn-tagalog: 22 tabs, chatgpt
+    //   holding 7 sessions and perplexity 5 against a cap of 3, every one locked,
+    //   and `wouldClose: []` — the janitor correctly reporting that under its
+    //   rules there was nothing it was allowed to touch.
+    //
+    //   res "close" is the signal that still means what this needs: it fires when
+    //   the response finishes OR the connection is destroyed, and the
+    //   `!res.writableEnded` guard tells those apart — a completed response has
+    //   ended, an abandoned one has not. req "close" is kept as well because it
+    //   costs nothing and still fires on a genuine early drop; the handler
+    //   re-checks session.locked, so whichever arrives first wins and the second
+    //   is a no-op. ]]
     const onClose = () => {
       if (!res.writableEnded && session.locked) {
         logger.warn(
@@ -149,6 +173,7 @@ router.post("/", async (req, res, next) => {
       }
     };
     req.on("close", onClose);
+    res.on("close", onClose);
 
     const outcome = await withSessionLock(session, autoCreated, async () => {
       try {
@@ -329,6 +354,7 @@ router.post("/", async (req, res, next) => {
     });
 
     req.off("close", onClose);
+    res.off("close", onClose);
 
     if (outcome.done) return outcome.send();
 
