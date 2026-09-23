@@ -2,6 +2,7 @@ import { SessionRegistry } from "./Registry.js";
 import { createNewSession } from "./Creator.js";
 import { sessionLogger } from "./Logger.js";
 import { sessionPool } from "./Pool.js";
+import { LIMITS as TAB_LIMITS } from "./TabJanitor.js";
 import { logger } from "#utils/logger.js";
 import { getSessionState, cleanupSession as cleanupStalls } from "../stalls.js";
 import {
@@ -32,6 +33,8 @@ export class SessionManager {
     } else {
       this.gcInterval = null;
     }
+    // The tab janitor is NOT started here — see startTabJanitor() in
+    // TabJanitor.js, called only by the server's own boot (src/index.js).
   }
 
   async _cleanupStaleSessions() {
@@ -71,9 +74,19 @@ export class SessionManager {
     // Before opening a new tab, close any idle (unlocked) sessions for this
     // provider that are left over from prior runs killed without cleanup.
     // Prevents DeepSeek tab accumulation when agent-core is restarted frequently.
+    // Only sessions idle past the grace window: a live batch client sits
+    // unlocked for a few seconds BETWEEN its turns, and closing that session
+    // made it fail with "Session expired or invalid", reset, and open yet
+    // another tab — the churn this sweep was meant to prevent. Dead clients'
+    // sessions are well past the grace window, and TabJanitor caps the rest.
     const idleSessions = this.registry
       .list()
-      .filter((s) => s.providerId === providerId && !s.locked);
+      .filter(
+        (s) =>
+          s.providerId === providerId &&
+          !s.locked &&
+          Date.now() - (s.lastUsedAt ?? s.createdAt.getTime()) > TAB_LIMITS.idleGraceMs,
+      );
     if (idleSessions.length > 0) {
       logger.info(
         `[SessionManager] Closing ${idleSessions.length} idle ${providerId} session(s) before creating new one`,
@@ -268,6 +281,7 @@ export class SessionManager {
       // calls startNewChat() on acquire, so no need to navigate now. Pushing
       // immediately (rather than after a navigation) prevents a concurrent
       // createSession from seeing an empty pool and spawning a new tab.
+      session.pooledAt = Date.now(); // TabJanitor expires long-unused standbys
       currentPool.push(session);
       logger.info(
         `[SessionManager] ♻️ Recycled ${session.providerId} tab back to pool.`,

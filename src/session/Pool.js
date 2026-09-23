@@ -63,6 +63,7 @@ export class SessionPool {
       }
 
       if (!this.isShuttingDown) {
+        session.pooledAt = Date.now(); // TabJanitor expires long-unused standbys
         pool.push(session);
         this._failedAt.delete(providerId); // clear any previous failure
         logger.info(`[Pool] ✨ ${providerId} standby tab is warm and ready.`);

@@ -96,6 +96,39 @@ warm browser tabs — one per provider. Sessions are:
 
 Stalls are detected via `markActive` / `markInactive` in `stalls.js`.
 
+### Tab management — `src/session/TabJanitor.js`
+
+One provider tab is the design; the janitor ENFORCES a small, predictable set,
+because nothing else did — on 2026-09-13 one Chrome reached 28 pages, 17 of them
+chatgpt.com, all registered sessions left by dead clients and abandoned turns (and
+many tabs from one account is exactly what earns "Too many requests"). Every
+60s it:
+
+- closes the least-recently-used **idle** sessions beyond `MAX_TABS_PER_PROVIDER`
+  (default 3; never one used in the last `TAB_IDLE_GRACE_MS`, never a locked one);
+- closes **abandoned turns** — locked, caller disconnected (`session.clientGone`,
+  set in ask.js on req "close"), lock older than `ABANDONED_TURN_MS`;
+- closes **orphan provider tabs** (no session or pool entry) only after
+  `TAB_ORPHAN_GRACE_MS` (150s) — a session being created opens its page before it
+  is registered;
+- closes **standby pool tabs** unused for `TAB_POOL_IDLE_MS` (10m) while their
+  provider has no sessions; and surplus blank tabs.
+
+It **never touches a page that isn't an AI provider's** (App Store Connect, itch,
+anything a person opened). `GET /api/tabs` shows the census and what it would close;
+`POST /api/tabs/sweep` tidies now. Decisions are in the pure `planCleanup()`,
+tested in `tests/tabJanitor.test.js`.
+
+The rate-limit back-off in `executor/index.js` also stops within seconds when the
+caller has gone, instead of re-submitting the prompt for up to ~9.5 minutes.
+
+**The janitor starts ONLY from `src/index.js` (`startTabJanitor`), never on import
+or construction.** The first wiring started it in `SessionManager`'s constructor, so a
+one-off `node -e "import('./src/session/Manager.js')"` smoke test became a second
+janitor with an EMPTY registry against the live Chrome and closed 20 of the running
+bridge's tabs. Never import the session modules outside `NODE_ENV=test` in a process
+that can reach the real browser; a test pins this.
+
 ## Common pitfalls
 
 - **Browser changes break locators.** When something fails: run the audit

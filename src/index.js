@@ -17,6 +17,7 @@ import {
 } from "./startup/pidManager.js";
 import { sessionManager } from "./session/index.js";
 import { sessionPool } from "./session/Pool.js";
+import { startTabJanitor } from "./session/TabJanitor.js";
 import { setupState } from "./setup/state.js";
 import { PROVIDER_CONFIG } from "./config/providers.js";
 import { logger } from "#utils/logger.js";
@@ -110,6 +111,7 @@ async function init() {
   setupState.setReady();
 
   await sessionPool.initializePool();
+  startTabJanitor({ manager: sessionManager, pool: sessionPool, getContext: async () => ({ context }) });
 
   printHotkeyHint();
 
