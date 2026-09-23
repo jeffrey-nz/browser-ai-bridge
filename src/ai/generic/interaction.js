@@ -75,18 +75,81 @@ export function makeInteraction(spec) {
     });
   }
 
+  //[[ A CAPACITY MODAL LOOKS EXACTLY LIKE A BROKEN SEND BUTTON.
+  //   The only capacity gate used to be inside waitForCompletion, which is
+  //   reached only once a prompt is away. When the notice arrives as a modal it
+  //   covers the composer instead, so the send never lands: clickOrFallbackToEnter
+  //   burned its four retries, threw a generic "failed to trigger send", and the
+  //   turn died with nothing saying why — the provider was never marked
+  //   rate-limited, so the tier chain could not route around it and the same tab
+  //   met the same modal on the next attempt.
+  //   Now a send failure asks the page whether it is a capacity refusal before
+  //   giving up. If it is, the error is tagged `rateLimited` (promptWorkflow's
+  //   outer catch turns that into a clean hand-off) and the modal is dismissed
+  //   so the tab is usable again rather than left poisoned for the next turn. ]]
   async function clickSend(page) {
-    await clickOrFallbackToEnter(
-      page,
-      page.locator(L.sendBtn).last(),
-      input(page),
-      page.locator(L.stopBtn).last(),
-      { retries: 4, spaceHack: true, ctrlEnterFallback: true },
-    );
+    try {
+      await clickOrFallbackToEnter(
+        page,
+        page.locator(L.sendBtn).last(),
+        input(page),
+        page.locator(L.stopBtn).last(),
+        { retries: 4, spaceHack: true, ctrlEnterFallback: true },
+      );
+    } catch (err) {
+      if (await checkRateLimitHit(page)) {
+        await dismissModals(page).catch(() => {});
+        const e = new Error(`${spec.name} is over capacity (send blocked)`);
+        e.rateLimited = true;
+        throw e;
+      }
+      throw err;
+    }
   }
 
-  /** Longest visible answer block — sites disagree on which one is "last". */
+  //[[ THE LAST *OUTERMOST* MATCH, NOT THE LAST MATCH IN DOCUMENT ORDER.
+  //
+  //   `.last()` reads whichever matching element comes last in the DOM, and on a
+  //   nested match that is the DEEPEST one, not the answer. Measured live on
+  //   chat.qwen.ai (2026-09-24): a single assistant turn matched 13 elements,
+  //   because qwen's answer container, its markdown wrapper, its code block, that
+  //   block's header, body and viewport ALL carry a class containing "markdown"
+  //   or "message"+"content". The last of the 13 was
+  //   `qwen-markdown-code-horizontal-scroll-proxy-content` — an empty scroll
+  //   shim. So readAnswer returned "".
+  //
+  //   That empty string is not a cosmetic bug. waitForCompletion stabilises on
+  //   `len > 0 && len === lastLen`, so a permanent 0 never satisfies it: the poll
+  //   ran the full 300000ms and the turn died as a timeout, on a page where the
+  //   model had answered correctly a minute earlier. It looked like a slow
+  //   provider and it was an unreadable selector — the same confusion T-005 hit
+  //   from the other side, where the selector matched the wrong element rather
+  //   than nothing.
+  //
+  //   Taking the LONGEST match, which this function's old one-line description
+  //   claimed it did, is the wrong repair: an earlier turn in the same session
+  //   can legitimately be longer than the current one, and answering with it
+  //   would be silent corruption rather than a visible timeout. Outermost keeps
+  //   BOTH properties — it is the current turn (last), and it is the whole
+  //   answer container rather than a fragment of it (outermost). For a spec whose
+  //   matches never nest, every match is outermost and this is exactly `.last()`.
+  //
+  //   Note what this does NOT fix: qwen renders long code blocks in a VIRTUALISED
+  //   Monaco viewport that mounts only the visible rows, so the container's
+  //   innerText is genuinely partial for a long answer and no selector can reach
+  //   the rest. `detectTruncation` below is what refuses those. ]]
   async function readAnswer(page) {
+    const texts = await page
+      .locator(L.responseBlock)
+      .evaluateAll((nodes) =>
+        nodes
+          .filter((n) => !nodes.some((other) => other !== n && other.contains(n)))
+          .map((n) => n.innerText || ""),
+      )
+      .catch(() => []);
+    if (texts.length) return texts[texts.length - 1];
+    // evaluateAll is unavailable on some fakes and on a page that navigated
+    // mid-poll; the original single-element read is a safe fallback.
     return await page
       .locator(L.responseBlock)
       .last()
@@ -122,13 +185,26 @@ export function makeInteraction(spec) {
   //   distinguishes kimi (a real phrase) from the other four (null) — API.md
   //   crediting all five with "their own detected throttle" was the wrong
   //   sentence this exists to pin against. ]]
+  //[[ `rateLimit` may be one phrase or several. It began as a single string and
+  //   stays valid as one; an array is checked phrase by phrase and hits on the
+  //   first match. See the kimi entry in specs.js for why a list exists. ]]
   async function checkRateLimitHit(page) {
     if (!spec.rateLimit) return false;
-    return page
-      .getByText(spec.rateLimit, { exact: false })
-      .first()
-      .isVisible({ timeout: 200 })
-      .catch(() => false);
+    const phrases = Array.isArray(spec.rateLimit)
+      ? spec.rateLimit
+      : [spec.rateLimit];
+    for (const phrase of phrases) {
+      const seen = await page
+        .getByText(phrase, { exact: false })
+        .first()
+        .isVisible({ timeout: 200 })
+        .catch(() => false);
+      if (seen) {
+        logger.warn(`[${spec.name}] capacity notice on page: "${phrase}"`);
+        return true;
+      }
+    }
+    return false;
   }
 
   async function waitForCompletion(page) {
@@ -272,5 +348,9 @@ export function makeInteraction(spec) {
     sendPromptAndWait,
     sendPromptWithFile,
     checkRateLimitHit,
+    // Exported for tests the same way checkRateLimitHit is (T-114): which
+    // element readAnswer picks decides whether a turn completes at all, and
+    // that was unpinned while `.last()` silently read an empty scroll shim.
+    readAnswer,
   };
 }

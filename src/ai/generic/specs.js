@@ -139,7 +139,24 @@ export const GENERIC_SPECS = {
     //   the failure-path cost this also raises is measured and accepted
     //   separately (same report, failurePath field). ]]
     verifyTimeoutMs: 15000,
-    rateLimit: "Too many people are chatting with Kimi",
+    //[[ ONE FIXED SENTENCE IS A HOSTAGE TO THE SITE'S COPYWRITER.
+    //   This was the single string "Too many people are chatting with Kimi",
+    //   which is exactly what kimi.ai showed in 2026-08 and is still the most
+    //   common form. A site reserves the right to reword its own overload
+    //   notice, and when it does the per-provider gate below stops firing: the
+    //   turn then sits out the full 300s completion poll and lands in manual
+    //   recovery instead of handing off to the next provider — which is the
+    //   "stuck on the Kimi modal" report this list answers (2026-09-22).
+    //   Every phrase here is one only a capacity notice says. Deliberately NOT
+    //   included: "rate limit" and "try again later", which a model can easily
+    //   write inside a perfectly good answer — this gate reads the whole page,
+    //   so a false positive throws away a turn that had already succeeded. ]]
+    rateLimit: [
+      "Too many people are chatting with Kimi",
+      "Too many people are chatting",
+      "dedicated priority queue",
+      "Too many requests",
+    ],
     dismiss: ["Got it", "Close"],
   },
 

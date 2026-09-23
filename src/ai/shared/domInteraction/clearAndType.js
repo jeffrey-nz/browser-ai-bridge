@@ -85,6 +85,36 @@ async function readValue(locator) {
     .catch(() => "");
 }
 
+//[[ "SOMETHING LANDED" IS NOT "THE PROMPT LANDED".
+//
+//   Every injection strategy below used to accept its own result on evidence
+//   that does not scale with the prompt: strategy 0 asked for
+//   `afterFill.length >= Math.min(payload.length, 50)`, which for a 9,868-char
+//   book prompt is a threshold of FIFTY CHARACTERS, and strategies 1 and 2 asked
+//   only for `length > 0`. A composer holding a fragment therefore counted as
+//   injected, the fragment was sent, and the model answered it.
+//
+//   That is the worst failure shape the bridge has, because it is not an error.
+//   Measured 2026-09-24: mistral, asked the 9.9KB chapter-23 quiz prompt,
+//   replied "Hello, Jeffrey! How can I assist you today?" — a greeting, to a
+//   prompt it never received, returned to the caller as success with
+//   `success: true`. kimi failed the same prompt LOUDLY ("input did not clear
+//   and generation did not start") and that is strictly better: a caller can
+//   retry an error, and cannot detect a plausible answer to the wrong question.
+//
+//   The ratio is deliberately 0.9 rather than 1.0. These editors legitimately
+//   alter what they hold — collapsing whitespace, normalising newlines — and
+//   readValue trims, so an exact-length match would fail on healthy injections.
+//   A tenth of a large prompt is far more slack than any of those need, and far
+//   less than the difference between a prompt and a fragment of one. ]]
+const MIN_INJECTION_RATIO = 0.9;
+
+/** Did roughly the whole payload land, rather than merely something? */
+export function looksComplete(got, want) {
+  if (!want.length) return true;
+  return got.length >= Math.floor(want.length * MIN_INJECTION_RATIO);
+}
+
 export async function clearAndType(page, inputBoxLocator, text, options = {}) {
   const {
     triggerEvents = true,
@@ -144,7 +174,10 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
         // .fill() auto-clears first, so this also satisfies the clear step.
         await page.waitForTimeout(200);
         const afterFill = await readValue(inputBoxLocator);
-        if (afterFill.length >= Math.min(payload.length, 50)) {
+        // Was `>= Math.min(payload.length, 50)` — a 50-char bar for any prompt
+        // longer than 50 chars. A short fill now falls through to the strategies
+        // below instead of sending a fragment.
+        if (looksComplete(afterFill, payload)) {
           injected = true;
         }
       }
@@ -181,7 +214,9 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
         // in offscreen-window mode (page not focused) and on some controlled
         // editors that swallow paste events. Don't claim success blindly.
         const afterPaste = await readValue(inputBoxLocator);
-        if (afterPaste.length > 0) injected = true;
+        // A paste that lands partially is the documented failure mode of this
+        // strategy on controlled editors, so "> 0" was the wrong question.
+        if (looksComplete(afterPaste, payload)) injected = true;
       }
     } catch {}
   }
@@ -197,7 +232,7 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
         if (triggerEvents) await evalDispatchEvents(inputBoxLocator);
         await page.waitForTimeout(400);
         const afterEval = await readValue(inputBoxLocator);
-        if (afterEval.length > 0) injected = true;
+        if (looksComplete(afterEval, payload)) injected = true;
       }
     } catch {}
   }
@@ -249,7 +284,9 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
     await evalDispatchEvents(inputBoxLocator);
   }
 
-  if (!verify) return;
+  // Callers ignore the return value today; it exists so a caller that wants to
+  // refuse a truncated prompt can see what actually landed.
+  if (!verify) return { injectedChars: null, payloadChars: payload.length };
 
   const start = Date.now();
   let current = await readValue(inputBoxLocator);
@@ -265,5 +302,20 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
 
   if (payload.trim().length > 0 && current.length === 0) {
     log(colors.yellow("  (Injection verification failed: input still empty)"));
+  } else if (payload.trim().length > 0 && !looksComplete(current, payload)) {
+    //[[ The case this block used to miss entirely. It only ever asked whether the
+    //   composer was EMPTY, so a composer holding a fragment passed silently and
+    //   the fragment was sent — which is how a greeting came back as the answer
+    //   to a 9.9KB prompt. Say the two numbers: "short" is actionable in a log,
+    //   "failed" is not. Still a warning rather than a throw, because every
+    //   strategy above has already run and the caller's own submission check is
+    //   the layer that decides whether to retry. ]]
+    log(
+      colors.yellow(
+        `  (Injection verification: composer holds ${current.length} of ${payload.length} chars — the prompt may be sent truncated)`,
+      ),
+    );
   }
+
+  return { injectedChars: current.length, payloadChars: payload.length };
 }
