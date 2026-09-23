@@ -108,6 +108,10 @@ async function readValue(locator) {
 //   A tenth of a large prompt is far more slack than any of those need, and far
 //   less than the difference between a prompt and a fragment of one. ]]
 const MIN_INJECTION_RATIO = 0.9;
+// Below this, a READABLE composer is holding a fragment rather than a tidied
+// version of the prompt, and sending it asks a different question. See the
+// throw site at the end of clearAndType for why an EMPTY read is not included.
+export const REFUSE_BELOW_RATIO = 0.25;
 
 /** Did roughly the whole payload land, rather than merely something? */
 export function looksComplete(got, want) {
@@ -302,6 +306,34 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
 
   if (payload.trim().length > 0 && current.length === 0) {
     log(colors.yellow("  (Injection verification failed: input still empty)"));
+  } else if (
+    payload.trim().length > 0 &&
+    current.length > 0 &&
+    current.length < payload.length * REFUSE_BELOW_RATIO
+  ) {
+    //[[ A READABLE COMPOSER HOLDING A FRAGMENT IS THE ONE CASE WORTH REFUSING.
+    //
+    //   Measured 2026-09-24: mistral, given the 9.9KB book prompt, ended with
+    //   "composer holds 1 of 9868 chars" and answered "It seems like you might
+    //   have started typing something. Could you clarify?" — with success: true.
+    //   A confident answer to a prompt that was never delivered is the worst
+    //   thing this bridge can return, because a caller cannot detect it; kimi,
+    //   which fails the same prompt loudly, is strictly better off.
+    //
+    //   Only this shape refuses. An EMPTY read does NOT, and must not: readValue
+    //   returns "" for composers it cannot read, and in the same log 2 of the 8
+    //   turns warned "input still empty" went on to answer correctly. Refusing
+    //   those would break working providers to fix a broken one.
+    //
+    //   The threshold is far below looksComplete's 0.9 on purpose. Between the
+    //   two lies the ordinary case — an editor that collapses whitespace or
+    //   normalises newlines — which is worth a warning and not a refusal. Below
+    //   a quarter, no amount of editor tidying explains the gap, and 1/9868 is
+    //   not near any boundary. ]]
+    throw new Error(
+      `Failed to submit prompt: the composer holds ${current.length} of ${payload.length} characters. ` +
+        "Sending it would ask a different question from the one requested.",
+    );
   } else if (payload.trim().length > 0 && !looksComplete(current, payload)) {
     //[[ The case this block used to miss entirely. It only ever asked whether the
     //   composer was EMPTY, so a composer holding a fragment passed silently and

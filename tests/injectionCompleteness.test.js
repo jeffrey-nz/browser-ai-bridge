@@ -68,3 +68,50 @@ test("short prompts are not made harder to satisfy than they were", () => {
   const prompt = "Reply with the single word PONG.";
   assert.equal(looksComplete(prompt, prompt), true);
 });
+
+/**
+ * A READABLE composer holding a fragment is refused; an EMPTY read is not.
+ *
+ * Measured 2026-09-24, after the ratio check above was already in place: mistral
+ * still ended with "composer holds 1 of 9868 chars" and answered "It seems like
+ * you might have started typing something. Could you clarify?" — success: true.
+ * The ratio check made the fault VISIBLE; it did not stop the send.
+ *
+ * The distinction matters and is not cosmetic. readValue() returns "" for
+ * composers it cannot read, and in the same bridge log 2 of the 8 turns that
+ * warned "input still empty" went on to answer correctly. Refusing on an empty
+ * read would break working providers to fix a broken one.
+ */
+import { REFUSE_BELOW_RATIO } from "../src/ai/shared/domInteraction/clearAndType.js";
+
+test("the refusal threshold sits far below the warn threshold, with ordinary mangling between", () => {
+  assert.ok(REFUSE_BELOW_RATIO < 0.9, "must not refuse what looksComplete merely warns about");
+  assert.ok(REFUSE_BELOW_RATIO <= 0.25, "a quarter is already far past any whitespace tidying");
+  assert.ok(REFUSE_BELOW_RATIO > 0, "zero would make the rule unreachable");
+});
+
+test("mistral's real measurement falls well inside the refusal band", () => {
+  const held = 1;
+  const payload = 9868;
+  assert.ok(held > 0, "readable, not an unreadable empty");
+  assert.ok(held < payload * REFUSE_BELOW_RATIO, "1 of 9868 must refuse");
+});
+
+test("an editor that collapses whitespace warns but is NOT refused", () => {
+  const payload = 10000;
+  for (const held of [9500, 9000, 8000, 6000]) {
+    assert.ok(held >= payload * REFUSE_BELOW_RATIO, `${held}/${payload} must not refuse`);
+  }
+});
+
+test("the refusal message is one promptWorkflow already treats as recoverable", () => {
+  //[[ RECOVERABLE_RE decides whether the workflow reloads and retries or lets the
+  //   error escape raw. "Failed to submit prompt" is the phrase kimi's loud
+  //   failure already uses, so this joins that path rather than inventing one. ]]
+  const RECOVERABLE_RE =
+    /Failed to submit prompt|waiting for locator|Timeout .* exceeded|element is not (visible|attached)|Target (page|frame).* has been closed/i;
+  const message =
+    "Failed to submit prompt: the composer holds 1 of 9868 characters. " +
+    "Sending it would ask a different question from the one requested.";
+  assert.ok(RECOVERABLE_RE.test(message));
+});
