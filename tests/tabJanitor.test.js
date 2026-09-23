@@ -179,3 +179,74 @@ test("the real qwen leak: sessions locked for an hour are all reclaimed", () => 
   const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: STALE });
   assert.equal(plan.closeSessions.length, 7, "every unreclaimable session should now be reclaimed");
 });
+
+/**
+ * RULE 1c — THE CALLER SAID HOW LONG IT WOULD WAIT.
+ *
+ * Rule 1 needs a DISCONNECT, and a disconnect is not always observable. A caller
+ * using a pooled HTTP client aborts by stopping its own wait: the request has
+ * already been written, so the socket stays open and the server is never told.
+ * Measured 2026-09-24 with nothing else in flight — the same request aborted
+ * twice, once through a pooled undici Agent and once through plain fetch —
+ * produced exactly ONE "Client disconnected mid-turn", the plain one.
+ *
+ * Race losers are abandoned by design and paid that every turn: with three
+ * racers, two sessions stranded locked per turn until their own poll expired,
+ * giving 22 tabs with chatgpt holding 7 against a cap of 3.
+ */
+
+test("1c: a locked turn past the caller's OWN declared timeout is reclaimed", () => {
+  const now = Date.now();
+  const plan = planCleanup({
+    sessions: [
+      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
+        clientTimeoutMs: 600_000, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+    ],
+    pages: [], ownedPageKeys: new Set(), now,
+  });
+  assert.equal(plan.closeSessions.length, 1);
+  assert.match(plan.closeSessions[0].reason, /caller's own timeout passed/);
+});
+
+test("1c: a turn still INSIDE the caller's timeout is left alone", () => {
+  //[[ The half that must not regress. A real generation turn runs for minutes
+  //   and the caller is still waiting for it; closing that loses the answer. ]]
+  const now = Date.now();
+  const plan = planCleanup({
+    sessions: [
+      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
+        clientTimeoutMs: 600_000, lockedAt: now - 120_000, lastUsedAt: now - 120_000 },
+    ],
+    pages: [], ownedPageKeys: new Set(), now,
+  });
+  assert.deepEqual(plan.closeSessions, []);
+});
+
+test("1c: a caller that declares nothing is untouched by this rule", () => {
+  //[[ An older client sends no such field. It must fall through to rule 1b's
+  //   duration-based backstop rather than being closed on a missing value. ]]
+  const now = Date.now();
+  const plan = planCleanup({
+    sessions: [
+      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
+        clientTimeoutMs: null, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+    ],
+    pages: [], ownedPageKeys: new Set(), now,
+  });
+  assert.equal(
+    plan.closeSessions.filter((c) => /caller's own timeout/.test(c.reason)).length,
+    0,
+  );
+});
+
+test("1c: a session already being closed by rule 1 is not listed twice", () => {
+  const now = Date.now();
+  const plan = planCleanup({
+    sessions: [
+      { id: "s1", providerId: "chatgpt", locked: true, clientGone: true,
+        clientTimeoutMs: 600_000, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+    ],
+    pages: [], ownedPageKeys: new Set(), now,
+  });
+  assert.equal(plan.closeSessions.filter((c) => c.id === "s1").length, 1);
+});

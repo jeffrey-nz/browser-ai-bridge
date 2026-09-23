@@ -175,6 +175,16 @@ router.post("/", async (req, res, next) => {
     req.on("close", onClose);
     res.on("close", onClose);
 
+    //[[ HOW LONG THE CALLER SAID IT WOULD WAIT. See TabJanitor rule 1c.
+    //   A disconnect is the bridge's normal signal that a turn was abandoned, and
+    //   it does not survive a pooled HTTP client: an abort there stops the caller
+    //   waiting without closing the socket, so the server is never told. This
+    //   number is the caller's own patience, sent in the request, and past it
+    //   nobody is waiting whatever the socket looks like. ]]
+    const declared = Number(req.body?.clientTimeoutMs);
+    session.clientTimeoutMs =
+      Number.isFinite(declared) && declared > 0 ? declared : null;
+
     const outcome = await withSessionLock(session, autoCreated, async () => {
       try {
         const {

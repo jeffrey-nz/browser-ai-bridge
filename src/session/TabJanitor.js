@@ -113,6 +113,36 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
     }
   }
 
+  //[[ 1c. THE CALLER SAID HOW LONG IT WOULD WAIT, AND THAT LONG HAS PASSED.
+  //
+  //   Rule 1 needs a DISCONNECT, and a disconnect is not always observable. A
+  //   caller using a pooled HTTP client aborts by stopping its own wait: the
+  //   request has already been written, so the socket stays open and this server
+  //   is never told. Measured 2026-09-24 with nothing else in flight — the same
+  //   request aborted twice, once through a pooled undici Agent and once through
+  //   plain fetch — produced exactly ONE "Client disconnected mid-turn", the
+  //   plain one.
+  //
+  //   Race losers are abandoned by design and pay that cost every turn: with
+  //   three racers, two sessions were stranded locked per turn until their own
+  //   poll expired, giving 22 tabs with chatgpt holding 7 against a cap of 3.
+  //
+  //   `clientTimeoutMs` is the caller's own declared patience, sent in the ask
+  //   request. Past it nobody is waiting whatever the socket says, so this needs
+  //   no guess about what a turn "should" take — unlike rule 1b below, which has
+  //   to pick a duration precisely because it has nothing to go on. A caller that
+  //   sends no such field is untouched by this rule and falls through to 1b. ]]
+  for (const s of sessions) {
+    if (closing.has(s.id)) continue;
+    if (s.locked && s.lockedAt && s.clientTimeoutMs > 0 && now - s.lockedAt > s.clientTimeoutMs) {
+      closeSessions.push({
+        id: s.id,
+        reason: `caller's own timeout passed (${Math.round((now - s.lockedAt) / 1000)}s > ${Math.round(s.clientTimeoutMs / 1000)}s declared)`,
+      });
+      closing.add(s.id);
+    }
+  }
+
   //[[ 1b. STALE LOCKS — a lock nothing will ever release.
   //   Rule 1 above needs `clientGone`, which only ask.js sets when the HTTP caller
   //   disconnects. A lock stranded any other way — most often a cleanup that hung
@@ -258,6 +288,8 @@ export async function sweep({ manager, pool, getContext, log = logger }) {
       providerId: s.providerId,
       locked: !!s.locked,
       clientGone: !!s.clientGone,
+      // Rule 1c: the caller's own declared patience, from the ask request.
+      clientTimeoutMs: s.clientTimeoutMs || null,
       lockedAt: s.lockedAt || null,
       lastUsedAt: s.lastUsedAt || null,
       createdAt: s.createdAt,
