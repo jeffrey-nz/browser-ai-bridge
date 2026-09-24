@@ -43,11 +43,25 @@ test("the wait ends in an explicit error, not an unbounded hang", () => {
   assert.match(MANAGER, /none became free within/);
 });
 
-test("a provider with a FREE session is never made to wait", () => {
-  //[[ The half that must not regress: being at the cap is fine as long as one of
-  //   those sessions can be reused. Waiting then would stall every turn. ]]
-  assert.match(MANAGER, /const hasFree = \(\)/);
-  assert.match(MANAGER, /atCapacity\(\) && !hasFree\(\)/);
+test("an unlocked session does NOT let a caller past the cap", () => {
+  //[[ The hole the first attempt had, and the reason tabs kept growing through
+  //   it: it waited only when the provider was at capacity AND had no unlocked
+  //   session, on the reasoning that a free one could be reused. Nothing here
+  //   reuses a registry session — the idle sweep CLOSES them, and sessionPool is
+  //   a separate standby pool — so a single unlocked session let every new
+  //   request past. Measured after that fix shipped: chatgpt 5 and perplexity 4,
+  //   against a cap of 3. ]]
+  assert.doesNotMatch(MANAGER, /atCapacity\(\) && !hasFree\(\)/,
+    "capacity alone must decide, or one idle session reopens the hole");
+  assert.match(MANAGER, /if \(atCapacity\(\)\) \{/);
+});
+
+test("the wait reaps idle sessions so it can actually end", () => {
+  //[[ Waiting on capacity alone only terminates if something frees capacity. An
+  //   unlocked session past the grace window IS capacity, so the loop closes
+  //   those rather than spinning until the budget runs out. ]]
+  assert.match(MANAGER, /const reapIdle = async \(\)/);
+  assert.match(MANAGER, /if \(!\(await reapIdle\(\)\)\)/);
 });
 
 test("the wait budget is overridable but has a sane default", () => {

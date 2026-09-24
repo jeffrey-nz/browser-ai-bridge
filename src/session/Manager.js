@@ -120,28 +120,43 @@ export class SessionManager {
     //   refusing: the bridge is a queue in front of a browser, and the work is
     //   not urgent enough to be worth a second tab. If nothing frees within the
     //   budget the error is explicit, and the client's own cycle/retry treats it
-    //   as a transient failure and moves on. ]]
+    //   as a transient failure and moves on.
+    //
+    //   FIRST ATTEMPT HAD A HOLE, and the tabs kept growing through it: it only
+    //   waited when the provider was at capacity AND had no unlocked session,
+    //   on the reasoning that a free one could be reused. Nothing here reuses a
+    //   registry session — the idle sweep above CLOSES them and sessionPool is a
+    //   separate standby pool — so one unlocked session let every new request
+    //   past the cap. Measured after that fix shipped: chatgpt 5 sessions and
+    //   perplexity 4, against a cap of 3. The condition is now capacity alone,
+    //   and the loop reaps idle sessions as they age out so the wait can end. ]]
+    const sessionsFor = () =>
+      this.registry.list().filter((s) => s.providerId === providerId);
     const atCapacity = () =>
-      this.registry.list().filter((s) => s.providerId === providerId).length >=
-      TAB_LIMITS.maxSessionsPerProvider;
-    const hasFree = () =>
-      this.registry
-        .list()
-        .some((s) => s.providerId === providerId && !s.locked);
+      sessionsFor().length >= TAB_LIMITS.maxSessionsPerProvider;
+    //[[ An unlocked session past the grace window is capacity waiting to be
+    //   reclaimed, so free it rather than waiting on it. Re-run inside the loop:
+    //   a session that is merely BETWEEN turns becomes reclaimable as it ages. ]]
+    const reapIdle = async () => {
+      const idle = sessionsFor().filter(
+        (x) =>
+          !x.locked &&
+          Date.now() - (x.lastUsedAt ?? x.createdAt.getTime()) >
+            TAB_LIMITS.idleGraceMs,
+      );
+      for (const x of idle) await this.closeSession(x.id).catch(() => {});
+      return idle.length;
+    };
 
-    if (atCapacity() && !hasFree()) {
+    if (atCapacity()) {
       const waitedFrom = Date.now();
       logger.warn(
-        `[SessionManager] ${providerId} is at its cap of ${TAB_LIMITS.maxSessionsPerProvider} sessions and all are busy — waiting for one instead of opening another tab.`,
+        `[SessionManager] ${providerId} is at its cap of ${TAB_LIMITS.maxSessionsPerProvider} sessions — waiting for one instead of opening another tab.`,
       );
-      while (
-        atCapacity() &&
-        !hasFree() &&
-        Date.now() - waitedFrom < CAPACITY_WAIT_MS
-      ) {
-        await new Promise((r) => setTimeout(r, 500));
+      while (atCapacity() && Date.now() - waitedFrom < CAPACITY_WAIT_MS) {
+        if (!(await reapIdle())) await new Promise((r) => setTimeout(r, 500));
       }
-      if (atCapacity() && !hasFree()) {
+      if (atCapacity()) {
         const err = new Error(
           `${providerId} is at its session cap (${TAB_LIMITS.maxSessionsPerProvider}) and none became free within ${Math.round(CAPACITY_WAIT_MS / 1000)}s`,
         );
