@@ -2,6 +2,7 @@ import process from "node:process";
 import { logger } from "#utils/logger.js";
 import { createNewSession } from "./Creator.js";
 import { PROVIDER_CONFIG } from "../config/providers.js";
+import { LIMITS as TAB_LIMITS } from "./TabJanitor.js";
 
 const POOL_SIZE = Number(process.env.POOL_SIZE ?? 1);
 // How long to suppress replenishment after a warmup failure (e.g. stalled/throttled).
@@ -13,6 +14,10 @@ export class SessionPool {
     this.isShuttingDown = false;
     this._warming = new Set(); // providers currently being warmed
     this._failedAt = new Map(); // providerId → timestamp of last replenish failure
+    //[[ How many LIVE sessions a provider has. Injected by SessionManager, which
+    //   owns the registry — importing it here would be circular. Defaults to 0 so
+    //   a pool used standalone (tests) behaves exactly as it did before. ]]
+    this.countLive = () => 0;
   }
 
   async initializePool() {
@@ -48,6 +53,27 @@ export class SessionPool {
     }
     const pool = this.warmSessions.get(providerId);
     if (pool.length >= POOL_SIZE) return;
+
+    //[[ A WARM TAB IS STILL A TAB, AND THIS POOL WAS NOT COUNTING THEM.
+    //
+    //   Replenish checked only its own POOL_SIZE, so a provider already holding
+    //   maxSessionsPerProvider live sessions still got a standby tab opened on
+    //   top — and because this calls createNewSession() directly rather than
+    //   Manager.createSession(), it went round the creation cap entirely.
+    //   Measured 2026-09-24 with the cap at 2: chatgpt and gemini repeatedly sat
+    //   at 3-5 tabs while the census reported them over cap.
+    //
+    //   The ceiling is a ceiling on TABS for that provider, so the standby pool
+    //   has to be inside it. When the provider is full the warm tab is simply
+    //   not worth opening: a caller will wait a few seconds for a real session
+    //   instead, which is the trade the cap already makes. ]]
+    const live = this.countLive(providerId);
+    if (live + pool.length >= TAB_LIMITS.maxSessionsPerProvider) {
+      logger.debug(
+        `[Pool] Not warming ${providerId}: ${live} live + ${pool.length} standby already meets the cap of ${TAB_LIMITS.maxSessionsPerProvider}.`,
+      );
+      return;
+    }
 
     this._warming.add(providerId);
     logger.debug(

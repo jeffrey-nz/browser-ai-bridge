@@ -32,6 +32,66 @@ import { logger } from "#utils/logger.js";
 const LIMIT_RE =
   /\b(?:limit|quota|rate.?limit|too many requests|out of (?:messages|credits|uses))\b/i;
 
+//[[ A LIMIT NOTICE, AS OPPOSED TO THE WORD "LIMIT" APPEARING SOMEWHERE.
+//
+//   LIMIT_RE above is deliberately loose, because it only decides which LINE a
+//   duration may be read from. Deciding that a provider is out of quota needs a
+//   much narrower test, or any page mentioning "limits" in its footer would
+//   bench a working provider.
+//
+//   Only kimi had a rateLimit phrase in its spec; qwen, zai, mistral and
+//   perplexity all had `rateLimit: null`, so four of the five generic providers
+//   had NO limit detection at all. Rather than hand-writing a sentence per site
+//   and waiting to be surprised by the fifth, these are the shapes the notices
+//   actually take. Measured live on www.perplexity.ai, 2026-09-24:
+//     "You've reached your free search limit"
+//     "Your access will reset in a few hours. Upgrade to Perplexity Pro…"
+//   and on grok.com: "18 hours 49 minutes before limit is gone". ]]
+const LIMIT_NOTICE_RE = new RegExp(
+  [
+    "you(?:'ve| have)\\s+(?:reached|hit|used)\\s+(?:your|the)\\b",
+    "reached\\s+(?:your|the)\\s+(?:free\\s+)?\\w*\\s?limit",
+    "rate\\s?limit(?:ed|\\s+reached|\\s+exceeded)?",
+    "too many requests",
+    "out of\\s+(?:free\\s+)?(?:searches|messages|credits|uses|tokens)",
+    "(?:daily|hourly|monthly|usage|message|search)\\s+limit",
+    "limit(?:\\s+is)?\\s+(?:reached|exceeded|gone)",
+    "before limit is gone",
+    "upgrade to\\s+\\S+\\s+for unlimited",
+    "quota\\s+(?:reached|exceeded)",
+  ].join("|"),
+  "i",
+);
+
+//[[ "A FEW HOURS" IS A DURATION TOO, AND IT IS THE ONE PERPLEXITY GIVES.
+//   Its notice states no number at all — "Your access will reset in a few hours"
+//   — so a digit-only parser falls back to UNKNOWN_LIMIT_SECONDS, which is
+//   fifteen minutes and wrong by an order of magnitude. These are read as the
+//   plain-English spans they are, deliberately on the SHORT side of what the
+//   words could mean: coming back too early costs one probe, and holding a
+//   working provider off for hours costs the run. ]]
+const VAGUE_SPANS = [
+  [/\ba few hours\b/i, 3 * 3600],
+  [/\bseveral hours\b/i, 4 * 3600],
+  [/\ban hour\b/i, 3600],
+  [/\ba few minutes\b/i, 5 * 60],
+  [/\ba couple of hours\b/i, 2 * 3600],
+  [/\blater today\b/i, 3 * 3600],
+  [/\btomorrow\b/i, 12 * 3600],
+];
+
+//[[ THE COUNTDOWN IS OFTEN ON A DIFFERENT LINE FROM THE NOTICE.
+//   grok puts both in one line ("18 hours 49 minutes before limit is gone"), and
+//   perplexity does not: the notice is "You've reached your free search limit"
+//   and the span is on the NEXT line, "Your access will reset in a few hours."
+//   That second line was skipped because LIMIT_RE did not match it — its only
+//   limit-ish words are "unlimited" and "limits", neither of which is \blimit\b —
+//   so the parse returned null and the caller fell back to fifteen minutes for a
+//   limit measured in hours. A line that talks about RESETTING is just as much a
+//   place to read a span from as one that talks about the limit. ]]
+const RESET_RE =
+  /\b(?:reset|resets|try again|available again|back (?:in|at)|before limit|access will|come back)\b/i;
+
 /** "18 hours 49 minutes", "45 minutes", "2h 30m", "30 seconds". */
 const UNIT_RE = /(\d{1,4})\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/gi;
 
@@ -70,7 +130,7 @@ export function parseLimitCountdown(text) {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.length > 300) continue;
-    if (!LIMIT_RE.test(line)) continue;
+    if (!LIMIT_RE.test(line) && !RESET_RE.test(line)) continue;
 
     let seconds = 0;
     let matched = false;
@@ -81,6 +141,12 @@ export function parseLimitCountdown(text) {
       if (!key) continue;
       seconds += Number(m[1]) * UNIT_SECONDS[key];
       matched = true;
+    }
+    if (!matched) {
+      // No digits on the line — it may still state a span in words.
+      for (const [re, secs] of VAGUE_SPANS) {
+        if (re.test(line)) { seconds = secs; matched = true; break; }
+      }
     }
     if (!matched || seconds <= 0) continue;
     if (seconds > MAX_LIMIT_SECONDS) continue; // implausible — treat as unparsed
@@ -100,6 +166,26 @@ export async function readLimitSeconds(page) {
     .catch(() => "");
   if (!body || !LIMIT_RE.test(body)) return null;
   return parseLimitCountdown(body) ?? UNKNOWN_LIMIT_SECONDS;
+}
+
+/** Does this page carry a real "you are out of quota" notice? */
+export function looksLimited(text) {
+  return LIMIT_NOTICE_RE.test(String(text || ""));
+}
+
+/**
+ * Read a limit notice off a live page.
+ * → { seconds, notice } when the page says the provider is out, else null.
+ */
+export async function detectLimitOnPage(page) {
+  const body = await page
+    .evaluate(() => document.body?.innerText || "")
+    .catch(() => "");
+  if (!looksLimited(body)) return null;
+  return {
+    seconds: parseLimitCountdown(body) ?? UNKNOWN_LIMIT_SECONDS,
+    notice: limitNotice(body),
+  };
 }
 
 /** The notice line itself, for a log a human has to act on. */

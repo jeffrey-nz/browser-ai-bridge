@@ -28,6 +28,10 @@ const GC_INTERVAL_MS = Number(process.env.GC_INTERVAL_MS) || 5 * 60 * 1000;
 export class SessionManager {
   constructor() {
     this.registry = new SessionRegistry();
+    // The standby pool opens real tabs and must stay inside the same
+    // per-provider ceiling; it cannot import the registry without a cycle.
+    sessionPool.countLive = (providerId) =>
+      this.registry.list().filter((s) => s.providerId === providerId).length;
     // In test environment, skip the GC interval to allow Node to exit cleanly.
     if (process.env.NODE_ENV !== "test") {
       this.gcInterval = setInterval(

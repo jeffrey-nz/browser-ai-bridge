@@ -13,6 +13,7 @@ import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
 import { cleanAiResponse } from "#ai/shared/markdownCleaner.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { DEFAULT_STABLE_POLLS } from "./specs.js";
+import { detectLimitOnPage, describeLimit } from "#ai/shared/usageLimit.js";
 
 /**
  * One interaction implementation, driven by a spec. See specs.js for why.
@@ -97,10 +98,19 @@ export function makeInteraction(spec) {
         { retries: 4, spaceHack: true, ctrlEnterFallback: true },
       );
     } catch (err) {
-      if (await checkRateLimitHit(page)) {
+      const blocked = await checkRateLimitHit(page);
+      if (blocked) {
         await dismissModals(page).catch(() => {});
-        const e = new Error(`${spec.name} is over capacity (send blocked)`);
+        const e = new Error(
+          blocked && blocked.seconds
+            ? describeLimit(spec.name, blocked.seconds, blocked.notice)
+            : `${spec.name} is over capacity (send blocked)`,
+        );
         e.rateLimited = true;
+        if (blocked && blocked.seconds) {
+          e.cooldownSeconds = blocked.seconds;
+          e.limitNotice = blocked.notice;
+        }
         throw e;
       }
       throw err;
@@ -189,10 +199,11 @@ export function makeInteraction(spec) {
   //   stays valid as one; an array is checked phrase by phrase and hits on the
   //   first match. See the kimi entry in specs.js for why a list exists. ]]
   async function checkRateLimitHit(page) {
-    if (!spec.rateLimit) return false;
-    const phrases = Array.isArray(spec.rateLimit)
-      ? spec.rateLimit
-      : [spec.rateLimit];
+    const phrases = spec.rateLimit
+      ? Array.isArray(spec.rateLimit)
+        ? spec.rateLimit
+        : [spec.rateLimit]
+      : [];
     for (const phrase of phrases) {
       const seen = await page
         .getByText(phrase, { exact: false })
@@ -203,6 +214,32 @@ export function makeInteraction(spec) {
         logger.warn(`[${spec.name}] capacity notice on page: "${phrase}"`);
         return true;
       }
+    }
+
+    //[[ FOUR OF THE FIVE GENERIC PROVIDERS HAD NO LIMIT DETECTION AT ALL.
+    //
+    //   A spec phrase is exact and brittle: only kimi ever had one, so qwen, zai,
+    //   mistral and perplexity could sit on a "you are out of quota" page and
+    //   this returned false every time, and the poll waited out its full budget
+    //   against a page that was never going to answer.
+    //
+    //   Measured live on www.perplexity.ai, 2026-09-24, while it was limited:
+    //     "You've reached your free search limit"
+    //     "Your access will reset in a few hours. Upgrade to Perplexity Pro…"
+    //   Nothing in the bridge read either line.
+    //
+    //   So the shared detector runs for every generic provider, and a spec phrase
+    //   is now an addition to it rather than the only way in. The notice test is
+    //   deliberately much narrower than the one used to locate a COUNTDOWN — a
+    //   page mentioning "limits" in a footer must not bench a working provider.
+    //   The span it finds rides along on the error, so the cooldown is the one
+    //   the site stated rather than a default. ]]
+    const limited = await detectLimitOnPage(page).catch(() => null);
+    if (limited) {
+      logger.warn(
+        `[${spec.name}] usage limit on page${limited.notice ? `: "${limited.notice}"` : ""}`,
+      );
+      return limited;
     }
     return false;
   }
@@ -230,8 +267,16 @@ export function makeInteraction(spec) {
           //   empty composer until it timed out. ]]
           const hit = await checkRateLimitHit(page);
           if (hit) {
-            const err = new Error(`${spec.name} is over capacity`);
+            const err = new Error(
+              hit && hit.seconds
+                ? describeLimit(spec.name, hit.seconds, hit.notice)
+                : `${spec.name} is over capacity`,
+            );
             err.rateLimited = true;
+            if (hit && hit.seconds) {
+              err.cooldownSeconds = hit.seconds;
+              err.limitNotice = hit.notice;
+            }
             throw err;
           }
 
