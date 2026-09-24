@@ -14,6 +14,10 @@ import {
 // both doing a cold boot and opening duplicate tabs for the same provider.
 const _creatingLocks = new Map(); // providerId → Promise
 
+// How long a caller waits for a busy provider to free a session before giving up.
+// Longer than a typical turn, shorter than the poll budget that bounds the worst one.
+const CAPACITY_WAIT_MS = Number(process.env.SESSION_CAPACITY_WAIT_MS ?? 120000);
+
 // Sliding TTL - resets on every access. Sessions that haven't been touched
 // for this long are swept; actively-used sessions survive indefinitely.
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS) || 15 * 60 * 1000;
@@ -94,6 +98,59 @@ export class SessionManager {
       for (const s of idleSessions) {
         await this.closeSession(s.id).catch(() => {});
       }
+    }
+
+    //[[ THE PER-PROVIDER CAP WAS A CLEANING RULE, NOT A LIMIT.
+    //
+    //   MAX_TABS_PER_PROVIDER lived only in TabJanitor, which SWEEPS — and its
+    //   over-cap rule can only evict sessions that are NOT locked. Nothing capped
+    //   CREATION, so while every session for a provider was busy, each new
+    //   request simply opened another tab. The ceiling was therefore only ever
+    //   enforced against providers that were already idle, which is exactly when
+    //   it was not needed.
+    //
+    //   Measured 2026-09-24 generating tl-en/learn-tagalog, with the race reduced
+    //   to a single primary so there were no losers at all: tabs climbed 19 -> 30
+    //   over five minutes, with gemini, chatgpt and perplexity each holding five
+    //   to seven sessions, every one LOCKED, against a stated cap of 3. Reducing
+    //   racers had not helped because racing was never the source.
+    //
+    //   So a caller that arrives when the provider is full WAITS for a session to
+    //   free instead of opening one more. Waiting is the right answer rather than
+    //   refusing: the bridge is a queue in front of a browser, and the work is
+    //   not urgent enough to be worth a second tab. If nothing frees within the
+    //   budget the error is explicit, and the client's own cycle/retry treats it
+    //   as a transient failure and moves on. ]]
+    const atCapacity = () =>
+      this.registry.list().filter((s) => s.providerId === providerId).length >=
+      TAB_LIMITS.maxSessionsPerProvider;
+    const hasFree = () =>
+      this.registry
+        .list()
+        .some((s) => s.providerId === providerId && !s.locked);
+
+    if (atCapacity() && !hasFree()) {
+      const waitedFrom = Date.now();
+      logger.warn(
+        `[SessionManager] ${providerId} is at its cap of ${TAB_LIMITS.maxSessionsPerProvider} sessions and all are busy — waiting for one instead of opening another tab.`,
+      );
+      while (
+        atCapacity() &&
+        !hasFree() &&
+        Date.now() - waitedFrom < CAPACITY_WAIT_MS
+      ) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      if (atCapacity() && !hasFree()) {
+        const err = new Error(
+          `${providerId} is at its session cap (${TAB_LIMITS.maxSessionsPerProvider}) and none became free within ${Math.round(CAPACITY_WAIT_MS / 1000)}s`,
+        );
+        err.status = 503;
+        throw err;
+      }
+      logger.info(
+        `[SessionManager] ${providerId} freed a session after ${Math.round((Date.now() - waitedFrom) / 1000)}s — no extra tab opened.`,
+      );
     }
 
     let session = sessionPool.acquire(providerId);
