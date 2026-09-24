@@ -14,6 +14,45 @@ import {
 // both doing a cold boot and opening duplicate tabs for the same provider.
 const _creatingLocks = new Map(); // providerId → Promise
 
+//[[ THE CAP WAS CHECK-THEN-ACT, AND A BURST WALKED STRAIGHT THROUGH IT.
+//
+//   Counting sessions and then creating one is only safe if nothing else can
+//   create in between. Under `parallel` mode several turns for the same provider
+//   start at once: every one of them evaluated "under the cap" before any had
+//   registered a session, so every one created. Measured 2026-09-24 with the cap
+//   at 2: SEVEN chatgpt sessions, all created inside eleven seconds, and the log
+//   showing 33 cap waits — the check was running and simply losing the race.
+//
+//   _creatingLocks serialises the cold boot itself, which is a different thing:
+//   callers await it and then all proceed together. This gate serialises the
+//   whole decision — count, wait, acquire, create — per provider, so the second
+//   caller sees what the first did. Latency is the point, not a cost: the cap
+//   means concurrent turns for one provider are meant to queue. ]]
+const _providerGates = new Map(); // providerId → tail of a promise chain
+
+async function withProviderGate(providerId, fn) {
+  const previous = _providerGates.get(providerId) ?? Promise.resolve();
+  let release;
+  const mine = new Promise((r) => {
+    release = r;
+  });
+  // The tail others will queue behind. Held in a variable so the cleanup below
+  // can tell whether anyone has queued since — `previous.then(...)` builds a NEW
+  // promise each time it is written, so comparing against a fresh one never
+  // matches and the map would grow for the life of the process.
+  const tail = previous.then(() => mine);
+  _providerGates.set(providerId, tail);
+  await previous.catch(() => {});
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (_providerGates.get(providerId) === tail) {
+      _providerGates.delete(providerId);
+    }
+  }
+}
+
 // How long a caller waits for a busy provider to free a session before giving up.
 // Longer than a typical turn, shorter than the poll budget that bounds the worst one.
 const CAPACITY_WAIT_MS = Number(process.env.SESSION_CAPACITY_WAIT_MS ?? 120000);
@@ -72,6 +111,13 @@ export class SessionManager {
   }
 
   async createSession(providerId, mode = null) {
+    // The cap is only a cap if counting and creating cannot interleave.
+    return withProviderGate(providerId, () =>
+      this._createSessionLocked(providerId, mode),
+    );
+  }
+
+  async _createSessionLocked(providerId, mode = null) {
     // Serialise cold-boot per provider: if another caller is already spinning
     // up a new tab for this provider, wait for it to finish rather than
     // opening a second tab in parallel.
