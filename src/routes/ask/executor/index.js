@@ -7,7 +7,7 @@ import { handleRotationIfNeeded } from "./rotator.js";
 import { handleStalls } from "./stallLoop.js";
 import { gatherMetrics } from "./metrics.js";
 import { saveImagesToTempFiles, cleanupTempFiles } from "./imageAttachments.js";
-import { cooldownManager } from "../../../session/CooldownManager.js";
+import { cooldownManager, cooldownKey } from "../../../session/CooldownManager.js";
 
 //[[ A BACK-OFF CANNOT OUTLAST A DAILY QUOTA, SO IT MUST NOT TRY.
 //
@@ -224,6 +224,20 @@ async function runAskTurn(
   // response body. Retry with back-off. DeepSeek "Messages too frequent" typically
   // resets in 1-2 min; ChatGPT hourly. Use 4 retries: 90s, 90s, 120s, 300s.
   if (response.rateLimited) {
+    //[[ RECORD THE COOLDOWN AGAINST THE LANE, NOT THE WHOLE SITE.
+    //   promptWorkflow detects the limit but cannot see the session, so it does
+    //   not know which MODE was throttled. Here we do. gemini.google.com offers
+    //   Fast, Thinking and Pro on separate quotas: benching the site because Fast
+    //   ran out threw away two working models. Measured 2026-09-24 — with gemini
+    //   on cooldown, asking for mode "pro" and mode "thinking" were both refused
+    //   in 0s, though neither had been throttled. ]]
+    if (Number.isFinite(response.cooldownSeconds) && response.cooldownSeconds > 0) {
+      cooldownManager.trigger(
+        cooldownKey(session.providerId, session.mode),
+        response.cooldownSeconds,
+        response.limitNotice || response.reason,
+      );
+    }
     //[[ YIELD RATHER THAN SLEEP, when somebody else can answer.
     //
     //   The back-off below is 90s, 90s, 120s, 300s -- up to nine and a half

@@ -244,6 +244,9 @@ export class SessionManager {
         await session.engine.startNewChat();
       }
 
+      // Remembered so a cooldown can be recorded against the LANE that was
+      // actually throttled — gemini Fast running out must not bench Pro.
+      session.mode = mode || null;
       if (mode && typeof session.engine?.setMode === "function") {
         await session.engine
           .setMode(mode)

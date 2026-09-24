@@ -6,7 +6,7 @@ import {
   diagnoseBlockedPage,
   describeBlock,
 } from "#ai/shared/blockedPage.js";
-import { cooldownManager } from "../../session/CooldownManager.js";
+import { cooldownManager, cooldownKey } from "../../session/CooldownManager.js";
 
 export async function runPromptWorkflow(page, text, label, options) {
   try {
@@ -60,18 +60,15 @@ export async function runPromptWorkflow(page, text, label, options) {
       //   provider BEFORE opening a tab. Ten grok tabs a minute apart, each a
       //   wasted turn against a nineteen-hour limit, was the cost of returning
       //   this fact and storing none of it. ]]
-      if (Number.isFinite(err.cooldownSeconds) && err.cooldownSeconds > 0) {
-        cooldownManager.trigger(
-          String(options.providerName || "").toLowerCase(),
-          err.cooldownSeconds,
-          err.limitNotice || err.message,
-        );
-      }
+      //   The cooldown itself is recorded by the EXECUTOR, which can see the
+      //   session and so knows which MODE was throttled; this layer's job is to
+      //   carry the span and the notice up to it.
       return {
         ok: false,
         rateLimited: true,
         reason: err.message,
         ...(err.cooldownSeconds ? { cooldownSeconds: err.cooldownSeconds } : {}),
+        ...(err.limitNotice ? { limitNotice: err.limitNotice } : {}),
       };
     }
     if (err.busyGenerating) {

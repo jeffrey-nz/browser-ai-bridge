@@ -50,6 +50,35 @@ export const WRITABLE_PROVIDERS = new Set([
   "grok",
 ]);
 
+//[[ A QUOTA BELONGS TO A MODEL, NOT ALWAYS TO A SITE.
+//
+//   Cooldowns were keyed on the provider id, so a throttle on gemini benched
+//   gemini — all of it. But gemini.google.com offers Fast, Thinking and Pro and
+//   their quotas are separate: running out of Fast says nothing about whether
+//   Thinking will answer. Measured 2026-09-24: with gemini on cooldown, asking
+//   for mode "pro" and mode "thinking" were both refused in 0s by the SITE's
+//   cooldown, though neither model had been throttled.
+//
+//   So a cooldown is keyed by lane — provider, or provider:mode when a real mode
+//   was asked for. "auto" is not a mode in this sense: it means "whatever the
+//   site gives me", which is the site's own default lane.
+//
+//   The tri-state contract below is unchanged, and the WRITABLE_PROVIDERS test
+//   deliberately looks at the BASE provider: gemini:pro is writable exactly when
+//   gemini is, and a lane on a provider with no writer must still read `null`
+//   rather than a confident `false`. ]]
+export function cooldownKey(providerId, mode) {
+  const id = String(providerId || "");
+  const m = String(mode || "").toLowerCase();
+  return m && m !== "auto" ? `${id}:${m}` : id;
+}
+
+/** The site a lane runs on — what WRITABLE_PROVIDERS is keyed by. */
+function baseProvider(key) {
+  const at = String(key || "").indexOf(":");
+  return at < 0 ? String(key || "") : String(key).slice(0, at);
+}
+
 class CooldownManager {
   constructor() {
     this.cooldowns = new Map();
@@ -89,7 +118,7 @@ class CooldownManager {
     // `this.cooldowns` (nothing calls trigger() for it), so returning `false`
     // here would be indistinguishable from a real, measured "not on cooldown
     // right now" — exactly the conflation this ticket exists to end.
-    if (!WRITABLE_PROVIDERS.has(providerId)) {
+    if (!WRITABLE_PROVIDERS.has(baseProvider(providerId))) {
       return { active: null, remainingSeconds: null };
     }
 

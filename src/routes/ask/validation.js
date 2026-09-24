@@ -1,5 +1,5 @@
 import { PROVIDER_CONFIG } from "../../config/providers.js";
-import { cooldownManager } from "../../session/CooldownManager.js";
+import { cooldownManager, cooldownKey } from "../../session/CooldownManager.js";
 
 //[[ "TRY AGAIN LATER" IS NOT AN ANSWER WHEN LATER MEANS TOMORROW.
 //
@@ -57,7 +57,10 @@ export function validateRequest(
     };
   }
 
-  const cd = cooldownManager.check(checkId || provider);
+  //[[ The cooldown is per LANE: a throttle on gemini Fast must not refuse a
+  //   request for gemini Pro, whose quota is separate. "auto" collapses to the
+  //   site's own default lane. ]]
+  const cd = cooldownManager.check(cooldownKey(checkId || provider, req?.body?.mode));
   if (cd.active && !skipCooldown) {
     return {
       valid: false,
