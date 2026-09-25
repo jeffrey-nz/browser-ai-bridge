@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The session pool no longer hands out a standby tab that was closed while it
+  sat pooled. A pooled session waits unlocked and unwatched, so its tab can be
+  closed underneath it by the GC sweep, by TabJanitor's cap or by a browser
+  crash; `acquire()` never checked, so the caller adopted a dead page and its
+  first action failed with "Target page, context or browser has been closed",
+  logged in the same second as "Fast-booting from warm pool". Measured against
+  one client: 78 such failures over 23 chapters, in bursts — 44 of 51 ChatGPT
+  submissions in a single hour — and gemini warm-ups failing the same way.
+  A dead standby is now discarded and the caller cold boots, as it would have
+  done with an empty pool.
+
 ## [2.0.0] - 2026-09-25
 
 Everything since 1.0.0: five new providers, `/api/ask-all`, provider tiers,

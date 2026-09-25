@@ -107,10 +107,40 @@ export class SessionPool {
     }
   }
 
+  //[[ A STANDBY TAB CAN DIE WHILE IT WAITS, AND THIS HANDED IT OUT ANYWAY.
+  //
+  //   A pooled session sits unlocked with nobody watching it, sometimes for
+  //   minutes. In that window its tab can be closed by the GC sweep, by
+  //   TabJanitor's cap, by a Chrome crash, or by a person tidying up a window.
+  //   Nothing here noticed: acquire() shifted the dead session out and returned
+  //   it, the caller adopted its page, and the very first action failed with
+  //   "Target page, context or browser has been closed" — in the same second as
+  //   the cheerful "Fast-booting from warm pool" line above it.
+  //
+  //   Measured on reader-scripts ca-en/learn-catalan, 2026-09-25: 78 such
+  //   failures over 23 chapters, in bursts — 44 of 51 ChatGPT submissions in
+  //   one hour — and gemini warm-ups failing the same way alongside them. The
+  //   client could not tell this from a provider being broken, so it kept
+  //   spending full turns on a lane that was dead on arrival.
+  //
+  //   Which closer is responsible does not matter, and chasing that was the
+  //   wrong question: the pool must never hand out a session whose page is
+  //   already gone. A dead standby is simply discarded and the caller cold-
+  //   boots, which is what it would have done had the pool been empty. The
+  //   idiom is the one _cleanupStaleSessions already uses. ]]
   acquire(providerId) {
     const pool = this.warmSessions.get(providerId);
-    if (pool && pool.length > 0) {
+    while (pool && pool.length > 0) {
       const session = pool.shift();
+
+      if (session?.page?.isClosed?.()) {
+        logger.warn(
+          `[Pool] Discarding ${providerId} standby tab: it was closed while pooled.`,
+        );
+        session.engine?.close?.().catch(() => {});
+        continue; // try the next standby, then fall through to a cold boot
+      }
+
       logger.info(
         `[Pool] 🚀 Fast-booting ${providerId} session from warm pool.`,
       );
