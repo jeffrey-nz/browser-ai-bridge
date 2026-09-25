@@ -79,7 +79,9 @@ streaming) gets its own implementation:
 4. The Release workflow publishes a GitHub release whose notes are that
    version's `CHANGELOG.md` section. Running it for an existing tag publishes or
    refreshes that tag's release
-5. `npm publish` separately, from a clean checkout of the tag
+5. The same workflow then runs the tests on the tag and publishes it to npm
+   (trusted publishing, no token). The tag must match `package.json`'s version;
+   a version already on npm is skipped
 
 ## Selector stability tips
 

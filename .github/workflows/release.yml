@@ -1,9 +1,14 @@
 name: Release
 
-# Publishes a GitHub release whose notes are that version's CHANGELOG.md section.
-# Runs on a pushed v* tag, or by hand: for an existing tag it publishes (or
-# refreshes) that tag's release; for a new tag it creates the tag at the commit
-# the workflow was run on.
+# Publishes a GitHub release whose notes are that version's CHANGELOG.md section,
+# then publishes that tag to npm. Runs on a pushed v* tag, or by hand: for an
+# existing tag it publishes (or refreshes) that tag's release; for a new tag it
+# creates the tag at the commit the workflow was run on.
+#
+# npm publishing uses trusted publishing (OIDC) — no token secret. It needs a
+# trusted publisher on npmjs.com (package settings → Trusted Publisher → GitHub
+# Actions: jeffrey-nz / browser-ai-bridge / release.yml). A version already on
+# npm is skipped, so re-running to refresh release notes is safe.
 on:
   push:
     tags: ["v*"]
@@ -20,6 +25,8 @@ jobs:
   release:
     name: Create GitHub release
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +34,7 @@ jobs:
           fetch-depth: 0 # all tags, to find this one and tell whether it's the latest
 
       - name: Resolve tag
+        id: resolve
         env:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
@@ -36,6 +44,7 @@ jobs:
             exit 1
           fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             git checkout -q "refs/tags/$TAG"
             echo "NEW_TAG=false" >> "$GITHUB_ENV"
@@ -69,3 +78,51 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag --latest="$LATEST"
           fi
+
+  publish:
+    name: Publish to npm
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.release.outputs.tag }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24" # ships npm 11, which trusted publishing needs
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Check version and whether it is already published
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "package.json version $VERSION does not match tag $TAG" >&2
+            exit 1
+          fi
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already on npm; skipping publish"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install dependencies
+        if: env.SKIP != 'true'
+        run: npm ci
+
+      - name: Run unit tests
+        if: env.SKIP != 'true'
+        run: npm test
+        env:
+          NODE_ENV: test
+
+      - name: Publish
+        if: env.SKIP != 'true'
+        run: npm publish --access public
