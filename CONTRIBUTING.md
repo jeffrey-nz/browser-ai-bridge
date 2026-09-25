@@ -34,15 +34,25 @@ Pass/fail screenshots land in `reports/`. If a provider fails, check the `*-fail
 2. Check `reports/<provider>-failure.html` for the live DOM
 3. Update the relevant locator file in `src/ai/<provider>/locators.js`
 4. Re-run the audit to verify
-5. Or run `npm run audit:fix` to get LLM-generated suggestions based on the failure HTML
+5. Or run `npm run audit:fix`: it copies a prompt with the failure report and HTML snapshot to your clipboard, to paste into any LLM for suggested selectors
 
 ## Adding a new provider
 
-1. Create `src/ai/<provider>/locators.js` exporting a `<PROVIDER>_LOCATORS` object with at minimum: `newChatBtn`, `inputBox`, `sendBtn`, `stopBtn`, `responseBlock`, `doneSignal`
-2. Create `src/ai/<provider>/session.js`, `index.js`, and `interaction/` mirroring an existing provider (e.g. `src/ai/grok/`)
-3. Add the provider to `src/config/providers.js` and `src/startup/providers.js`
-4. Register the audit entry in `src/audit/providers.js`
-5. Run the full audit to verify
+**A plain chat site** (type, send, wait, read the answer) needs only a spec: add
+an entry to `GENERIC_SPECS` in `src/ai/generic/specs.js` with its `id`, `name`,
+`url`, `urlMatch`, `maxPromptChars` and `locators`. Provider config, the login
+wizard, session creation and the audit all read that table, so nothing else
+needs registering. Copy an existing entry such as `kimi`.
+
+**A site that needs custom behaviour** (mode switching, uploads, unusual
+streaming) gets its own implementation:
+
+1. Copy `src/ai/deepseek/` (the most complete example) to `src/ai/<provider>/`. Its `locators.js` exports `<PROVIDER>_LOCATORS` with at least `newChatBtn`, `inputBox`, `sendBtn`, `stopBtn`, `responseBlock` and `doneSignal`
+2. Register the provider class in `src/session/Creator.js`
+3. Add it to `src/config/providers.js` (name, `maxPromptChars`) and `src/startup/providers.js` (URL and ready selector for the login wizard)
+4. If it has modes, map them in `PROVIDER_MODES` in `src/ai/modes.js`
+5. Add an audit entry in `src/audit/providers.js`
+6. Run `npm run audit -- --provider <name>` to verify
 
 ## Code style
 
@@ -55,6 +65,7 @@ Pass/fail screenshots land in `reports/`. If a provider fails, check the `*-fail
 
 - Keep PRs focused: one concern per PR
 - Include a CHANGELOG entry under `[Unreleased]`
+- Run what CI runs: `npx prettier --check "src/**/*.js" "tests/**/*.js" "scripts/**"`, `npm test`, `npm run check:reachable` and `npm run check:docs`
 - If you're fixing a broken selector for a specific provider, mention which provider, which step failed, and briefly how you found the correct selector
 
 ## Selector stability tips
