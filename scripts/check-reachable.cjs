@@ -154,6 +154,14 @@ function computeReachability() {
   // package.json DECLARES — not every file physically sitting in the
   // directory.
   addEntry(pkg.bin);
+  // An npm script that runs a src/ file directly (`npm run audit` →
+  // src/audit/index.js) is a real entry point too — without this, the whole
+  // audit tool read as "unwired" and sat in the allowlist.
+  for (const cmd of Object.values(pkg.scripts || {})) {
+    for (const m of cmd.matchAll(/\bnode\b[^&|;]*?\s(\.?\/?src\/\S+)/g)) {
+      addEntry(m[1]);
+    }
+  }
   const uniqEntries = [...new Set(entries)];
   const edgesFrom = (f) => {
     const src = fs.readFileSync(f, "utf8");
