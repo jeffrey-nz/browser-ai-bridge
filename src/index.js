@@ -120,8 +120,9 @@ async function init() {
   const shutdown = async () => {
     process.stdout.write("\n");
     stopKeys();
-    // A sweep mid-shutdown would race closeAllSessions() for the same tabs.
-    stopTabJanitor();
+    // A sweep mid-shutdown would race closeAllSessions() for the same tabs:
+    // block new ones and let a running one finish first.
+    await stopTabJanitor();
     logger.info("[Shutdown] Closing server and active AI sessions...");
     removePidFile(port);
     try {

@@ -327,7 +327,21 @@ export function census({ sessions, pages, ownedPageKeys, poolCounts }) {
 // page drops out on its own.
 const orphanFirstSeen = new WeakMap();
 
-export async function sweep({ manager, pool, getContext, log = logger }) {
+// Set by stopTabJanitor(): shutdown is closing these tabs itself, so no sweep —
+// interval or POST /api/tabs/sweep — may start, and a running one is awaited.
+let stopped = false;
+let inFlight = null;
+
+export function sweep(args) {
+  if (stopped) return Promise.resolve(null);
+  const run = runSweep(args).finally(() => {
+    if (inFlight === run) inFlight = null;
+  });
+  inFlight = run;
+  return run;
+}
+
+async function runSweep({ manager, pool, getContext, log = logger }) {
   try {
     const { context } = await getContext();
     const livePages = context.pages();
@@ -464,6 +478,7 @@ export function startTabJanitor({
   intervalMs = Number(process.env.TAB_SWEEP_INTERVAL_MS) || 60_000,
 }) {
   if (janitorInterval) return janitorInterval;
+  stopped = false;
   janitorInterval = setInterval(
     () => sweep({ manager, pool, getContext }),
     intervalMs,
@@ -479,7 +494,20 @@ export function isTabJanitorRunning() {
   return janitorInterval !== null;
 }
 
-export function stopTabJanitor() {
+// Resolves once any sweep already running has finished — or after waitMs, so
+// a sweep stuck on a wedged browser cannot hold shutdown hostage.
+export async function stopTabJanitor({ waitMs = 5000 } = {}) {
   if (janitorInterval) clearInterval(janitorInterval);
   janitorInterval = null;
+  stopped = true;
+  if (!inFlight) return;
+  let timer;
+  await Promise.race([
+    inFlight,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, waitMs);
+      timer.unref?.();
+    }),
+  ]);
+  clearTimeout(timer);
 }
