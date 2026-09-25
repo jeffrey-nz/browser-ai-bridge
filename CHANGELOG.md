@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `label`/`skipConstraint`/`projectDir` and `/api/sessions`' `mode`, and added
   a table of the 25 endpoints that had no entry. `.env.example` lists every
   tunable the code reads, commented out at its default.
+- Stopping the tab janitor now also blocks `POST /api/tabs/sweep` and waits (up
+  to 5s) for a sweep already running. Lockfile bumped by `npm audit fix`.
 
 ### Fixed
 
@@ -68,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in one bridge session** during a long generation run, each losing the turn in
   flight. `browser.version()` is answered by the CDP endpoint and does not depend
   on any page, so it alone now decides whether to reset; the page probe is kept
-  on its own 2s budget and reported as a stuck *page*, never as a dead browser.
+  on its own 2s budget and reported as a stuck _page_, never as a dead browser.
 - Kimi capacity modal no longer hangs a turn. Two independent gaps, both behind
   the same symptom — a run sitting on Kimi's "too many requests" notice instead
   of moving to the next provider:
