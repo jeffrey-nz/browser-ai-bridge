@@ -4,14 +4,21 @@ A local REST API server that automates real browser sessions to interact with AI
 
 ## Supported providers
 
-| Provider                     | ID           |
-| ---------------------------- | ------------ |
-| ChatGPT                      | `chatgpt`    |
-| Google Gemini                | `gemini`     |
-| Microsoft Copilot (Personal) | `copilot`    |
-| Microsoft 365 Copilot (Work) | `copilot365` |
-| DeepSeek                     | `deepseek`   |
-| xAI Grok                     | `grok`       |
+| Provider          | ID           | Prompt limit (chars) |
+| ----------------- | ------------ | -------------------- |
+| ChatGPT           | `chatgpt`    | 150,000              |
+| Google Gemini     | `gemini`     | 150,000              |
+| DeepSeek          | `deepseek`   | 150,000              |
+| xAI Grok          | `grok`       | 150,000              |
+| Microsoft Copilot | `copilot`    | 9,500                |
+| Kimi              | `kimi`       | 100,000              |
+| Qwen              | `qwen`       | 100,000              |
+| Z.ai (GLM)        | `zai`        | 100,000              |
+| Mistral Le Chat   | `mistral`    | 100,000              |
+| Perplexity        | `perplexity` | 100,000              |
+
+The last five share one spec-driven implementation (`src/ai/generic/specs.js`).
+Set `BROWSER_AI_PROVIDERS=chatgpt,gemini` to start only some of them.
 
 ## How it works
 
@@ -21,7 +28,10 @@ Your app → POST /api/ask → browser-ai-bridge
                                        └── streams response back
 ```
 
-The server maintains a pool of persistent browser tabs — one per AI provider — each already logged in. When you send a prompt, the server injects it into the correct tab, waits for the AI to finish generating, and returns the full response text.
+The server keeps warm, logged-in browser tabs per provider (a janitor caps them
+at `MAX_TABS_PER_PROVIDER`, default 3). When you send a prompt, the server types
+it into the right tab, waits for the AI to finish generating, and returns the
+full response text.
 
 ## Requirements
 
@@ -62,7 +72,10 @@ CDP_URL=http://127.0.0.1:9222
 LOG_LEVEL=info
 ```
 
-See [`.env.example`](.env.example) for all available options.
+[`.env.example`](.env.example) lists every option, including `PROVIDER_TIERS`
+(fall through to another provider when one is rate-limited — see
+[API.md](API.md#provider-tiers--falling-through-a-rate-limit)) and the tab and
+session tunables, which are commented out at their defaults.
 
 ### Skipping login verification
 
@@ -93,7 +106,9 @@ npm start
 
 > Tip: choose **Skip setup** (or set `BROWSER_AI_ASSUME_LOGGED_IN=1`) when your Chrome profile already has every provider logged in and you want an unattended start.
 
-After initial login, Chrome saves the session to a temp profile directory (`/tmp/chrome_ai_debug` by default). Subsequent starts don't require re-authentication unless sessions expire.
+After the first login, Chrome keeps the session in its profile directory,
+`~/.browser-ai-bridge/<CHROME_TMP>` (or `CHROME_USER_DATA_DIR` if set), so later
+starts don't need you to log in again unless a provider's session expires.
 
 ## Usage
 
@@ -108,9 +123,15 @@ curl http://localhost:3333/api/ping
   "status": "ready",
   "browser": { "connected": true },
   "uptime": 42.1,
-  "sessions": 2
+  "sessions": 2,
+  "activeSessions": 1,
+  "providers": { "chatgpt": { "name": "ChatGPT", "total": 1 } },
+  "mem": { "heapUsedMB": 48, "heapTotalMB": 64, "rssMB": 180 }
 }
 ```
+
+It returns `503` with `"status": "initialising"` until setup has finished.
+[API.md](API.md#get-apiping) lists every field.
 
 ### Send a prompt
 
@@ -123,9 +144,17 @@ curl -X POST http://localhost:3333/api/ask \
 ```json
 {
   "success": true,
-  "response": "Recursion is a technique where a function calls itself to solve smaller instances of the same problem until a base case is reached."
+  "response": "Recursion is a technique where a function calls itself to solve smaller instances of the same problem until a base case is reached.",
+  "data": null,
+  "provider": "chatgpt",
+  "turnIndex": 1,
+  "sessionAgeMs": 8120,
+  "requestId": "uuid"
 }
 ```
+
+`provider` is who actually answered — with `PROVIDER_TIERS` set it can differ
+from the one you asked for.
 
 The server automatically creates a session for the provider if one doesn't exist yet.
 
@@ -152,7 +181,7 @@ Create a session:
 curl -X POST http://localhost:3333/api/sessions \
   -H "Content-Type: application/json" \
   -d '{ "provider": "gemini" }'
-# → { "success": true, "sessionId": "uuid" }
+# → { "success": true, "sessionId": "uuid", "maxPromptChars": 150000 }
 ```
 
 Send to a specific session:
@@ -183,19 +212,24 @@ import { BrowserAIClient } from "browser-ai-bridge/client";
 const client = new BrowserAIClient({ baseUrl: "http://localhost:3333" });
 
 // One-shot — server picks or creates a session automatically
-const { data } = await client.ask({ provider: "chatgpt", prompt: "Hello!" });
-console.log(data.response);
+const { response } = await client.ask({
+  provider: "chatgpt",
+  prompt: "Hello!",
+});
+console.log(response);
 
 // Explicit session — keeps conversation context across turns
 const session = await client.createSession("gemini");
 const r1 = await session.ask("What is the capital of France?");
 const r2 = await session.ask("And its population?");
+console.log(r2.response);
 await session.close();
 ```
 
 ## API reference
 
-See [`API.md`](API.md) for the full endpoint documentation including request/response schemas, error codes, and prompt length limits.
+See [`API.md`](API.md) for every endpoint: request and response fields, error
+codes, prompt limits, images, `/api/ask-all`, and provider tiers.
 
 ## Audit tool
 
@@ -205,9 +239,15 @@ The built-in audit command verifies that all CSS selectors and automation steps 
 npm run audit
 ```
 
-This opens an interactive menu to select which providers to test. Each provider runs through 5 standard steps (new chat, input injection, send, generation polling, response extraction) and reports pass/fail with per-step screenshots saved to `reports/`.
+This opens an interactive menu to select which providers to test (`--provider
+<name>` for one, `--ci` for all without prompts). Each provider runs through 5
+standard steps (new chat, input injection, send, generation polling, response
+extraction), plus a model/mode step for Gemini and DeepSeek, and reports
+pass/fail with per-step screenshots saved to `reports/`.
 
-If a provider fails, the auto-fix command uses an LLM session to analyse the failure HTML and suggest updated selectors:
+If a provider fails, `audit:fix` copies a ready-made prompt — the failure report
+plus the page's HTML snapshot — to your clipboard, to paste into any LLM for
+updated selectors:
 
 ```bash
 npm run audit:fix
@@ -215,21 +255,34 @@ npm run audit:fix
 
 ## Corpus & diagnostic scripts
 
-Reusable tools under `scripts/` — reached for repeatedly across tickets, not tied to one closed one. Run directly with `node`, no bridge required unless noted:
+Reusable tools under `scripts/`. Run them with `node`; none needs the bridge
+running unless noted.
 
-- `scripts/vision-probe.mjs [--blind] [--count N --color name] [--providers a,b,c]` — sends a fixture image (or, with `--blind`, the same prompt with no image at all) to one or more providers and grades the reply against ground truth. `--help` for the full flag list.
-- `scripts/ia-grade.mjs` — regrades the whole `reports/vision-probe/` corpus against the current `classify()`, reporting the `imageAttached` flag's refutable/confirming/neither split and the corpus's realised (count,colour) prior alongside the generator's.
-- `scripts/shape-audit.mjs` — recomputes every recorded reply's shape fresh and reports where the stored value and today's classifier disagree, plus per-count and per-provider accuracy tables.
-- `scripts/fixture-audit.mjs` — decodes every committed fixture PNG's actual pixels and checks the drawn square count matches its declared truth.
-- `scripts/pngPixels.mjs` — the one shared PNG pixel decoder (IHDR/IDAT/inflate/un-filter). A library, not a CLI tool — imported by `fixture-audit.mjs` and `tests/renderPng.test.js`; write a caller against this file rather than a second decoder.
-- `scripts/attachment-diagnose.mjs <providerId>` — drives a real upload through the production `uploadFileToPage` path against a live provider tab (requires the bridge running) and reports whether attachment evidence appears, before and after. Written for T-014; a tool rather than a one-shot probe because `<providerId>` is a real argument — it answers the same question again for whichever provider's attachment path breaks next, not only the one it was first run against.
-- `scripts/dom-diagnose.mjs <urlSubstr> <mode> [args]` — inspects a live provider page's DOM (selector matches, ancestor chains of a known text, sibling walk, screenshot) over the bridge's own CDP connection, without touching bridge internals. `--help`-free; see the file header for its four modes. Written for T-005; a tool because every mode takes the target page and selector as arguments, so it answers the next selector-debugging question against a page that does not exist yet.
-- `scripts/doc-check.mjs` — checks this section against `scripts/` itself: every script named above still exists on disk, and every script on disk whose line 2 isn't `// @one-shot-probe` is named above. Run it after adding or removing a script.
-- `scripts/provenance-census.mjs` (`npm run census:provenance`) — censuses the tracked `reports/vision-probe/` corpus: how many rows can name the commit that produced them, split by consumer, and where the positive controls sit.
-- `scripts/generateCssColorTable.mjs` — regenerates the `cssColorTable.json` beside it (CSS colour name → RGB) by asking a real Chrome over CDP, so no RGB value is hand-typed. Deterministic; requires Chrome on `CDP_URL`.
-- `scripts/serverProvenance.mjs` — fetches `/api/ping` once and returns the CLAUSE 0 provenance block (`loadedCommit`, `loadedTreeDirty`, and a `fieldsPresent` map so a caller can tell "the server didn't report it" apart from "we never got an answer"). Import `fetchServerProvenance` from a live-verification script under `evidence/` rather than re-implementing the fetch by hand.
+**Vision-probe corpus** (`reports/vision-probe/`)
 
-One-shot, closed-ticket evidence probes belong under `evidence/` with the rest of that ticket's artifacts (see CLAUDE.md). The few still under `scripts/` — kept there because a test imports them — are marked `// @one-shot-probe` as their own line 2, exactly — the line right after the shebang; `doc-check.mjs` checks that one exact position, not a filename pattern or any earlier/later line, to tell the two apart) and are not listed here; see the ticket named in each file's header for context.
+- `scripts/vision-probe.mjs [--blind] [--count N --color name] [--providers a,b,c]` — sends a fixture image (or, with `--blind`, the same prompt with no image) to providers and grades each reply. `--help` lists every flag.
+- `scripts/ia-grade.mjs` — regrades the whole corpus against the current `classify()` and reports how often the `imageAttached` flag was right.
+- `scripts/shape-audit.mjs` — recomputes each recorded reply's shape and reports where the stored value and today's classifier disagree.
+- `scripts/fixture-audit.mjs` — decodes every fixture PNG and checks its drawn square count matches its declared truth.
+- `scripts/pngPixels.mjs` — the shared PNG decoder (a library, imported by `fixture-audit.mjs` and `tests/renderPng.test.js`).
+- `scripts/provenance-census.mjs` (`npm run census:provenance`) — how many corpus rows can name the commit that produced them, and where the positive controls sit.
+- `scripts/generateCssColorTable.mjs` — regenerates `cssColorTable.json` (CSS colour name → RGB) from a real Chrome over CDP. Deterministic; needs Chrome on `CDP_URL`.
+
+**Live debugging** (need Chrome, and the bridge where noted)
+
+- `scripts/attachment-diagnose.mjs <providerId>` — runs a real upload through `uploadFileToPage` on a live provider tab (bridge running) and reports whether the attachment shows up.
+- `scripts/dom-diagnose.mjs <urlSubstr> <mode> [args]` — inspects a live provider page's DOM: selector matches, ancestors of a known text, sibling walk, screenshot. The file header describes the four modes.
+- `scripts/serverProvenance.mjs` — fetches `/api/ping` and returns which commit the running server loaded (`loadedCommit`, `loadedTreeDirty`). Import `fetchServerProvenance` from live-verification scripts rather than re-implementing it.
+
+**Repo checks** (run in CI)
+
+- `scripts/check-reachable.cjs` (`npm run check:reachable`) — fails if any `src/` module is unreachable from a declared entry point.
+- `scripts/doc-check.mjs` (`npm run check:docs`) — fails if a script listed here is missing, or a script in `scripts/` isn't listed.
+
+One-off probes written for a single ticket belong in `evidence/` with that
+ticket's other artifacts (see [CLAUDE.md](CLAUDE.md)). The few still in
+`scripts/` because a test imports them carry `// @one-shot-probe` as line 2,
+which is how `doc-check.mjs` knows not to require them here.
 
 ## Hotkeys (while server is running)
 
@@ -266,11 +319,18 @@ src/
 
 ## Platform notes
 
-**WSL2**: Chrome cold-start can take 20+ seconds on WSL2. The server waits up to 40 seconds for the CDP port to become available before failing.
+**Chrome location**: macOS uses `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`,
+Windows `C:\Program Files\Google\Chrome\Application\chrome.exe`, and Linux the
+first of `google-chrome`, `google-chrome-stable`, `chromium-browser` or `chromium`
+on `PATH`.
 
-**macOS**: Chrome is expected at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+**WSL2**: Chrome cold-start can take 20+ seconds. The server waits up to 60
+seconds (`CDP_BIND_TIMEOUT_MS`) for the CDP port before failing.
 
-**Linux / CI**: Set `HEADLESS=true` in `.env` to run Chrome in headless mode.
+**Running without a visible window**: `HEADLESS=true` runs true headless Chrome;
+`HEADLESS=offscreen` keeps a normal window but places it off-screen. Prefer
+`offscreen` for Gemini — true headless triggers a Google account-chooser that
+blocks input.
 
 ## Contributing
 
