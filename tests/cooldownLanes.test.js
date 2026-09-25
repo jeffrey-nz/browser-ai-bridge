@@ -62,7 +62,7 @@ test("a lane is writable exactly when its SITE is — the tri-state still holds"
 test("the request gate consults the lane, not just the site", () => {
   assert.match(
     read("routes", "ask", "validation.js"),
-    /cooldownManager\.check\(cooldownKey\(checkId \|\| provider, req\?\.body\?\.mode\)\)/,
+    /cooldownManager\.check\(\s*cooldownKey\(checkId \|\| provider, req\?\.body\?\.mode\),?\s*\)/,
   );
 });
 
