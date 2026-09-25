@@ -73,10 +73,12 @@ streaming) gets its own implementation:
 1. Move the `[Unreleased]` entries in `CHANGELOG.md` under a new
    `## [X.Y.Z] - YYYY-MM-DD` heading, and update the compare links at the bottom
 2. `npm version X.Y.Z --no-git-tag-version` to bump `package.json` and the lockfile
-3. Commit, push to `main`, then tag and push: `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`
+3. Commit and push to `main`, then either push a tag
+   (`git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`) or run the Release
+   workflow by hand on `main` with `vX.Y.Z`, which creates the tag there
 4. The Release workflow publishes a GitHub release whose notes are that
-   version's `CHANGELOG.md` section. For an older tag with no release, run the
-   workflow by hand with the tag name
+   version's `CHANGELOG.md` section. Running it for an existing tag publishes or
+   refreshes that tag's release
 5. `npm publish` separately, from a clean checkout of the tag
 
 ## Selector stability tips

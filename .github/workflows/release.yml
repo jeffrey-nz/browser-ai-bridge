@@ -1,14 +1,16 @@
 name: Release
 
 # Publishes a GitHub release whose notes are that version's CHANGELOG.md section.
-# Runs on a pushed v* tag, or by hand for a tag that already exists.
+# Runs on a pushed v* tag, or by hand: for an existing tag it publishes (or
+# refreshes) that tag's release; for a new tag it creates the tag at the commit
+# the workflow was run on.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to publish a release for, e.g. v1.0.0"
+        description: "Tag to release, e.g. v2.0.0 (created at this commit if it doesn't exist)"
         required: true
 
 permissions:
@@ -20,15 +22,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all tags, to find this one and tell whether it's the latest
+
       - name: Resolve tag
         env:
           INPUT_TAG: ${{ inputs.tag }}
-        run: echo "TAG=${INPUT_TAG:-$GITHUB_REF_NAME}" >> "$GITHUB_ENV"
-
-      - uses: actions/checkout@v4
-        with:
-          ref: refs/tags/${{ env.TAG }}
-          fetch-depth: 0 # all tags, to tell whether this one is the latest
+        run: |
+          TAG="${INPUT_TAG:-$GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must look like vX.Y.Z, got: $TAG" >&2
+            exit 1
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            git checkout -q "refs/tags/$TAG"
+            echo "NEW_TAG=false" >> "$GITHUB_ENV"
+          else
+            echo "NEW_TAG=true" >> "$GITHUB_ENV"
+          fi
 
       - name: Extract release notes from CHANGELOG.md
         run: |
@@ -47,8 +60,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          NEWEST=$( (git tag -l 'v*'; echo "$TAG") | sort -V | tail -1)
+          LATEST=$([ "$TAG" = "$NEWEST" ] && echo true || echo false)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "$TAG" --notes-file notes.md
+            gh release edit "$TAG" --title "$TAG" --notes-file notes.md --latest="$LATEST"
+          elif [ "$NEW_TAG" = true ]; then
+            gh release create "$TAG" --title "$TAG" --notes-file notes.md --target "$GITHUB_SHA" --latest="$LATEST"
           else
-            gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag --latest=$([ "$TAG" = "$(git tag -l 'v*' --sort=-v:refname | head -1)" ] && echo true || echo false)
+            gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag --latest="$LATEST"
           fi
