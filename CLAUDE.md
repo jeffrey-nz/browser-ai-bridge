@@ -76,7 +76,7 @@ the CSS selectors. The **audit tool** verifies them:
 ```bash
 npm run audit                          # all providers
 npm run audit -- --provider Gemini     # one
-SHOW_BROWSER=true npm run audit -- --provider Gemini   # head-ful, watch it run
+npm run audit -- --ci                  # non-interactive, all providers
 ```
 
 The audit goes through standard motions (context reset → input injection
@@ -197,6 +197,6 @@ depending on live login state, until the name was caught and changed.
 ## When something breaks
 
 1. Hit `/api/ping` — confirms server is alive and reports memory.
-2. Run `npm run audit -- --provider <name> --show-browser` — fastest way to
-   see what's broken.
+2. Run `npm run audit -- --provider <name>` — fastest way to see what's
+   broken. Chrome is visible unless `HEADLESS` is set, so you can watch it.
 3. Check `logs/` and the SSE event stream for stall/cooldown signals.
