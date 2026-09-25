@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Housekeeping: prettier applied to the 26 files CI's format check was failing
+  on; unused `express-rate-limit` and `fast-glob` dependencies dropped; the
+  reachability gate now treats `npm run` targets under `src/` as entry points
+  (so `src/audit/` is no longer allowlisted as "unwired"); spent `tNNN-*.mjs`
+  ticket probes moved from `scripts/` to `evidence/`; `scripts/doc-check.mjs`
+  made green and added to CI as `npm run check:docs`; README/CLAUDE.md layout
+  sections brought in line with `src/`.
+
 ### Fixed
 
 - A **suspended** provider is now put on cooldown for exactly as long as its own

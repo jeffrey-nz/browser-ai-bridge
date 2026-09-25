@@ -21,9 +21,14 @@ src/
 ├── session/            # SessionManager — pool of browser tabs
 ├── audit/              # Selector-health audit tool (npm run audit)
 ├── config/             # Provider configs, constraints
+├── browser/            # Chrome launch + CDP connection
+├── agent/              # /api/agent orchestrator
+├── client/             # JS client for the HTTP API (package export ./client)
+├── heal/               # capturePageContext for stall diagnostics
+├── middleware/         # Express error handling
+├── setup/, startup/    # Provider login wizard and its /api/setup state
 ├── stalls.js           # Stall detection (per-session activity tracker)
-├── web/                # Event bus for SSE
-└── utils/              # Logger, etc.
+└── shims/              # Logger, event bus (SSE), terminal UI — reached via #utils/, #web/, #app/
 ```
 
 ## Hot paths
@@ -54,9 +59,8 @@ interaction/
 ├── chat.js          # startNewChat (click "New chat" button)
 ├── mode.js          # setMode (model/mode switching)
 └── prompt/
-    ├── index.js     # sendPromptAndWait, sendPromptWithFile entry
+    ├── index.js     # sendPromptAndWait / sendPromptWithFile: inject, send, wait, extract
     ├── input.js     # Type into editor + upload file
-    ├── executeTurn.js  # Inject text, click send, wait, extract
     ├── poll/        # Wait for generation to finish
     └── extract.js   # Pull response text from DOM
 ```

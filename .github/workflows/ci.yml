@@ -33,3 +33,6 @@ jobs:
 
       - name: Check src/ module reachability (T-116)
         run: npm run check:reachable
+
+      - name: Check scripts/ are documented in README (T-085)
+        run: npm run check:docs

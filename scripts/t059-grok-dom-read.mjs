@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @one-shot-probe — closed-ticket evidence script (T-059), kept under scripts/ because tests/t059AlignmentClassifier.test.js imports it.
 /**
  * t059-grok-dom-read.mjs — T-059. Settles, by an IN-WINDOW live DOM read
  * during a real grok turn (in the same regime T-054/T-072's echoing turns

@@ -225,9 +225,11 @@ Reusable tools under `scripts/` — reached for repeatedly across tickets, not t
 - `scripts/attachment-diagnose.mjs <providerId>` — drives a real upload through the production `uploadFileToPage` path against a live provider tab (requires the bridge running) and reports whether attachment evidence appears, before and after. Written for T-014; a tool rather than a one-shot probe because `<providerId>` is a real argument — it answers the same question again for whichever provider's attachment path breaks next, not only the one it was first run against.
 - `scripts/dom-diagnose.mjs <urlSubstr> <mode> [args]` — inspects a live provider page's DOM (selector matches, ancestor chains of a known text, sibling walk, screenshot) over the bridge's own CDP connection, without touching bridge internals. `--help`-free; see the file header for its four modes. Written for T-005; a tool because every mode takes the target page and selector as arguments, so it answers the next selector-debugging question against a page that does not exist yet.
 - `scripts/doc-check.mjs` — checks this section against `scripts/` itself: every script named above still exists on disk, and every script on disk whose line 2 isn't `// @one-shot-probe` is named above. Run it after adding or removing a script.
+- `scripts/provenance-census.mjs` (`npm run census:provenance`) — censuses the tracked `reports/vision-probe/` corpus: how many rows can name the commit that produced them, split by consumer, and where the positive controls sit.
+- `scripts/generateCssColorTable.mjs` — regenerates the `cssColorTable.json` beside it (CSS colour name → RGB) by asking a real Chrome over CDP, so no RGB value is hand-typed. Deterministic; requires Chrome on `CDP_URL`.
 - `scripts/serverProvenance.mjs` — fetches `/api/ping` once and returns the CLAUSE 0 provenance block (`loadedCommit`, `loadedTreeDirty`, and a `fieldsPresent` map so a caller can tell "the server didn't report it" apart from "we never got an answer"). Import `fetchServerProvenance` from a live-verification script under `evidence/` rather than re-implementing the fetch by hand.
 
-One-shot, closed-ticket evidence probes also live under `scripts/` (marked `// @one-shot-probe` as their own line 2, exactly — the line right after the shebang; `doc-check.mjs` checks that one exact position, not a filename pattern or any earlier/later line, to tell the two apart) and are not listed here; see the ticket named in each file's header for context.
+One-shot, closed-ticket evidence probes belong under `evidence/` with the rest of that ticket's artifacts (see CLAUDE.md). The few still under `scripts/` — kept there because a test imports them — are marked `// @one-shot-probe` as their own line 2, exactly — the line right after the shebang; `doc-check.mjs` checks that one exact position, not a filename pattern or any earlier/later line, to tell the two apart) and are not listed here; see the ticket named in each file's header for context.
 
 ## Hotkeys (while server is running)
 
@@ -246,14 +248,18 @@ src/
 │   ├── gemini/
 │   ├── deepseek/
 │   ├── grok/
+│   ├── generic/      # Spec-driven providers (kimi, qwen, ...) sharing one implementation
 │   └── shared/       # Shared DOM interaction utilities
-├── audit/            # Audit runner, steps, fix generator, and IO
+├── agent/            # /api/agent orchestration
+├── audit/            # Audit runner, steps, fix generator, and IO (npm run audit)
 ├── browser/          # Chrome connection, CDP management, launcher
+├── client/           # JS client for the HTTP API (package export "./client")
 ├── config/           # Provider configuration (names, URLs, prompt limits)
-├── heal/             # Selector repair heuristics
-├── middleware/        # Express error handling and response helpers
-├── routes/           # Express routes (/api/ask, /api/sessions, /api/agent, /api/ping)
-├── session/          # Session lifecycle, pooling, locking
+├── heal/             # Page-context capture for stall diagnostics
+├── middleware/       # Express error handling and response helpers
+├── routes/           # Express routes (/api/ask, /api/sessions, /api/agent, /api/ping, /api/tabs)
+├── session/          # Session lifecycle, pooling, locking, tab janitor
+├── setup/            # Setup-wizard state behind /api/setup
 ├── shims/            # Internal utility shims (logger, UI, event bus)
 └── startup/          # Provider auth wizard and process management
 ```

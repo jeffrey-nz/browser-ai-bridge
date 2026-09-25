@@ -52,6 +52,7 @@
     "audit": "node src/audit/index.js",
     "audit:fix": "node src/audit/fix.js",
     "check:reachable": "node scripts/check-reachable.cjs",
+    "check:docs": "node scripts/doc-check.mjs",
     "census:provenance": "node scripts/provenance-census.mjs"
   },
   "dependencies": {
