@@ -193,10 +193,8 @@ export function makeInteraction(spec) {
   //   tested without driving the whole sendPromptAndWait pipeline — same
   //   convention src/routes/ask/tiers.js's skipTier() and anyRateLimited()
   //   already use ("extracted from the route's loop so it can be tested").
-  //   `if (spec.rateLimit)` is the ONLY thing in src/ai/generic/ that
-  //   distinguishes kimi (a real phrase) from the other four (null) — API.md
-  //   crediting all five with "their own detected throttle" was the wrong
-  //   sentence this exists to pin against. ]]
+  //   Every generic provider gets the shared detectLimitOnPage() check below;
+  //   `spec.rateLimit` adds site-specific phrases on top (only kimi has any). ]]
   //[[ `rateLimit` may be one phrase or several. It began as a single string and
   //   stays valid as one; an array is checked phrase by phrase and hits on the
   //   first match. See the kimi entry in specs.js for why a list exists. ]]

@@ -110,9 +110,9 @@ test("route B does not fire on an ordinary, non-throttled answer", async () => {
 test("the two routes' phrase lists diverge on whitespace — a match for route A's regex is not always a match for route B's", () => {
   // T-114 clause 2: route A tolerates arbitrary whitespace between words
   // (\s+); route B requires a literal single space. A notice wrapped across
-  // a line break matches A and not B — documented in API.md rather than
-  // fixed, since loosening a live detection regex without a captured
-  // real-world miss is a behaviour change this ticket does not make.
+  // a line break matches A and not B — pinned here rather than fixed, since
+  // loosening a live detection regex without a captured real-world miss is a
+  // behaviour change this ticket does not make.
   const wrappedNotice = "messages\nare\ntoo\nfrequent, please wait";
   const ROUTE_A_RE =
     /messages?\s+are\s+too\s+frequent|rate\s+limit|too\s+many\s+requests/i;

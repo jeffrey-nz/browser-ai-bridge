@@ -20,12 +20,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   allowlist is now empty. `stopTabJanitor()` now runs at the start of shutdown
   so a sweep cannot race `closeAllSessions()`.
 - `BROWSER_AI_PROVIDERS` is parsed by one helper, `parseEnabledProviders()`.
-- API.md: removed the nonexistent `POST /api/heal`, documented `/api/ask`'s
-  `label`/`skipConstraint`/`projectDir` and `/api/sessions`' `mode`, and added
-  a table of the 25 endpoints that had no entry. `.env.example` lists every
-  tunable the code reads, commented out at its default.
+- `.env.example` lists every tunable the code reads, commented out at its
+  default.
 - Stopping the tab janitor now also blocks `POST /api/tabs/sweep` and waits (up
   to 5s) for a sweep already running. Lockfile bumped by `npm audit fix`.
+- Docs: API.md rewritten as a reference (1149 → ~680 lines), corrected against
+  the code in 24 places, with a table for the 25 endpoints it never listed; README, CONTRIBUTING and CLAUDE.md fixed where
+  they had drifted (provider list, response shapes, Chrome profile path, how to
+  add a provider, `audit:fix` behaviour).
+
+### Removed
+
+These went after 1.0.0 without an entry at the time; recorded here so the 1.0.0
+list below is not read as current.
+
+- Microsoft 365 Copilot (`copilot365`) is no longer a provider id; requests
+  naming it get `400 Unknown provider`.
+- Self-healing locators (`src/heal/localHealer.js`, `POST /api/heal`). `src/heal/`
+  now only captures page context for stall diagnostics.
+- Per-IP rate limiting on `/api/` (the `express-rate-limit` dependency was
+  unused and has been dropped). The server binds to `127.0.0.1` only.
 
 ### Fixed
 
