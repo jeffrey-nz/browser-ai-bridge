@@ -179,18 +179,26 @@ Create a new AI session.
 
 ```json
 {
-  "provider": "chatgpt | gemini | deepseek | grok | copilot | copilot365"
+  "provider": "chatgpt | gemini | deepseek | grok | copilot | copilot365",
+  "mode": "pro"
 }
 ```
+
+`mode` is optional; it selects the provider's model/mode on the new tab, the
+same values `/api/ask` accepts.
 
 **Response**
 
 ```json
 {
   "success": true,
-  "sessionId": "uuid"
+  "sessionId": "uuid",
+  "maxPromptChars": 150000
 }
 ```
+
+`maxPromptChars` is the provider's configured prompt-length limit
+(`PROVIDER_CONFIG[provider].maxPromptChars`).
 
 ---
 
@@ -263,6 +271,18 @@ Send a prompt to an existing session.
   "images": ["data:image/png;base64,iVBORw0KGgo…"]
 }
 ```
+
+**Agent-turn fields (optional)**
+
+- `label` — names the turn. Unset, or starting with `API Turn`, means a plain
+  API call and the prompt is sent verbatim. Any other label is treated as an
+  agent turn: a provider-specific format constraint is prepended (see
+  `src/config/providerConstraints.js`), and a label matching `/reviewer/i`
+  also shortens the poll timeout from 7 to 3 minutes.
+- `skipConstraint` — `true` sends the prompt verbatim even for an agent label.
+- `projectDir` — the project path used in DeepSeek's constraint example.
+
+`/api/ask-all` accepts the same three fields.
 
 **Provider (optional)**
 
@@ -791,35 +811,6 @@ stream — there is no partial-results path today. Keep that in mind before
 naming a provider known to be unreliable in a batch a caller is waiting on
 synchronously.
 
-### POST `/api/heal`
-
-Automatically repairs broken CSS selectors for an AI provider by using
-another AI session to analyze the DOM.
-
-**Request**
-
-```json
-{
-  "targetSessionId": "uuid",
-  "helperSessionId": "uuid"
-}
-```
-
-**Response**
-
-```json
-{
-  "success": true,
-  "changesMade": 3,
-  "selectors": {
-    "inputBox": "...",
-    "sendBtn": "...",
-    "stopBtn": "...",
-    "lastResponse": "..."
-  }
-}
-```
-
 ---
 
 ## Screenshots & Session Monitoring
@@ -948,6 +939,38 @@ Force-reset the stored baseline for a session. Useful after deliberate UI action
   "timestamp": "2025-01-01T00:00:00.000Z"
 }
 ```
+
+---
+
+## Other endpoints
+
+Registered in `src/server.js` and routed from `src/routes/`, but not written up
+in full above. Each route file's header comment documents its body and response.
+
+| Method & path                                                                                             | What it does                                                                                                            |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/ping/warmup`                                                                                    | Connects to Chrome over CDP now; `503` if it can't.                                                                     |
+| `GET /api/setup`                                                                                          | Current setup-wizard state (`src/setup/state.js`).                                                                      |
+| `POST /api/setup/confirm`, `POST /api/setup/skip`                                                         | Answer a pending wizard prompt; `409` if none is pending.                                                               |
+| `GET /api/tabs`                                                                                           | Tab census per provider, and what the tab janitor would close.                                                          |
+| `POST /api/tabs/sweep`                                                                                    | Run the tab janitor now.                                                                                                |
+| `GET /api/sync`                                                                                           | Server-sent events stream of `sync_event`s.                                                                             |
+| `POST /api/sessions/:id/control`                                                                          | Operator answer to a stalled turn: `action` is `keep_waiting`, `retry`, `skip`, `manual` (needs `text`) or `self_heal`. |
+| `GET /api/sessions/:id/status`                                                                            | Whether the session exists and its stall state.                                                                         |
+| `POST /api/sessions/:id/new-chat`                                                                         | Start a fresh conversation in that tab.                                                                                 |
+| `POST /api/sessions/:id/evaluate`                                                                         | Run `{ script }` in the session's page; returns `{ result }`.                                                           |
+| `GET /api/sessions/:id/extract-image`                                                                     | Return the AI-generated image on the page as base64 (`?minSize=`, default 512).                                         |
+| `POST /api/agent`                                                                                         | Run a multi-turn tool-using agent loop (`src/agent/`) on a session: `{ sessionId?, provider?, prompt, maxTurns? }`.     |
+| `POST /api/prompt`                                                                                        | Inject a prompt into a session and return without waiting for the reply.                                                |
+| `POST /api/navigate`                                                                                      | Bring the browser page forward and navigate it to `{ url }`.                                                            |
+| `POST /api/visual-ask`                                                                                    | Screenshot a running web app URL, upload it to a provider, and return a QA report.                                      |
+| `POST /api/image-ask`                                                                                     | Upload an existing image (path or base64) to a provider and ask about it.                                               |
+| `POST /api/audio-ask`                                                                                     | Upload an existing audio clip (path or base64) to a provider and ask about it.                                          |
+| `GET /api/page-inspect?url=`                                                                              | Load a URL and return `#root` HTML, error-overlay text and whether anything rendered.                                   |
+| `POST /api/evaluate`                                                                                      | Load a URL and run JavaScript in it.                                                                                    |
+| `POST /api/click`                                                                                         | Load a URL, click a selector, and return the resulting DOM.                                                             |
+| `POST /api/wait-for`                                                                                      | Load a URL and wait for a selector to appear.                                                                           |
+| `POST /api/devserver`, `GET /api/devserver`, `GET /api/devserver/logs/:pid`, `DELETE /api/devserver/:pid` | Start, list, tail and stop a project's dev server.                                                                      |
 
 ---
 

@@ -257,7 +257,7 @@ src/
 ├── config/           # Provider configuration (names, URLs, prompt limits)
 ├── heal/             # Page-context capture for stall diagnostics
 ├── middleware/       # Express error handling and response helpers
-├── routes/           # Express routes (/api/ask, /api/sessions, /api/agent, /api/ping, /api/tabs)
+├── routes/           # Express routes — one file per /api/* endpoint (see API.md)
 ├── session/          # Session lifecycle, pooling, locking, tab janitor
 ├── setup/            # Setup-wizard state behind /api/setup
 ├── shims/            # Internal utility shims (logger, UI, event bus)
