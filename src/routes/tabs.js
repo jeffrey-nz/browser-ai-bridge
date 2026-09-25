@@ -14,24 +14,36 @@ async function gather() {
   const keyOf = new Map(livePages.map((pg, i) => [pg, `p${i}`]));
   const pages = livePages.map((pg) => {
     let url = "";
-    try { url = pg.url(); } catch { /* detached */ }
+    try {
+      url = pg.url();
+    } catch {
+      /* detached */
+    }
     return { key: keyOf.get(pg), url };
   });
   const registry = sessionManager.registry.list();
   const ownedPageKeys = new Set();
-  for (const s of registry) if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
+  for (const s of registry)
+    if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
   const poolCounts = {};
   for (const [providerId, list] of sessionPool.warmSessions.entries()) {
     poolCounts[providerId] = list.length;
-    for (const s of list) if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
+    for (const s of list)
+      if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
   }
   const sessions = registry.map((s) => ({
-    id: s.id, providerId: s.providerId, locked: !!s.locked, clientGone: !!s.clientGone,
-    lockedAt: s.lockedAt || null, lastUsedAt: s.lastUsedAt || null, createdAt: s.createdAt,
+    id: s.id,
+    providerId: s.providerId,
+    locked: !!s.locked,
+    clientGone: !!s.clientGone,
+    lockedAt: s.lockedAt || null,
+    lastUsedAt: s.lastUsedAt || null,
+    createdAt: s.createdAt,
   }));
   const poolEntries = [];
   for (const [providerId, list] of sessionPool.warmSessions.entries()) {
-    for (const e of list) poolEntries.push({ providerId, id: e.id, pooledAt: e.pooledAt || null });
+    for (const e of list)
+      poolEntries.push({ providerId, id: e.id, pooledAt: e.pooledAt || null });
   }
   return { sessions, pages, ownedPageKeys, poolCounts, poolEntries };
 }
@@ -44,7 +56,11 @@ router.get("/", async (req, res) => {
       success: true,
       limits: LIMITS,
       ...census(state),
-      wouldClose: [...plan.closeSessions, ...plan.closePages, ...plan.closePool].map((c) => c.reason),
+      wouldClose: [
+        ...plan.closeSessions,
+        ...plan.closePages,
+        ...plan.closePool,
+      ].map((c) => c.reason),
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -52,8 +68,19 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/sweep", async (req, res) => {
-  const plan = await sweep({ manager: sessionManager, pool: sessionPool, getContext: getBrowserContext });
-  res.json({ success: !!plan, closed: plan ? [...plan.closeSessions, ...plan.closePages, ...plan.closePool].map((c) => c.reason) : [] });
+  const plan = await sweep({
+    manager: sessionManager,
+    pool: sessionPool,
+    getContext: getBrowserContext,
+  });
+  res.json({
+    success: !!plan,
+    closed: plan
+      ? [...plan.closeSessions, ...plan.closePages, ...plan.closePool].map(
+          (c) => c.reason,
+        )
+      : [],
+  });
 });
 
 export default router;

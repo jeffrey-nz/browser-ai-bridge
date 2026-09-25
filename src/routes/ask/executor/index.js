@@ -7,7 +7,10 @@ import { handleRotationIfNeeded } from "./rotator.js";
 import { handleStalls } from "./stallLoop.js";
 import { gatherMetrics } from "./metrics.js";
 import { saveImagesToTempFiles, cleanupTempFiles } from "./imageAttachments.js";
-import { cooldownManager, cooldownKey } from "../../../session/CooldownManager.js";
+import {
+  cooldownManager,
+  cooldownKey,
+} from "../../../session/CooldownManager.js";
 
 //[[ A BACK-OFF CANNOT OUTLAST A DAILY QUOTA, SO IT MUST NOT TRY.
 //
@@ -231,7 +234,10 @@ async function runAskTurn(
     //   ran out threw away two working models. Measured 2026-09-24 — with gemini
     //   on cooldown, asking for mode "pro" and mode "thinking" were both refused
     //   in 0s, though neither had been throttled. ]]
-    if (Number.isFinite(response.cooldownSeconds) && response.cooldownSeconds > 0) {
+    if (
+      Number.isFinite(response.cooldownSeconds) &&
+      response.cooldownSeconds > 0
+    ) {
       cooldownManager.trigger(
         cooldownKey(session.providerId, session.mode),
         response.cooldownSeconds,
@@ -293,7 +299,9 @@ async function runAskTurn(
     //   open during one throttle. The wait is sliced so a disconnect ends it
     //   within seconds. ]]
     const abandon = () => {
-      const err = new Error("CLIENT_GONE: caller disconnected during rate-limit back-off");
+      const err = new Error(
+        "CLIENT_GONE: caller disconnected during rate-limit back-off",
+      );
       err.stalled = true;
       err.rateLimited = true;
       err.clientGone = true;
@@ -306,10 +314,14 @@ async function runAskTurn(
       );
       for (let waited = 0; waited < waitMs; waited += 2000) {
         if (session.clientGone) {
-          logger.info(`[Ask] Caller gone for session ${session.id.slice(0, 8)} — abandoning rate-limit back-off.`);
+          logger.info(
+            `[Ask] Caller gone for session ${session.id.slice(0, 8)} — abandoning rate-limit back-off.`,
+          );
           throw abandon();
         }
-        await new Promise((r) => setTimeout(r, Math.min(2000, waitMs - waited)));
+        await new Promise((r) =>
+          setTimeout(r, Math.min(2000, waitMs - waited)),
+        );
       }
       try {
         if (typeof session.engine?.startNewChat === "function") {
@@ -331,7 +343,10 @@ async function runAskTurn(
       if (!response.rateLimited) break;
       // The retry itself may be what discovered the stated span — stop as soon
       // as it is known to outlast what is left of the ladder.
-      const nowTooLong = beyondBackoffReach(session.providerId, backoffBudgetMs);
+      const nowTooLong = beyondBackoffReach(
+        session.providerId,
+        backoffBudgetMs,
+      );
       if (nowTooLong) {
         const hrs = (nowTooLong.remainingSeconds / 3600).toFixed(1);
         logger.warn(

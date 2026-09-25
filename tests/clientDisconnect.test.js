@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ASK = fs.readFileSync(path.join(HERE, "..", "src", "routes", "ask.js"), "utf8");
+const ASK = fs.readFileSync(
+  path.join(HERE, "..", "src", "routes", "ask.js"),
+  "utf8",
+);
 
 /**
  * req "close" STOPPED MEANING "THE CLIENT LEFT", AND NOTHING NOTICED.
@@ -35,8 +38,11 @@ const ASK = fs.readFileSync(path.join(HERE, "..", "src", "routes", "ask.js"), "u
  */
 
 test('the response close event is listened for — req "close" alone cannot see a disconnect', () => {
-  assert.match(ASK, /res\.on\("close", onClose\)/,
-    'res "close" is the only one of the two that still means "the caller went away"');
+  assert.match(
+    ASK,
+    /res\.on\("close", onClose\)/,
+    'res "close" is the only one of the two that still means "the caller went away"',
+  );
 });
 
 test('req "close" is kept too — it costs nothing and still fires on an early drop', () => {
@@ -58,10 +64,26 @@ test("the guard still tells a finished response from an abandoned one", () => {
 test("a disconnect sets the three things TabJanitor and the executor read", () => {
   const from = ASK.indexOf("const onClose");
   const body = ASK.slice(from, ASK.indexOf('req.on("close"', from));
-  assert.match(body, /session\.locked = false/, "the lock must be released at once");
-  assert.match(body, /session\.needsReset = true/, "the page is mid-turn and must be reset before reuse");
-  assert.match(body, /session\.clientGone = true/, "TabJanitor's abandoned rule keys on this");
-  assert.match(body, /session_abort:/, "gemini and chatgpt polls listen for this");
+  assert.match(
+    body,
+    /session\.locked = false/,
+    "the lock must be released at once",
+  );
+  assert.match(
+    body,
+    /session\.needsReset = true/,
+    "the page is mid-turn and must be reset before reuse",
+  );
+  assert.match(
+    body,
+    /session\.clientGone = true/,
+    "TabJanitor's abandoned rule keys on this",
+  );
+  assert.match(
+    body,
+    /session_abort:/,
+    "gemini and chatgpt polls listen for this",
+  );
 });
 
 test("the stale comment that caused it is gone", () => {

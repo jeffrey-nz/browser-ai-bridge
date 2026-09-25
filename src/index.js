@@ -111,7 +111,11 @@ async function init() {
   setupState.setReady();
 
   await sessionPool.initializePool();
-  startTabJanitor({ manager: sessionManager, pool: sessionPool, getContext: async () => ({ context }) });
+  startTabJanitor({
+    manager: sessionManager,
+    pool: sessionPool,
+    getContext: async () => ({ context }),
+  });
 
   printHotkeyHint();
 

@@ -44,7 +44,9 @@ export async function getBrowserContext() {
             .evaluate(() => 1)
             .then(() => false)
             .catch(() => false),
-          new Promise((resolve) => setTimeout(() => resolve(true), pageProbeMs)),
+          new Promise((resolve) =>
+            setTimeout(() => resolve(true), pageProbeMs),
+          ),
         ]);
         if (stuck) {
           logger.warn(

@@ -151,7 +151,9 @@ function pageSaying(...visible) {
       };
     },
     getByRole() {
-      return { first: () => ({ isVisible: async () => false, click: async () => {} }) };
+      return {
+        first: () => ({ isVisible: async () => false, click: async () => {} }),
+      };
     },
     locator() {
       return { last: () => ({}), first: () => ({}) };
@@ -166,7 +168,9 @@ test("a single-string rateLimit still works — the array is additive, not a rep
     locators: {},
   });
   assert.equal(
-    await checkRateLimitHit(pageSaying("Too many people are chatting with Kimi")),
+    await checkRateLimitHit(
+      pageSaying("Too many people are chatting with Kimi"),
+    ),
     true,
   );
   assert.equal(await checkRateLimitHit(pageSaying("all fine here")), false);
@@ -176,15 +180,22 @@ test("kimi's real spec now catches a REWORDED overload notice, not just the 2026
   const { checkRateLimitHit } = makeInteraction(GENERIC_SPECS.kimi);
   // The original sentence must still hit.
   assert.equal(
-    await checkRateLimitHit(pageSaying("Too many people are chatting with Kimi right now.")),
+    await checkRateLimitHit(
+      pageSaying("Too many people are chatting with Kimi right now."),
+    ),
     true,
   );
   // And so must the other halves of the same notice, which a rewording keeps.
   assert.equal(
-    await checkRateLimitHit(pageSaying("Subscribe to enter a dedicated priority queue!")),
+    await checkRateLimitHit(
+      pageSaying("Subscribe to enter a dedicated priority queue!"),
+    ),
     true,
   );
-  assert.equal(await checkRateLimitHit(pageSaying("Too many requests, slow down")), true);
+  assert.equal(
+    await checkRateLimitHit(pageSaying("Too many requests, slow down")),
+    true,
+  );
 });
 
 test("the capacity list refuses phrases a good answer could contain", async () => {
@@ -196,7 +207,11 @@ test("the capacity list refuses phrases a good answer could contain", async () =
     "If that fails, try again later.",
     "Demand for the course was high.",
   ]) {
-    assert.equal(await checkRateLimitHit(pageSaying(innocent)), false, innocent);
+    assert.equal(
+      await checkRateLimitHit(pageSaying(innocent)),
+      false,
+      innocent,
+    );
   }
 });
 

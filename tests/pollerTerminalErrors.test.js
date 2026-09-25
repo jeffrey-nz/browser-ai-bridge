@@ -30,7 +30,11 @@ test("a rate limit escapes immediately instead of polling to the timeout", async
     rateLimited: true,
   });
   await assert.rejects(
-    () => pollUntil(async () => { calls++; throw err; }, fast),
+    () =>
+      pollUntil(async () => {
+        calls++;
+        throw err;
+      }, fast),
     /rate limit reached/,
   );
   assert.equal(calls, 1, "it must stop on the first throw, not keep polling");
@@ -39,7 +43,11 @@ test("a rate limit escapes immediately instead of polling to the timeout", async
 test('"Aborted (Web UI)" escapes — the literal all seven throw sites use', async () => {
   let calls = 0;
   await assert.rejects(
-    () => pollUntil(async () => { calls++; throw new Error("Aborted (Web UI)"); }, fast),
+    () =>
+      pollUntil(async () => {
+        calls++;
+        throw new Error("Aborted (Web UI)");
+      }, fast),
     /Aborted/,
   );
   assert.equal(calls, 1);
@@ -47,27 +55,32 @@ test('"Aborted (Web UI)" escapes — the literal all seven throw sites use', asy
 
 test("controlAbort still escapes — the one flag that always worked", async () => {
   await assert.rejects(
-    () => pollUntil(async () => {
-      throw Object.assign(new Error("stopped"), { controlAbort: true });
-    }, fast),
+    () =>
+      pollUntil(async () => {
+        throw Object.assign(new Error("stopped"), { controlAbort: true });
+      }, fast),
     /stopped/,
   );
 });
 
 test("an explicit terminal flag escapes, for a signal with no other marker", async () => {
   await assert.rejects(
-    () => pollUntil(async () => {
-      throw Object.assign(new Error("done for"), { terminal: true });
-    }, fast),
+    () =>
+      pollUntil(async () => {
+        throw Object.assign(new Error("done for"), { terminal: true });
+      }, fast),
     /done for/,
   );
 });
 
 test("an AbortError escapes by name", async () => {
   await assert.rejects(
-    () => pollUntil(async () => {
-      throw Object.assign(new Error("aborted by signal"), { name: "AbortError" });
-    }, fast),
+    () =>
+      pollUntil(async () => {
+        throw Object.assign(new Error("aborted by signal"), {
+          name: "AbortError",
+        });
+      }, fast),
     /aborted by signal/,
   );
 });
@@ -83,12 +96,20 @@ test("an ORDINARY fault is still swallowed and retried — the behaviour worth k
     return "answered";
   }, fast);
   assert.equal(result, "answered");
-  assert.equal(calls, 3, "it must have kept going through the transient throws");
+  assert.equal(
+    calls,
+    3,
+    "it must have kept going through the transient throws",
+  );
 });
 
 test("a predicate that just never becomes true still times out normally", async () => {
   await assert.rejects(
-    () => pollUntil(async () => false, { ...fast, errorMessage: "Grok polling timed out" }),
+    () =>
+      pollUntil(async () => false, {
+        ...fast,
+        errorMessage: "Grok polling timed out",
+      }),
     /Grok polling timed out/,
   );
 });
@@ -97,7 +118,11 @@ test("a hung predicate is still capped per iteration rather than escaping", asyn
   // iteration_timeout is an internal signal, not a terminal one — the loop must
   // keep its own deadline rather than surfacing it as a provider failure.
   await assert.rejects(
-    () => pollUntil(() => new Promise(() => {}), { ...fast, errorMessage: "timed out" }),
+    () =>
+      pollUntil(() => new Promise(() => {}), {
+        ...fast,
+        errorMessage: "timed out",
+      }),
     /timed out/,
   );
 });

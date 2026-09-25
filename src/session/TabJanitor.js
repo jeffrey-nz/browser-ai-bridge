@@ -85,7 +85,12 @@ export function providerForUrl(url) {
 
 export function isBlankUrl(url) {
   const u = String(url || "");
-  return u === "" || u === "about:blank" || u.startsWith("chrome://newtab") || u.startsWith("chrome://new-tab-page");
+  return (
+    u === "" ||
+    u === "about:blank" ||
+    u.startsWith("chrome://newtab") ||
+    u.startsWith("chrome://new-tab-page")
+  );
 }
 
 /**
@@ -99,7 +104,15 @@ export function isBlankUrl(url) {
  * @param {object} [input.limits]
  * @returns {{ closeSessions: Array<{id, reason}>, closePages: Array<{key, reason}> }}
  */
-export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMITS, orphanSince = new Map(), poolEntries = [] }) {
+export function planCleanup({
+  sessions,
+  pages,
+  ownedPageKeys,
+  now,
+  limits = LIMITS,
+  orphanSince = new Map(),
+  poolEntries = [],
+}) {
   const closeSessions = [];
   const closePages = [];
   const closePool = [];
@@ -107,8 +120,16 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
 
   // 1. Abandoned turns: caller gone, lock held past the limit.
   for (const s of sessions) {
-    if (s.locked && s.clientGone && s.lockedAt && now - s.lockedAt > limits.abandonedTurnMs) {
-      closeSessions.push({ id: s.id, reason: `abandoned turn (caller gone ${Math.round((now - s.lockedAt) / 1000)}s)` });
+    if (
+      s.locked &&
+      s.clientGone &&
+      s.lockedAt &&
+      now - s.lockedAt > limits.abandonedTurnMs
+    ) {
+      closeSessions.push({
+        id: s.id,
+        reason: `abandoned turn (caller gone ${Math.round((now - s.lockedAt) / 1000)}s)`,
+      });
       closing.add(s.id);
     }
   }
@@ -134,7 +155,12 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
   //   sends no such field is untouched by this rule and falls through to 1b. ]]
   for (const s of sessions) {
     if (closing.has(s.id)) continue;
-    if (s.locked && s.lockedAt && s.clientTimeoutMs > 0 && now - s.lockedAt > s.clientTimeoutMs) {
+    if (
+      s.locked &&
+      s.lockedAt &&
+      s.clientTimeoutMs > 0 &&
+      now - s.lockedAt > s.clientTimeoutMs
+    ) {
       closeSessions.push({
         id: s.id,
         reason: `caller's own timeout passed (${Math.round((now - s.lockedAt) / 1000)}s > ${Math.round(s.clientTimeoutMs / 1000)}s declared)`,
@@ -190,12 +216,18 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
     if (over <= 0) continue;
     const evictable = list
       .filter((s) => !s.locked)
-      .map((s) => ({ s, lastUsed: s.lastUsedAt ?? new Date(s.createdAt).getTime() }))
+      .map((s) => ({
+        s,
+        lastUsed: s.lastUsedAt ?? new Date(s.createdAt).getTime(),
+      }))
       .filter(({ lastUsed }) => now - lastUsed > limits.idleGraceMs)
       .sort((a, b) => a.lastUsed - b.lastUsed);
     for (const { s, lastUsed } of evictable) {
       if (over <= 0) break;
-      closeSessions.push({ id: s.id, reason: `${providerId} over cap of ${limits.maxSessionsPerProvider} (idle ${Math.round((now - lastUsed) / 1000)}s)` });
+      closeSessions.push({
+        id: s.id,
+        reason: `${providerId} over cap of ${limits.maxSessionsPerProvider} (idle ${Math.round((now - lastUsed) / 1000)}s)`,
+      });
       over--;
     }
   }
@@ -207,13 +239,17 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
     if (ownedPageKeys.has(p.key)) continue;
     if (isBlankUrl(p.url)) {
       blanks++;
-      if (blanks > limits.maxBlankPages) closePages.push({ key: p.key, reason: "surplus blank tab" });
+      if (blanks > limits.maxBlankPages)
+        closePages.push({ key: p.key, reason: "surplus blank tab" });
       continue;
     }
     const provider = providerForUrl(p.url);
     const since = orphanSince.get(p.key);
     if (provider && since !== undefined && now - since > limits.orphanGraceMs) {
-      closePages.push({ key: p.key, reason: `orphan ${provider} tab (no session or pool entry for ${Math.round((now - since) / 1000)}s)` });
+      closePages.push({
+        key: p.key,
+        reason: `orphan ${provider} tab (no session or pool entry for ${Math.round((now - since) / 1000)}s)`,
+      });
     }
     // anything else is not ours — never closed
   }
@@ -223,7 +259,11 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
   for (const e of poolEntries) {
     if (activeProviders.has(e.providerId)) continue;
     if (e.pooledAt && now - e.pooledAt > limits.poolIdleMs) {
-      closePool.push({ providerId: e.providerId, id: e.id, reason: `${e.providerId} standby unused ${Math.round((now - e.pooledAt) / 60000)}m` });
+      closePool.push({
+        providerId: e.providerId,
+        id: e.id,
+        reason: `${e.providerId} standby unused ${Math.round((now - e.pooledAt) / 60000)}m`,
+      });
     }
   }
 
@@ -234,7 +274,13 @@ export function planCleanup({ sessions, pages, ownedPageKeys, now, limits = LIMI
 export function census({ sessions, pages, ownedPageKeys, poolCounts }) {
   const out = {};
   const bump = (p, k) => {
-    out[p] = out[p] || { sessions: 0, locked: 0, abandoned: 0, pool: poolCounts?.[p] || 0, orphanTabs: 0 };
+    out[p] = out[p] || {
+      sessions: 0,
+      locked: 0,
+      abandoned: 0,
+      pool: poolCounts?.[p] || 0,
+      orphanTabs: 0,
+    };
     out[p][k]++;
   };
   for (const s of sessions) {
@@ -245,13 +291,31 @@ export function census({ sessions, pages, ownedPageKeys, poolCounts }) {
   let blank = 0;
   let other = 0;
   for (const p of pages) {
-    if (isBlankUrl(p.url)) { blank++; continue; }
+    if (isBlankUrl(p.url)) {
+      blank++;
+      continue;
+    }
     const provider = providerForUrl(p.url);
-    if (!provider) { other++; continue; }
+    if (!provider) {
+      other++;
+      continue;
+    }
     if (!ownedPageKeys.has(p.key)) bump(provider, "orphanTabs");
-    else if (!out[provider]) out[provider] = { sessions: 0, locked: 0, abandoned: 0, pool: poolCounts?.[provider] || 0, orphanTabs: 0 };
+    else if (!out[provider])
+      out[provider] = {
+        sessions: 0,
+        locked: 0,
+        abandoned: 0,
+        pool: poolCounts?.[provider] || 0,
+        orphanTabs: 0,
+      };
   }
-  return { totalPages: pages.length, blankTabs: blank, otherTabs: other, providers: out };
+  return {
+    totalPages: pages.length,
+    blankTabs: blank,
+    otherTabs: other,
+    providers: out,
+  };
 }
 
 /**
@@ -270,17 +334,23 @@ export async function sweep({ manager, pool, getContext, log = logger }) {
     const keyOf = new Map(livePages.map((pg, i) => [pg, `p${i}`]));
     const pages = livePages.map((pg) => {
       let url = "";
-      try { url = pg.url(); } catch { /* detached */ }
+      try {
+        url = pg.url();
+      } catch {
+        /* detached */
+      }
       return { key: keyOf.get(pg), url };
     });
 
     const registry = manager.registry.list();
     const ownedPageKeys = new Set();
-    for (const s of registry) if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
+    for (const s of registry)
+      if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
     const poolCounts = {};
     for (const [providerId, list] of pool.warmSessions.entries()) {
       poolCounts[providerId] = list.length;
-      for (const s of list) if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
+      for (const s of list)
+        if (s.page && keyOf.has(s.page)) ownedPageKeys.add(keyOf.get(s.page));
     }
 
     const sessions = registry.map((s) => ({
@@ -299,18 +369,38 @@ export async function sweep({ manager, pool, getContext, log = logger }) {
     const orphanSince = new Map();
     for (const pg of livePages) {
       const key = keyOf.get(pg);
-      if (ownedPageKeys.has(key)) { orphanFirstSeen.delete(pg); continue; }
+      if (ownedPageKeys.has(key)) {
+        orphanFirstSeen.delete(pg);
+        continue;
+      }
       if (!orphanFirstSeen.has(pg)) orphanFirstSeen.set(pg, now);
       orphanSince.set(key, orphanFirstSeen.get(pg));
     }
 
     const poolEntries = [];
     for (const [providerId, list] of pool.warmSessions.entries()) {
-      for (const e of list) poolEntries.push({ providerId, id: e.id, pooledAt: e.pooledAt || null });
+      for (const e of list)
+        poolEntries.push({
+          providerId,
+          id: e.id,
+          pooledAt: e.pooledAt || null,
+        });
     }
 
-    const plan = planCleanup({ sessions, pages, ownedPageKeys, now, orphanSince, poolEntries });
-    if (!plan.closeSessions.length && !plan.closePages.length && !plan.closePool.length) return plan;
+    const plan = planCleanup({
+      sessions,
+      pages,
+      ownedPageKeys,
+      now,
+      orphanSince,
+      poolEntries,
+    });
+    if (
+      !plan.closeSessions.length &&
+      !plan.closePages.length &&
+      !plan.closePool.length
+    )
+      return plan;
 
     const before = pages.length;
     for (const c of plan.closeSessions) {
@@ -342,8 +432,14 @@ export async function sweep({ manager, pool, getContext, log = logger }) {
       }
     }
 
-    const reasons = [...plan.closeSessions, ...plan.closePages, ...plan.closePool].map((c) => c.reason);
-    log.info(`[Tabs] Tidied ${reasons.length} (pages ${before} → ${context.pages().length}): ${reasons.join("; ")}`);
+    const reasons = [
+      ...plan.closeSessions,
+      ...plan.closePages,
+      ...plan.closePool,
+    ].map((c) => c.reason);
+    log.info(
+      `[Tabs] Tidied ${reasons.length} (pages ${before} → ${context.pages().length}): ${reasons.join("; ")}`,
+    );
     return plan;
   } catch (err) {
     log.warn(`[Tabs] Sweep failed: ${err.message}`);
@@ -361,11 +457,21 @@ export async function sweep({ manager, pool, getContext, log = logger }) {
 //   minute until killed. Importing a module must never act on the browser. The
 //   interval starts here, and src/index.js is the only caller. ]]
 let janitorInterval = null;
-export function startTabJanitor({ manager, pool, getContext, intervalMs = Number(process.env.TAB_SWEEP_INTERVAL_MS) || 60_000 }) {
+export function startTabJanitor({
+  manager,
+  pool,
+  getContext,
+  intervalMs = Number(process.env.TAB_SWEEP_INTERVAL_MS) || 60_000,
+}) {
   if (janitorInterval) return janitorInterval;
-  janitorInterval = setInterval(() => sweep({ manager, pool, getContext }), intervalMs);
+  janitorInterval = setInterval(
+    () => sweep({ manager, pool, getContext }),
+    intervalMs,
+  );
   janitorInterval.unref?.();
-  logger.info(`[Tabs] Janitor on: ≤${LIMITS.maxSessionsPerProvider} sessions per provider, orphan grace ${LIMITS.orphanGraceMs / 1000}s, sweep every ${intervalMs / 1000}s`);
+  logger.info(
+    `[Tabs] Janitor on: ≤${LIMITS.maxSessionsPerProvider} sessions per provider, orphan grace ${LIMITS.orphanGraceMs / 1000}s, sweep every ${intervalMs / 1000}s`,
+  );
   return janitorInterval;
 }
 
@@ -377,4 +483,3 @@ export function stopTabJanitor() {
   if (janitorInterval) clearInterval(janitorInterval);
   janitorInterval = null;
 }
-

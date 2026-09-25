@@ -32,7 +32,9 @@ import { cleanupAutoSession } from "./sessionHandler.js";
 //   overruns leaves the tab un-recycled, which is the lesser harm: with `locked`
 //   false the janitor's over-cap and orphan rules can reclaim it on the next
 //   sweep, which is precisely what they could not do before. ]]
-const CLEANUP_BUDGET_MS = Number(process.env.SESSION_CLEANUP_TIMEOUT_MS ?? 15000);
+const CLEANUP_BUDGET_MS = Number(
+  process.env.SESSION_CLEANUP_TIMEOUT_MS ?? 15000,
+);
 
 export async function withSessionLock(session, autoCreated, fn) {
   session.locked = true;

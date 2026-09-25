@@ -89,8 +89,9 @@ export async function diagnoseBlockedPage(page, now = Date.now()) {
   if (SUSPENDED_RE.test(body) || SUSPENDED_NO_DATE_RE.test(body)) {
     const seconds =
       parseSuspensionSeconds(body, now) ?? UNKNOWN_SUSPENSION_SECONDS;
-    const notice = (body.match(/[^\n]*\b(?:suspend|banned|restricted)[^\n]*/i) ||
-      [""])[0].trim();
+    const notice = (body.match(
+      /[^\n]*\b(?:suspend|banned|restricted)[^\n]*/i,
+    ) || [""])[0].trim();
     return { kind: "suspended", seconds, notice };
   }
 

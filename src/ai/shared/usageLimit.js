@@ -93,7 +93,8 @@ const RESET_RE =
   /\b(?:reset|resets|try again|available again|back (?:in|at)|before limit|access will|come back)\b/i;
 
 /** "18 hours 49 minutes", "45 minutes", "2h 30m", "30 seconds". */
-const UNIT_RE = /(\d{1,4})\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/gi;
+const UNIT_RE =
+  /(\d{1,4})\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/gi;
 
 const UNIT_SECONDS = { h: 3600, m: 60, s: 1 };
 
@@ -145,7 +146,11 @@ export function parseLimitCountdown(text) {
     if (!matched) {
       // No digits on the line — it may still state a span in words.
       for (const [re, secs] of VAGUE_SPANS) {
-        if (re.test(line)) { seconds = secs; matched = true; break; }
+        if (re.test(line)) {
+          seconds = secs;
+          matched = true;
+          break;
+        }
       }
     }
     if (!matched || seconds <= 0) continue;

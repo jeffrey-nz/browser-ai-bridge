@@ -39,10 +39,17 @@ test("grok's real 18.5h quota dwarfs the ladder's whole budget", () => {
 
 test("a recorded quota longer than the budget is visible to the executor's check", () => {
   reset("grok");
-  cooldownManager.trigger("grok", 18 * 3600, "18 hours 29 minutes before limit is gone");
+  cooldownManager.trigger(
+    "grok",
+    18 * 3600,
+    "18 hours 29 minutes before limit is gone",
+  );
   const cd = cooldownManager.check("grok");
   assert.equal(cd.active, true);
-  assert.ok(cd.remainingSeconds * 1000 > MIN_BUDGET_MS, "must read as out of reach");
+  assert.ok(
+    cd.remainingSeconds * 1000 > MIN_BUDGET_MS,
+    "must read as out of reach",
+  );
   assert.match(cd.reason, /before limit is gone/);
   reset("grok");
 });

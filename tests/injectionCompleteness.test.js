@@ -45,8 +45,16 @@ test("normal editor mangling still passes — the 10% slack is the point", () =>
   //   exact length would fail healthy injections, which is the failure mode this
   //   fix must not introduce. ]]
   const prompt = "x".repeat(10000);
-  assert.equal(looksComplete("x".repeat(9500), prompt), true, "5% shorter is fine");
-  assert.equal(looksComplete("x".repeat(9000), prompt), true, "exactly 10% shorter is fine");
+  assert.equal(
+    looksComplete("x".repeat(9500), prompt),
+    true,
+    "5% shorter is fine",
+  );
+  assert.equal(
+    looksComplete("x".repeat(9000), prompt),
+    true,
+    "exactly 10% shorter is fine",
+  );
 });
 
 test("half a prompt is refused — well outside anything trimming explains", () => {
@@ -85,8 +93,14 @@ test("short prompts are not made harder to satisfy than they were", () => {
 import { REFUSE_BELOW_RATIO } from "../src/ai/shared/domInteraction/clearAndType.js";
 
 test("the refusal threshold sits far below the warn threshold, with ordinary mangling between", () => {
-  assert.ok(REFUSE_BELOW_RATIO < 0.9, "must not refuse what looksComplete merely warns about");
-  assert.ok(REFUSE_BELOW_RATIO <= 0.25, "a quarter is already far past any whitespace tidying");
+  assert.ok(
+    REFUSE_BELOW_RATIO < 0.9,
+    "must not refuse what looksComplete merely warns about",
+  );
+  assert.ok(
+    REFUSE_BELOW_RATIO <= 0.25,
+    "a quarter is already far past any whitespace tidying",
+  );
   assert.ok(REFUSE_BELOW_RATIO > 0, "zero would make the rule unreachable");
 });
 
@@ -100,7 +114,10 @@ test("mistral's real measurement falls well inside the refusal band", () => {
 test("an editor that collapses whitespace warns but is NOT refused", () => {
   const payload = 10000;
   for (const held of [9500, 9000, 8000, 6000]) {
-    assert.ok(held >= payload * REFUSE_BELOW_RATIO, `${held}/${payload} must not refuse`);
+    assert.ok(
+      held >= payload * REFUSE_BELOW_RATIO,
+      `${held}/${payload} must not refuse`,
+    );
   }
 });
 

@@ -41,7 +41,9 @@ function fakePage(visibleSelectorTest, bodyText = "") {
 const signedOutPage = () =>
   fakePage((sel) => sel.includes("password") || sel.includes("Log in"));
 const signedInPage = () =>
-  fakePage((sel) => sel.includes("textarea") || sel.includes("contenteditable"));
+  fakePage(
+    (sel) => sel.includes("textarea") || sel.includes("contenteditable"),
+  );
 // The trap case: a signed-IN page that happens to show a "Sign in" link
 // somewhere (a marketing banner, a second account prompt) AND has a composer.
 const signedInWithSignInLink = () => fakePage(() => true);
@@ -67,7 +69,7 @@ test("a composer timeout on a signed-out page returns signedOut, not an endless 
       injectCalls += 1;
       // The real shape of the failure: Playwright's locator timeout.
       throw new Error(
-        'locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\'textarea[placeholder*="Message DeepSeek" i]\')',
+        "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('textarea[placeholder*=\"Message DeepSeek\" i]')",
       );
     },
     clickSend: async () => {},

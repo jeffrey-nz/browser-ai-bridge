@@ -139,7 +139,8 @@ export class SessionManager {
         (s) =>
           s.providerId === providerId &&
           !s.locked &&
-          Date.now() - (s.lastUsedAt ?? s.createdAt.getTime()) > TAB_LIMITS.idleGraceMs,
+          Date.now() - (s.lastUsedAt ?? s.createdAt.getTime()) >
+            TAB_LIMITS.idleGraceMs,
       );
     if (idleSessions.length > 0) {
       logger.info(

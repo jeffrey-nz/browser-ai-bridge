@@ -37,7 +37,10 @@ async function healthCheck({ pages, version, timeoutMs = 10000 }) {
       await version();
     })(),
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Browser JS thread or CDP deadlock")), timeoutMs),
+      setTimeout(
+        () => reject(new Error("Browser JS thread or CDP deadlock")),
+        timeoutMs,
+      ),
     ),
   ]);
 }
@@ -48,7 +51,12 @@ test("a BUSY first page does not trigger a browser reset — the regression this
   // A provider tab mid-stream: evaluate() never comes back.
   const pages = [{ evaluate: neverResolves }];
   await assert.doesNotReject(
-    () => healthCheck({ pages, version: async () => "Chrome/1.2.3", timeoutMs: 6000 }),
+    () =>
+      healthCheck({
+        pages,
+        version: async () => "Chrome/1.2.3",
+        timeoutMs: 6000,
+      }),
     "a hung page must not be reported as a dead browser",
   );
 });
@@ -71,15 +79,29 @@ test("both hung: the CDP endpoint is what decides, and it still fails", async ()
 });
 
 test("a page that throws is tolerated exactly as before", async () => {
-  const pages = [{ evaluate: async () => { throw new Error("detached frame"); } }];
+  const pages = [
+    {
+      evaluate: async () => {
+        throw new Error("detached frame");
+      },
+    },
+  ];
   await assert.doesNotReject(() =>
-    healthCheck({ pages, version: async () => "Chrome/1.2.3", timeoutMs: 6000 }),
+    healthCheck({
+      pages,
+      version: async () => "Chrome/1.2.3",
+      timeoutMs: 6000,
+    }),
   );
 });
 
 test("no pages at all is healthy as long as CDP answers", async () => {
   await assert.doesNotReject(() =>
-    healthCheck({ pages: [], version: async () => "Chrome/1.2.3", timeoutMs: 6000 }),
+    healthCheck({
+      pages: [],
+      version: async () => "Chrome/1.2.3",
+      timeoutMs: 6000,
+    }),
   );
 });
 

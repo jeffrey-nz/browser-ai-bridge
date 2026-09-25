@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const MANAGER = fs.readFileSync(path.join(HERE, "..", "src", "session", "Manager.js"), "utf8");
+const MANAGER = fs.readFileSync(
+  path.join(HERE, "..", "src", "session", "Manager.js"),
+  "utf8",
+);
 
 /**
  * THE PER-PROVIDER CAP WAS A CLEANING RULE, NOT A LIMIT.
@@ -27,8 +30,11 @@ const MANAGER = fs.readFileSync(path.join(HERE, "..", "src", "session", "Manager
  */
 
 test("creation consults the same per-provider cap the janitor reports", () => {
-  assert.match(MANAGER, /TAB_LIMITS\.maxSessionsPerProvider/,
-    "the limit must be the one limit, not a second number that can drift");
+  assert.match(
+    MANAGER,
+    /TAB_LIMITS\.maxSessionsPerProvider/,
+    "the limit must be the one limit, not a second number that can drift",
+  );
 });
 
 test("a caller WAITS for a session rather than opening another tab", () => {
@@ -51,8 +57,11 @@ test("an unlocked session does NOT let a caller past the cap", () => {
   //   a separate standby pool — so a single unlocked session let every new
   //   request past. Measured after that fix shipped: chatgpt 5 and perplexity 4,
   //   against a cap of 3. ]]
-  assert.doesNotMatch(MANAGER, /atCapacity\(\) && !hasFree\(\)/,
-    "capacity alone must decide, or one idle session reopens the hole");
+  assert.doesNotMatch(
+    MANAGER,
+    /atCapacity\(\) && !hasFree\(\)/,
+    "capacity alone must decide, or one idle session reopens the hole",
+  );
   assert.match(MANAGER, /if \(atCapacity\(\)\) \{/);
 });
 

@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planCleanup, providerForUrl, census } from "../src/session/TabJanitor.js";
+import {
+  planCleanup,
+  providerForUrl,
+  census,
+} from "../src/session/TabJanitor.js";
 
 /**
  * Tab management (2026-09-13): one Chrome reached 28 pages, 17 of them
@@ -12,14 +16,36 @@ import { planCleanup, providerForUrl, census } from "../src/session/TabJanitor.j
  */
 
 const NOW = 10_000_000;
-const LIMITS = { maxSessionsPerProvider: 3, idleGraceMs: 90_000, abandonedTurnMs: 300_000, maxBlankPages: 1, orphanGraceMs: 150_000, poolIdleMs: 600_000 };
-const sess = (id, providerId, extra = {}) => ({ id, providerId, locked: false, clientGone: false, lockedAt: null, lastUsedAt: NOW - 600_000, createdAt: new Date(NOW - 900_000), ...extra });
+const LIMITS = {
+  maxSessionsPerProvider: 3,
+  idleGraceMs: 90_000,
+  abandonedTurnMs: 300_000,
+  maxBlankPages: 1,
+  orphanGraceMs: 150_000,
+  poolIdleMs: 600_000,
+};
+const sess = (id, providerId, extra = {}) => ({
+  id,
+  providerId,
+  locked: false,
+  clientGone: false,
+  lockedAt: null,
+  lastUsedAt: NOW - 600_000,
+  createdAt: new Date(NOW - 900_000),
+  ...extra,
+});
 
 test("provider URL recognition covers built-in and generic providers, and nothing else", () => {
   assert.equal(providerForUrl("https://chatgpt.com/c/abc"), "chatgpt");
   assert.equal(providerForUrl("https://gemini.google.com/app"), "gemini");
-  assert.equal(providerForUrl("https://www.kimi.ai/?chat_enter_method=new_chat"), "kimi");
-  assert.equal(providerForUrl("https://appstoreconnect.apple.com/apps/123/distribution"), null);
+  assert.equal(
+    providerForUrl("https://www.kimi.ai/?chat_enter_method=new_chat"),
+    "kimi",
+  );
+  assert.equal(
+    providerForUrl("https://appstoreconnect.apple.com/apps/123/distribution"),
+    null,
+  );
   assert.equal(providerForUrl("https://itch.io/dashboard"), null);
 });
 
@@ -31,8 +57,17 @@ test("over the per-provider cap, the least-recently-used idle sessions are close
     sess("d", "chatgpt", { lastUsedAt: NOW - 600_000 }),
     sess("e", "chatgpt", { lastUsedAt: NOW - 500_000 }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: LIMITS });
-  assert.deepEqual(plan.closeSessions.map((c) => c.id), ["a", "b"]);
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+  });
+  assert.deepEqual(
+    plan.closeSessions.map((c) => c.id),
+    ["a", "b"],
+  );
 });
 
 test("a locked session is never evicted for the cap, and neither is a recently used one", () => {
@@ -43,40 +78,100 @@ test("a locked session is never evicted for the cap, and neither is a recently u
     sess("old", "chatgpt", { lastUsedAt: NOW - 600_000 }),
     sess("locked3", "chatgpt", { locked: true, lockedAt: NOW - 10_000 }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: LIMITS });
-  assert.deepEqual(plan.closeSessions.map((c) => c.id), ["old"]);
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+  });
+  assert.deepEqual(
+    plan.closeSessions.map((c) => c.id),
+    ["old"],
+  );
 });
 
 test("an abandoned turn (caller gone, lock held too long) is closed; a live locked turn is not", () => {
   const sessions = [
-    sess("abandoned", "chatgpt", { locked: true, clientGone: true, lockedAt: NOW - 400_000 }),
-    sess("recentlyGone", "chatgpt", { locked: true, clientGone: true, lockedAt: NOW - 60_000 }),
-    sess("liveLongTurn", "chatgpt", { locked: true, clientGone: false, lockedAt: NOW - 900_000 }),
+    sess("abandoned", "chatgpt", {
+      locked: true,
+      clientGone: true,
+      lockedAt: NOW - 400_000,
+    }),
+    sess("recentlyGone", "chatgpt", {
+      locked: true,
+      clientGone: true,
+      lockedAt: NOW - 60_000,
+    }),
+    sess("liveLongTurn", "chatgpt", {
+      locked: true,
+      clientGone: false,
+      lockedAt: NOW - 900_000,
+    }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: LIMITS });
-  assert.deepEqual(plan.closeSessions.map((c) => c.id), ["abandoned"]);
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+  });
+  assert.deepEqual(
+    plan.closeSessions.map((c) => c.id),
+    ["abandoned"],
+  );
 });
 
 test("orphan provider tabs and surplus blank tabs are closed; foreign tabs never are", () => {
   const pages = [
     { key: "owned", url: "https://chatgpt.com/" },
     { key: "orphan", url: "https://chatgpt.com/c/zzz" },
-    { key: "asc", url: "https://appstoreconnect.apple.com/apps/1/distribution/privacy" },
+    {
+      key: "asc",
+      url: "https://appstoreconnect.apple.com/apps/1/distribution/privacy",
+    },
     { key: "blank1", url: "about:blank" },
     { key: "blank2", url: "chrome://newtab/" },
   ];
-  const orphanSince = new Map([["orphan", NOW - 200_000], ["asc", NOW - 999_999]]);
-  const plan = planCleanup({ sessions: [], pages, ownedPageKeys: new Set(["owned"]), now: NOW, limits: LIMITS, orphanSince });
+  const orphanSince = new Map([
+    ["orphan", NOW - 200_000],
+    ["asc", NOW - 999_999],
+  ]);
+  const plan = planCleanup({
+    sessions: [],
+    pages,
+    ownedPageKeys: new Set(["owned"]),
+    now: NOW,
+    limits: LIMITS,
+    orphanSince,
+  });
   const keys = plan.closePages.map((c) => c.key).sort();
   assert.deepEqual(keys, ["blank2", "orphan"]);
 });
 
 test("a provider tab is not closed the first time it looks orphaned — a session being created opens its page before registering", () => {
   const pages = [{ key: "creating", url: "https://gemini.google.com/app" }];
-  const justSeen = planCleanup({ sessions: [], pages, ownedPageKeys: new Set(), now: NOW, limits: LIMITS, orphanSince: new Map([["creating", NOW - 5_000]]) });
+  const justSeen = planCleanup({
+    sessions: [],
+    pages,
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+    orphanSince: new Map([["creating", NOW - 5_000]]),
+  });
   assert.equal(justSeen.closePages.length, 0);
-  const neverSeen = planCleanup({ sessions: [], pages, ownedPageKeys: new Set(), now: NOW, limits: LIMITS });
-  assert.equal(neverSeen.closePages.length, 0, "no first-seen record means not yet eligible");
+  const neverSeen = planCleanup({
+    sessions: [],
+    pages,
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+  });
+  assert.equal(
+    neverSeen.closePages.length,
+    0,
+    "no first-seen record means not yet eligible",
+  );
 });
 
 test("constructing a SessionManager outside test mode does NOT start the tab janitor", async () => {
@@ -102,14 +197,35 @@ test("an unused standby tab expires only when its provider has no sessions", () 
     { providerId: "gemini", id: "g", pooledAt: NOW - 900_000 },
     { providerId: "deepseek", id: "d", pooledAt: NOW - 60_000 },
   ];
-  const plan = planCleanup({ sessions: [sess("s", "gemini", { lastUsedAt: NOW - 1_000 })], pages: [], ownedPageKeys: new Set(), now: NOW, limits: LIMITS, poolEntries });
-  assert.deepEqual(plan.closePool.map((c) => c.id), ["k"]);
+  const plan = planCleanup({
+    sessions: [sess("s", "gemini", { lastUsedAt: NOW - 1_000 })],
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: LIMITS,
+    poolEntries,
+  });
+  assert.deepEqual(
+    plan.closePool.map((c) => c.id),
+    ["k"],
+  );
 });
 
 test("census counts sessions, locks, abandoned turns and orphans per provider", () => {
-  const sessions = [sess("a", "chatgpt"), sess("b", "chatgpt", { locked: true, clientGone: true, lockedAt: NOW })];
-  const pages = [{ key: "x", url: "https://gemini.google.com/app" }, { key: "y", url: "https://example.com" }];
-  const c = census({ sessions, pages, ownedPageKeys: new Set(), poolCounts: { chatgpt: 1 } });
+  const sessions = [
+    sess("a", "chatgpt"),
+    sess("b", "chatgpt", { locked: true, clientGone: true, lockedAt: NOW }),
+  ];
+  const pages = [
+    { key: "x", url: "https://gemini.google.com/app" },
+    { key: "y", url: "https://example.com" },
+  ];
+  const c = census({
+    sessions,
+    pages,
+    ownedPageKeys: new Set(),
+    poolCounts: { chatgpt: 1 },
+  });
   assert.equal(c.providers.chatgpt.sessions, 2);
   assert.equal(c.providers.chatgpt.abandoned, 1);
   assert.equal(c.providers.chatgpt.pool, 1);
@@ -140,9 +256,19 @@ const STALE = { ...LIMITS, staleLockMs: 45 * 60 * 1000 };
 
 test("a lock held longer than any turn can run is reclaimed, even with clientGone false", () => {
   const sessions = [
-    sess("stale", "qwen", { locked: true, clientGone: false, lockedAt: NOW - 50 * 60_000 }),
+    sess("stale", "qwen", {
+      locked: true,
+      clientGone: false,
+      lockedAt: NOW - 50 * 60_000,
+    }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: STALE });
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: STALE,
+  });
   const hit = plan.closeSessions.find((c) => c.id === "stale");
   assert.ok(hit, "a lock nothing will release must be reclaimable");
   assert.match(hit.reason, /stale lock/);
@@ -160,24 +286,61 @@ test("a LONG BUT REAL turn is never reclaimed — this is the case the first att
       lastUsedAt: NOW - 10 * 60_000,
     }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: STALE });
-  assert.deepEqual(plan.closeSessions.map((c) => c.id), [], "a live long turn must survive");
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: STALE,
+  });
+  assert.deepEqual(
+    plan.closeSessions.map((c) => c.id),
+    [],
+    "a live long turn must survive",
+  );
 });
 
 test("even a turn at the client's maximum ask timeout (30m) survives", () => {
   const sessions = [
-    sess("atMaxTimeout", "qwen", { locked: true, clientGone: false, lockedAt: NOW - 30 * 60_000 }),
+    sess("atMaxTimeout", "qwen", {
+      locked: true,
+      clientGone: false,
+      lockedAt: NOW - 30 * 60_000,
+    }),
   ];
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: STALE });
-  assert.deepEqual(plan.closeSessions.map((c) => c.id), []);
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: STALE,
+  });
+  assert.deepEqual(
+    plan.closeSessions.map((c) => c.id),
+    [],
+  );
 });
 
 test("the real qwen leak: sessions locked for an hour are all reclaimed", () => {
   const sessions = ["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((id, i) =>
-    sess(id, "qwen", { locked: true, clientGone: false, lockedAt: NOW - (60 + i) * 60_000 }),
+    sess(id, "qwen", {
+      locked: true,
+      clientGone: false,
+      lockedAt: NOW - (60 + i) * 60_000,
+    }),
   );
-  const plan = planCleanup({ sessions, pages: [], ownedPageKeys: new Set(), now: NOW, limits: STALE });
-  assert.equal(plan.closeSessions.length, 7, "every unreclaimable session should now be reclaimed");
+  const plan = planCleanup({
+    sessions,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now: NOW,
+    limits: STALE,
+  });
+  assert.equal(
+    plan.closeSessions.length,
+    7,
+    "every unreclaimable session should now be reclaimed",
+  );
 });
 
 /**
@@ -199,10 +362,19 @@ test("1c: a locked turn past the caller's OWN declared timeout is reclaimed", ()
   const now = Date.now();
   const plan = planCleanup({
     sessions: [
-      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
-        clientTimeoutMs: 600_000, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+      {
+        id: "s1",
+        providerId: "chatgpt",
+        locked: true,
+        clientGone: false,
+        clientTimeoutMs: 600_000,
+        lockedAt: now - 700_000,
+        lastUsedAt: now - 700_000,
+      },
     ],
-    pages: [], ownedPageKeys: new Set(), now,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now,
   });
   assert.equal(plan.closeSessions.length, 1);
   assert.match(plan.closeSessions[0].reason, /caller's own timeout passed/);
@@ -214,10 +386,19 @@ test("1c: a turn still INSIDE the caller's timeout is left alone", () => {
   const now = Date.now();
   const plan = planCleanup({
     sessions: [
-      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
-        clientTimeoutMs: 600_000, lockedAt: now - 120_000, lastUsedAt: now - 120_000 },
+      {
+        id: "s1",
+        providerId: "chatgpt",
+        locked: true,
+        clientGone: false,
+        clientTimeoutMs: 600_000,
+        lockedAt: now - 120_000,
+        lastUsedAt: now - 120_000,
+      },
     ],
-    pages: [], ownedPageKeys: new Set(), now,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now,
   });
   assert.deepEqual(plan.closeSessions, []);
 });
@@ -228,13 +409,23 @@ test("1c: a caller that declares nothing is untouched by this rule", () => {
   const now = Date.now();
   const plan = planCleanup({
     sessions: [
-      { id: "s1", providerId: "chatgpt", locked: true, clientGone: false,
-        clientTimeoutMs: null, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+      {
+        id: "s1",
+        providerId: "chatgpt",
+        locked: true,
+        clientGone: false,
+        clientTimeoutMs: null,
+        lockedAt: now - 700_000,
+        lastUsedAt: now - 700_000,
+      },
     ],
-    pages: [], ownedPageKeys: new Set(), now,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now,
   });
   assert.equal(
-    plan.closeSessions.filter((c) => /caller's own timeout/.test(c.reason)).length,
+    plan.closeSessions.filter((c) => /caller's own timeout/.test(c.reason))
+      .length,
     0,
   );
 });
@@ -243,10 +434,19 @@ test("1c: a session already being closed by rule 1 is not listed twice", () => {
   const now = Date.now();
   const plan = planCleanup({
     sessions: [
-      { id: "s1", providerId: "chatgpt", locked: true, clientGone: true,
-        clientTimeoutMs: 600_000, lockedAt: now - 700_000, lastUsedAt: now - 700_000 },
+      {
+        id: "s1",
+        providerId: "chatgpt",
+        locked: true,
+        clientGone: true,
+        clientTimeoutMs: 600_000,
+        lockedAt: now - 700_000,
+        lastUsedAt: now - 700_000,
+      },
     ],
-    pages: [], ownedPageKeys: new Set(), now,
+    pages: [],
+    ownedPageKeys: new Set(),
+    now,
   });
   assert.equal(plan.closeSessions.filter((c) => c.id === "s1").length, 1);
 });

@@ -13,7 +13,9 @@ import { cooldownManager, cooldownKey } from "../../session/CooldownManager.js";
 export function cooldownMessage(providerId, cd) {
   const secs = cd.remainingSeconds;
   const span =
-    secs >= 3600 ? `${(secs / 3600).toFixed(1)}h` : `${Math.ceil(secs / 60)} min`;
+    secs >= 3600
+      ? `${(secs / 3600).toFixed(1)}h`
+      : `${Math.ceil(secs / 60)} min`;
   const why = cd.reason ? ` — ${cd.reason}` : "";
   // Over an hour is a quota window, not the short pacing pause this used to
   // describe; say which, because what a caller should do differs.
@@ -60,7 +62,9 @@ export function validateRequest(
   //[[ The cooldown is per LANE: a throttle on gemini Fast must not refuse a
   //   request for gemini Pro, whose quota is separate. "auto" collapses to the
   //   site's own default lane. ]]
-  const cd = cooldownManager.check(cooldownKey(checkId || provider, req?.body?.mode));
+  const cd = cooldownManager.check(
+    cooldownKey(checkId || provider, req?.body?.mode),
+  );
   if (cd.active && !skipCooldown) {
     return {
       valid: false,

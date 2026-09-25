@@ -59,7 +59,10 @@ test("an implausibly distant date is treated as unparsed, not honoured", () => {
 
 test("ordinary prose containing the word 'until' is not a suspension", () => {
   assert.equal(
-    parseSuspensionSeconds("Wait until the kettle boils, then pour.", Date.now()),
+    parseSuspensionSeconds(
+      "Wait until the kettle boils, then pour.",
+      Date.now(),
+    ),
     null,
   );
 });

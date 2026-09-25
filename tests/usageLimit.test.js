@@ -49,9 +49,18 @@ test("minutes only, and hours only", () => {
 });
 
 test("other providers' phrasings for the same thing", () => {
-  assert.equal(parseLimitCountdown("You've hit your limit. Try again in 3 hours."), 3 * 3600);
-  assert.equal(parseLimitCountdown("Rate limit reached — retry in 90 seconds"), 90);
-  assert.equal(parseLimitCountdown("Message limit reached. Resets in 1 hour 30 minutes."), 5400);
+  assert.equal(
+    parseLimitCountdown("You've hit your limit. Try again in 3 hours."),
+    3 * 3600,
+  );
+  assert.equal(
+    parseLimitCountdown("Rate limit reached — retry in 90 seconds"),
+    90,
+  );
+  assert.equal(
+    parseLimitCountdown("Message limit reached. Resets in 1 hour 30 minutes."),
+    5400,
+  );
 });
 
 test("a duration is only read from a line that is ABOUT a limit", () => {
@@ -61,7 +70,10 @@ test("a duration is only read from a line that is ABOUT a limit", () => {
   //   a line with no limit wording must never bench anybody. ]]
   assert.equal(parseLimitCountdown("The train leaves in 2 hours."), null);
   assert.equal(parseLimitCountdown("Kita kena tunggu 30 minit lagi."), null);
-  assert.equal(parseLimitCountdown("He waited 18 hours 49 minutes for a reply."), null);
+  assert.equal(
+    parseLimitCountdown("He waited 18 hours 49 minutes for a reply."),
+    null,
+  );
 });
 
 test("no countdown at all reads as null, so the caller can choose the fallback", () => {
@@ -82,7 +94,10 @@ test("the unknown fallback is minutes, not the five that caused this, and not a 
   //[[ Pins the judgement rather than the number: long enough to break a
   //   once-a-minute retry storm, short enough not to write off a brief limit. ]]
   assert.ok(UNKNOWN_LIMIT_SECONDS > 5 * 60, "must beat the old flat 5 minutes");
-  assert.ok(UNKNOWN_LIMIT_SECONDS < 60 * 60, "a guess must not bench for an hour");
+  assert.ok(
+    UNKNOWN_LIMIT_SECONDS < 60 * 60,
+    "a guess must not bench for an hour",
+  );
 });
 
 /**
@@ -118,13 +133,21 @@ test("its span is read from the RESET line, not the notice line", () => {
 
 test('"a few hours" is hours, not the unknown-limit default', () => {
   const vague = parseLimitCountdown(PERPLEXITY);
-  assert.ok(vague > UNKNOWN_LIMIT_SECONDS * 4,
-    `${vague}s must be far longer than the ${UNKNOWN_LIMIT_SECONDS}s fallback`);
+  assert.ok(
+    vague > UNKNOWN_LIMIT_SECONDS * 4,
+    `${vague}s must be far longer than the ${UNKNOWN_LIMIT_SECONDS}s fallback`,
+  );
 });
 
 test("other vague spans read as the plain English they are", () => {
-  assert.equal(parseLimitCountdown("Limit reached. Try again in an hour."), 3600);
-  assert.equal(parseLimitCountdown("Usage limit hit — resets tomorrow."), 12 * 3600);
+  assert.equal(
+    parseLimitCountdown("Limit reached. Try again in an hour."),
+    3600,
+  );
+  assert.equal(
+    parseLimitCountdown("Usage limit hit — resets tomorrow."),
+    12 * 3600,
+  );
 });
 
 test("an ordinary page is NOT a limit notice", () => {
@@ -141,6 +164,9 @@ test("an ordinary page is NOT a limit notice", () => {
 });
 
 test("a book dialogue that mentions hours cannot bench a provider", () => {
-  assert.equal(looksLimited("Kita kena tunggu. The train leaves in a few hours."), false);
+  assert.equal(
+    looksLimited("Kita kena tunggu. The train leaves in a few hours."),
+    false,
+  );
   assert.equal(parseLimitCountdown("The train leaves in a few hours."), null);
 });

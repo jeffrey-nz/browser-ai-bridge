@@ -69,7 +69,11 @@ test("qwen's real 13-element nested turn: reads the answer, not the empty scroll
       text: "the real answer",
       contains: ["markdown", "codeBody", "scrollProxy"],
     },
-    { id: "markdown", text: "the real answer", contains: ["codeBody", "scrollProxy"] },
+    {
+      id: "markdown",
+      text: "the real answer",
+      contains: ["codeBody", "scrollProxy"],
+    },
     { id: "codeBody", text: "the real answer", contains: ["scrollProxy"] },
     { id: "scrollProxy", text: "" },
   ]);
@@ -90,7 +94,10 @@ test("the empty shim is what `.last()` would have returned — the fixture prove
 test("a LONGER earlier turn does not win — recency still decides, so 'longest' is not the rule", async () => {
   const { readAnswer } = makeInteraction(GENERIC_SPECS.qwen);
   const page = fakePage([
-    { id: "turn1", text: "a much longer answer from the previous turn in this session" },
+    {
+      id: "turn1",
+      text: "a much longer answer from the previous turn in this session",
+    },
     { id: "turn2", text: "short reply" },
   ]);
   assert.equal(

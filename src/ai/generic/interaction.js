@@ -153,7 +153,9 @@ export function makeInteraction(spec) {
       .locator(L.responseBlock)
       .evaluateAll((nodes) =>
         nodes
-          .filter((n) => !nodes.some((other) => other !== n && other.contains(n)))
+          .filter(
+            (n) => !nodes.some((other) => other !== n && other.contains(n)),
+          )
           .map((n) => n.innerText || ""),
       )
       .catch(() => []);
