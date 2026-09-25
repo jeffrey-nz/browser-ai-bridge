@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ticket probes moved from `scripts/` to `evidence/`; `scripts/doc-check.mjs`
   made green and added to CI as `npm run check:docs`; README/CLAUDE.md layout
   sections brought in line with `src/`.
+- Removed the 7 modules and 7 exports nothing imported; the reachability
+  allowlist is now empty. `stopTabJanitor()` now runs at the start of shutdown
+  so a sweep cannot race `closeAllSessions()`.
+- `BROWSER_AI_PROVIDERS` is parsed by one helper, `parseEnabledProviders()`.
+- API.md: removed the nonexistent `POST /api/heal`, documented `/api/ask`'s
+  `label`/`skipConstraint`/`projectDir` and `/api/sessions`' `mode`, and added
+  a table of the 25 endpoints that had no entry. `.env.example` lists every
+  tunable the code reads, commented out at its default.
 
 ### Fixed
 
