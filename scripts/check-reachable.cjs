@@ -52,6 +52,8 @@ function computeReachability() {
   // byte-reproducibility generator), indistinguishable under this rule from
   // an actually-spent t0NN-*.mjs probe. A rule that can't tell those apart
   // is not a gate either, whatever its pass/fail ratio looks like.
+  // (The spent tNNN-*.mjs probes counted above have since moved to
+  // evidence/, where CLAUDE.md says a ticket's repro scripts belong.)
   //
   // A second, independent fragility: even the "passing" side isn't fully
   // trustworthy. scripts/provenance-census.mjs's real, working import of

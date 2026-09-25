@@ -9,7 +9,7 @@
  * sense (T-128/ia-grade's PLANTED block) — the report's plantedBreak field
  * names exactly what was blocked and why.
  *
- * Usage: node scripts/t130-planted-network-block.mjs <count> <color> <outJsonPath>
+ * Usage: node evidence/t130-planted-network-block.mjs <count> <color> <outJsonPath>
  */
 import { chromium } from "playwright-core";
 import { spawn } from "node:child_process";

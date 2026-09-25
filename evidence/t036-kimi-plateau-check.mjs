@@ -117,7 +117,7 @@ async function main() {
   const allCounts = cycles.flatMap((c) => [c.preCount, c.postCount]);
   const highestObserved = Math.max(...allCounts);
   out.clause1_plateauCheck = {
-    scriptUsed: "scripts/t036-kimi-plateau-check.mjs",
+    scriptUsed: "evidence/t036-kimi-plateau-check.mjs",
     description:
       "5 consecutive cycles of fresh-nav -> count(.image-thumbnail.success) -> real upload via real uploadFileToPage() (requireGrowth:true, verifyTimeoutMs:30000 for this measurement only, generous so a slow real upload isn't cut short before it can be observed) -> fresh-nav -> count again. Starting baseline was built up to >= 7 in phaseA above.",
     cycles,

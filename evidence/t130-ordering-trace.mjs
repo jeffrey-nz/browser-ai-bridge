@@ -17,7 +17,7 @@
  * mistaken for this turn's own evidence) every 50ms, recording the first
  * timestamp each selector's count exceeds its own pre-turn baseline.
  *
- * Usage: node scripts/t130-ordering-trace.mjs <count> <color> <outJsonPath>
+ * Usage: node evidence/t130-ordering-trace.mjs <count> <color> <outJsonPath>
  */
 import { chromium } from "playwright-core";
 import { writeFile, mkdir } from "node:fs/promises";

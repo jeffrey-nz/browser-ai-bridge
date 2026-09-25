@@ -2,7 +2,7 @@
 // @one-shot-probe — closed-ticket evidence script, not meant to be re-run generally (T-085). Excluded from scripts/doc-check.mjs's bucket-one requirement by this marker, not by a hardcoded name.
 /**
  * T-034 evidence-gathering probe. Same CDP-over-the-shared-Chrome approach
- * as scripts/t031-growth-check.mjs, but this one tests the TIMING of
+ * as evidence/t031-growth-check.mjs, but this one tests the TIMING of
  * requireGrowth rather than its outcome on a no-op upload: a stale
  * .image-thumbnail.success node is injected first, then a REAL, VALID image
  * is uploaded through the real uploadFileToPage(). The question is not

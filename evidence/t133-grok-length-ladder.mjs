@@ -53,7 +53,7 @@ import {
   classifyServerProvenance,
   resolveAnsweredBy,
   summarizeAnsweredBy,
-} from "./vision-probe.mjs";
+} from "../scripts/vision-probe.mjs";
 
 const BASE_URL = process.env.VISION_PROBE_BASE_URL || "http://localhost:3333";
 const TURNS_PER_RUNG = 3;

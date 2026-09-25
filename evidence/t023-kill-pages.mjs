@@ -13,7 +13,7 @@
  * "disconnected") — so pass a URL substring (see below) to close only the
  * page(s) matching it, leaving at least one other tab open.
  *
- * Usage: node scripts/t023-kill-pages.mjs [urlSubstring]
+ * Usage: node evidence/t023-kill-pages.mjs [urlSubstring]
  *   no argument: closes every page (reproduces the whole-Chrome-quits case)
  *   urlSubstring: closes only pages whose url() includes it
  */
