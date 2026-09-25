@@ -68,6 +68,17 @@ streaming) gets its own implementation:
 - Run what CI runs: `npx prettier --check "src/**/*.js" "tests/**/*.js" "scripts/**"`, `npm test`, `npm run check:reachable` and `npm run check:docs`
 - If you're fixing a broken selector for a specific provider, mention which provider, which step failed, and briefly how you found the correct selector
 
+## Releasing
+
+1. Move the `[Unreleased]` entries in `CHANGELOG.md` under a new
+   `## [X.Y.Z] - YYYY-MM-DD` heading, and update the compare links at the bottom
+2. `npm version X.Y.Z --no-git-tag-version` to bump `package.json` and the lockfile
+3. Commit, push to `main`, then tag and push: `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`
+4. The Release workflow publishes a GitHub release whose notes are that
+   version's `CHANGELOG.md` section. For an older tag with no release, run the
+   workflow by hand with the tag name
+5. `npm publish` separately, from a clean checkout of the tag
+
 ## Selector stability tips
 
 AI chat interfaces update frequently. When writing selectors:

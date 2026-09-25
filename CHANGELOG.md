@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-25
+
+Everything since 1.0.0: five new providers, `/api/ask-all`, provider tiers,
+image attachments, a tab janitor, per-lane cooldowns, and a docs and code tidy-up.
+
+### Breaking changes
+
+- `copilot365` is no longer a provider id; requests naming it get
+  `400 Unknown provider specified`.
+- `/api/ask` responses drop `messageCount` (it was only ever computed for
+  Copilot) and add `turnIndex` and `sessionAgeMs` instead.
+- Copilot's prompt limit is 9,500 characters (was 32,000); longer prompts get
+  `413`.
+- Per-IP rate limiting on `/api/` is gone. The server still binds to
+  `127.0.0.1` only.
+- Gemini defaults to Flash, not Pro, when no `mode` is given.
+
+### Added
+
+- **Five more providers** — `kimi`, `qwen`, `zai`, `mistral`, `perplexity` — as
+  one spec-driven implementation (`src/ai/generic/specs.js`).
+- **`POST /api/ask-all`**: one prompt to several providers in parallel, every
+  answer returned side by side.
+- **Provider tiers**: `providers` / `fallback` on `/api/ask`, or
+  `PROVIDER_TIERS` in `.env`, fall through to the next provider on a rate limit
+  or cooldown. The reply's `provider` says who answered.
+- **Images on `/api/ask`** (`images`), with `imageAttached` and
+  `imageAttachedCause` reporting whether the provider actually got the file.
+- **Endpoints:** `/api/setup`, `/api/tabs` and `/api/tabs/sweep`,
+  `/api/devserver`, `/api/visual-ask`, `/api/image-ask`, `/api/audio-ask`,
+  `/api/page-inspect`, `/api/evaluate`, `/api/click`, `/api/wait-for`,
+  `/api/ping/warmup`, and, per session, `/evaluate`, `/new-chat` and
+  `/extract-image`. The screenshot API gains `/session/:id`, `/sessions`,
+  `/monitor` and `/baseline/:id`.
+- **npm package:** a `browser-ai-bridge` CLI and a Node client
+  (`browser-ai-bridge/client`).
+- **`/api/ping`** now returns `503` until setup finishes, and adds
+  `loadedCommit`, memory figures, per-provider counts and cooldowns,
+  `longRunningSessions`, `attachedPages` and `lastUnexpectedPageCloseAt`.
+- **Tab janitor:** caps tabs at `MAX_TABS_PER_PROVIDER` and closes abandoned
+  turns, orphan tabs and idle standby tabs. The per-provider session cap is
+  enforced atomically.
+- **Rate limits and blocked accounts:** cooldowns are kept per lane
+  (`provider:mode`) and last as long as the provider says. Usage-limit
+  detection covers every provider except Copilot. Suspended and signed-out
+  accounts are recognised and skipped.
+- `clientTimeoutMs` on `/api/ask` frees the tab once the caller has stopped
+  waiting.
+- `HEADLESS=offscreen`, `BROWSER_AI_PROVIDERS`, `BROWSER_AI_ASSUME_LOGGED_IN`
+  and a "Skip setup" choice. The Chrome profile now persists in
+  `~/.browser-ai-bridge/`.
+- `npm run audit` covers the generic providers.
+
 ### Changed
 
 - Housekeeping: prettier applied to the 26 files CI's format check was failing
@@ -31,15 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-These went after 1.0.0 without an entry at the time; recorded here so the 1.0.0
-list below is not read as current.
-
-- Microsoft 365 Copilot (`copilot365`) is no longer a provider id; requests
-  naming it get `400 Unknown provider`.
-- Self-healing locators (`src/heal/localHealer.js`, `POST /api/heal`). `src/heal/`
-  now only captures page context for stall diagnostics.
-- Per-IP rate limiting on `/api/` (the `express-rate-limit` dependency was
-  unused and has been dropped). The server binds to `127.0.0.1` only.
+- Self-healing locators (`src/heal/localHealer.js`). `src/heal/` now only
+  captures page context for stall diagnostics. (`POST /api/heal` was documented
+  but never registered as a route.)
 
 ### Fixed
 
@@ -140,5 +187,6 @@ list below is not read as current.
 - **DeepSeek**: Supports Fast / Expert (DeepThink R1) mode toggle audit step
 - **Gemini**: Supports Pro / Thinking / Fast model dropdown audit step
 
-[Unreleased]: https://github.com/jeffrey-nz/browser-ai-bridge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/jeffrey-nz/browser-ai-bridge/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/jeffrey-nz/browser-ai-bridge/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/jeffrey-nz/browser-ai-bridge/releases/tag/v1.0.0
