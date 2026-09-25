@@ -1,7 +1,7 @@
 {
   "name": "browser-ai-bridge",
   "version": "1.0.0",
-  "description": "Local REST API server that drives real browser sessions to interact with AI web interfaces — ChatGPT, Copilot, Gemini, DeepSeek, and Grok",
+  "description": "Local REST API server that drives real browser sessions to interact with AI web interfaces — ChatGPT, Gemini, DeepSeek, Grok, Copilot, Kimi, Qwen, Z.ai, Mistral, and Perplexity",
   "type": "module",
   "license": "MIT",
   "engines": {
@@ -16,6 +16,10 @@
     "gemini",
     "deepseek",
     "grok",
+    "kimi",
+    "qwen",
+    "mistral",
+    "perplexity",
     "rest-api",
     "llm",
     "automation"

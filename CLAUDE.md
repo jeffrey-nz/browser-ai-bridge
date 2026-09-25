@@ -1,7 +1,8 @@
 # browser-ai-bridge — Claude Code guide
 
 A local HTTP server that drives logged-in Chrome tabs at ChatGPT, Gemini,
-DeepSeek, Grok, and Copilot via Playwright/CDP. It's the **bottom layer**
+DeepSeek, Grok, Copilot, and five more chat sites (Kimi, Qwen, Z.ai, Mistral,
+Perplexity) via Playwright/CDP. It's the **bottom layer**
 of a three-repo agent system — see
 [dev-agent/ARCHITECTURE.md](https://github.com/jeffrey-nz/dev-agent/blob/master/ARCHITECTURE.md)
 for the bigger picture.
@@ -17,6 +18,7 @@ src/
 ├── server.js           # Express app, middleware, route registration
 ├── routes/             # HTTP route handlers
 ├── ai/                 # One folder per provider (chatgpt, gemini, deepseek, ...)
+│   ├── generic/        # Spec-driven providers: one GENERIC_SPECS entry each
 │   └── shared/         # Cross-provider helpers (uploadFile, domInteraction)
 ├── session/            # SessionManager — pool of browser tabs
 ├── audit/              # Selector-health audit tool (npm run audit)
@@ -65,8 +67,10 @@ interaction/
     └── extract.js   # Pull response text from DOM
 ```
 
-When adding a new provider, copy the structure of `deepseek/` — it's the
-most complete.
+When adding a new provider, first check whether a `GENERIC_SPECS` entry in
+`src/ai/generic/specs.js` is enough; otherwise copy the structure of
+`deepseek/` — it's the most complete. CONTRIBUTING.md lists every place a
+bespoke provider must be registered.
 
 ## Locators — what they are and why they break
 
@@ -90,7 +94,7 @@ which locator to update.
 ## Session lifecycle
 
 `SessionManager` ([src/session/](./src/session/)) maintains a pool of
-warm browser tabs — one per provider. Sessions are:
+warm browser tabs per provider (capped by the tab janitor below). Sessions are:
 
 - **created lazily** on first request to that provider
 - **reused** across requests (avoids login delay)
