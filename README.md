@@ -121,7 +121,7 @@ curl http://localhost:3333/api/ping
 ```json
 {
   "status": "ready",
-  "browser": { "connected": true },
+  "browser": "connected",
   "uptime": 42.1,
   "sessions": 2,
   "activeSessions": 1,
