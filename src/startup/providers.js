@@ -1,11 +1,14 @@
 import { GENERIC_SPECS } from "#ai/generic/specs.js";
-const _enabled = process.env.BROWSER_AI_PROVIDERS
-  ? new Set(
-      process.env.BROWSER_AI_PROVIDERS.split(",").map((s) =>
-        s.trim().toLowerCase(),
-      ),
-    )
-  : null;
+
+// BROWSER_AI_PROVIDERS as a Set of lower-cased ids, or null when unset (all).
+export function parseEnabledProviders(
+  envValue = process.env.BROWSER_AI_PROVIDERS,
+) {
+  if (!envValue) return null;
+  return new Set(envValue.split(",").map((s) => s.trim().toLowerCase()));
+}
+
+const _enabled = parseEnabledProviders();
 
 //[[ Generated from the specs rather than restated, so a selector fix in one place
 //   cannot leave the startup readiness probe looking for the old one. ]]

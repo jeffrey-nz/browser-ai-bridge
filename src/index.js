@@ -9,6 +9,7 @@ import {
 } from "./browser.js";
 import { startServer } from "./server.js";
 import { runLoginSequence } from "./startup/authSequence.js";
+import { parseEnabledProviders } from "./startup/providers.js";
 import {
   killZombieProcess,
   writePidFile,
@@ -29,11 +30,8 @@ function printHotkeyHint() {
 }
 
 function applyProviderFilter() {
-  const envList = process.env.BROWSER_AI_PROVIDERS;
-  if (!envList) return;
-  const enabled = new Set(
-    envList.split(",").map((s) => s.trim().toLowerCase()),
-  );
+  const enabled = parseEnabledProviders();
+  if (!enabled) return;
   for (const [id, cfg] of Object.entries(PROVIDER_CONFIG)) {
     cfg.disabled = !enabled.has(id);
   }
