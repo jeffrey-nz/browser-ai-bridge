@@ -332,5 +332,3 @@ export const GENERIC_SPECS = {
     dismiss: [],
   },
 };
-
-export const GENERIC_IDS = Object.keys(GENERIC_SPECS);

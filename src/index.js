@@ -17,7 +17,7 @@ import {
 } from "./startup/pidManager.js";
 import { sessionManager } from "./session/index.js";
 import { sessionPool } from "./session/Pool.js";
-import { startTabJanitor } from "./session/TabJanitor.js";
+import { startTabJanitor, stopTabJanitor } from "./session/TabJanitor.js";
 import { setupState } from "./setup/state.js";
 import { PROVIDER_CONFIG } from "./config/providers.js";
 import { logger } from "#utils/logger.js";
@@ -122,6 +122,8 @@ async function init() {
   const shutdown = async () => {
     process.stdout.write("\n");
     stopKeys();
+    // A sweep mid-shutdown would race closeAllSessions() for the same tabs.
+    stopTabJanitor();
     logger.info("[Shutdown] Closing server and active AI sessions...");
     removePidFile(port);
     try {

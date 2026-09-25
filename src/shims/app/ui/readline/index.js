@@ -51,13 +51,3 @@ export async function promptChoice(rl, msg, options, opts = {}) {
     });
   });
 }
-
-export async function waitForEnter(rl, message = "Press Enter to continue...") {
-  const instance = rl || makeRl();
-  return new Promise((resolve) => {
-    instance.question(message, () => {
-      if (!rl) instance.close();
-      resolve();
-    });
-  });
-}
