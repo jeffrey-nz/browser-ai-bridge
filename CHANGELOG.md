@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A failing log transport no longer kills the bridge. `pino-pretty` runs in a
+  worker thread through `thread-stream`; when that worker exits the stream emits
+  `error`, and with no listener Node treats it as unhandled and ends the process.
+  Seen 2026-09-27 mid-generation: the bridge died with "Error: the worker has
+  exited" one line after logging a successful response, with nothing wrong in the
+  browser, the providers or the network. Every client lane saw ECONNREFUSED at
+  once and a 24-chapter generation stalled. The transport is now built explicitly
+  so an error listener can be attached, and a logging failure costs pretty
+  printing rather than the service.
+
 - The session pool no longer hands out a standby tab that was closed while it
   sat pooled. A pooled session waits unlocked and unwatched, so its tab can be
   closed underneath it by the GC sweep, by TabJanitor's cap or by a browser
