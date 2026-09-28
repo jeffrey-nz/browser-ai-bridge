@@ -140,8 +140,13 @@ that can reach the real browser; a test pins this.
 ## Common pitfalls
 
 - **Browser changes break locators.** When something fails: run the audit
-  first, before debugging logic. The reports under `reports/` and
-  `snapshots/` are your starting point.
+  first, before debugging logic. The reports under `reports/` and the failure
+  snapshots are your starting point. Snapshots are **on the data drive**, at
+  `/Volumes/External Drive/<repo>/snapshots` where `<repo>` is the calling process's
+  directory (`BRIDGE_SNAPSHOT_DIR` overrides). They fall back to `./snapshots` only
+  when the drive is unplugged. By 2026-09-28 they had put 4.2 GB on the system disk.
+  Anything new here that writes a file per run follows the same pattern
+  (`snapshotDir()` in `src/ai/shared/captureSnapshot.js`).
 - **Body parser is 50 MB.** Configured in `server.js` to allow image
   uploads. Don't lower it without auditing the image flow.
 - **Don't bundle the pool startup with provider creation.** They've been
