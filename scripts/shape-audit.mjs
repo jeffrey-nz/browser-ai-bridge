@@ -744,12 +744,9 @@ function main() {
     exclusionByProviderBand,
     outOfRangeRows,
     structuredCount,
-    providerStrata,
     providerCountCells,
     wrongRows,
     providerSighted,
-    providerSightedCells,
-    countStrataSighted,
     providerExcludedByShape,
     providerExcludedByShapeNoPlant,
     sightedNoTruthRows,
@@ -1151,8 +1148,6 @@ function main() {
   // findings rather than left for a reader to notice in the cells above.
   const cell9 = (p) => providerCountCells[p]?.get(MAX_COUNT);
   const hardProviders = providerIdsCT.filter((p) => cell9(p));
-  const hardOk = hardProviders.reduce((s, p) => s + cell9(p).ok, 0);
-  const hardN = hardProviders.reduce((s, p) => s + cell9(p).n, 0);
   const failedAtHard = hardProviders.filter((p) => cell9(p).ok === 0);
   const heldAtHard = hardProviders.filter((p) => cell9(p).ok === cell9(p).n);
   if (

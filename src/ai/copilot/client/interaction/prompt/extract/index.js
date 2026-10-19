@@ -37,7 +37,7 @@ function stripCopilotChrome(text) {
     // output: "PLAN_REVISED", "PLAN_OK", "OUTPUT:" etc. Strip only when
     // followed by JSON-like content so we don't swallow real prose.
     t = t.replace(
-      /^(PLAN_REVISED|PLAN_OK|PLAN_VALID|OUTPUT|RESPONSE|RESULT|ANSWER)[:\s ]+(?=[\[{`])/i,
+      /^(PLAN_REVISED|PLAN_OK|PLAN_VALID|OUTPUT|RESPONSE|RESULT|ANSWER)[:\s ]+(?=[[{`])/i,
       "",
     );
     if (t === before) break;

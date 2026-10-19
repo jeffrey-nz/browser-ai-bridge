@@ -42,7 +42,7 @@ test("logTimeoutSnapshot logs the page's own text snippet, truncated to 300 char
     );
     // Whitespace collapsed (no literal newlines/runs of spaces survive).
     assert.doesNotMatch(warnings[0], /\n/);
-    assert.doesNotMatch(warnings[0], /   /);
+    assert.doesNotMatch(warnings[0], / {3}/);
     // Truncated: the snippet portion itself is at most 300 chars of the
     // (whitespace-collapsed) body text, not the full repeated string.
     const quoted = warnings[0].match(/snippet: "(.*)"$/)[1];

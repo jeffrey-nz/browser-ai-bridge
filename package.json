@@ -53,6 +53,7 @@
   "scripts": {
     "start": "node --env-file=.env src/index.js",
     "test": "NODE_ENV=test node --test",
+    "lint": "eslint .",
     "audit": "node src/audit/index.js",
     "audit:fix": "node src/audit/fix.js",
     "check:reachable": "node scripts/check-reachable.cjs",
@@ -68,6 +69,9 @@
     "playwright-core": "^1.42.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
     "prettier": "^3.2.5",
     "supertest": "^6.3.4"
   }

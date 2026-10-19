@@ -21,6 +21,7 @@ export async function renderDebugDump(page, errorMsg = "", label = "Stuck UI") {
     `URL   : ${url}`,
     "",
     "=== DIAGNOSTICS ===",
+    // eslint-disable-next-line no-control-regex -- strips ANSI colour codes
     ...diagLines.map((l) => l.replace(/\x1b\[[0-9;]*m/g, "")),
     "",
     "=== COMPOSER HTML ===",

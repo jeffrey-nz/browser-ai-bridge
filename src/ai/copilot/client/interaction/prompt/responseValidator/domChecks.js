@@ -59,7 +59,7 @@ export async function checkDomForErrors(page, responseText = "") {
     responseText.includes("```") ||
     trimmed.startsWith("{") ||
     trimmed.startsWith("[") ||
-    /[\n\r]\s*[\[{]/.test(responseText);
+    /[\n\r]\s*[[{]/.test(responseText);
 
   if (hasDesignerImage && !hasJsonBlock) {
     log(

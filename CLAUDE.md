@@ -177,7 +177,12 @@ Tested headless paths (May 2026):
 
 ```bash
 npm test       # node --test (unit tests under tests/)
+npm run lint   # eslint: correctness only, prettier owns style
 ```
+
+Run `npm run lint` before pushing. Its first run found two variables used outside the
+block that declared them: a tab claim `authSequence.js` never released, and a
+ReferenceError in copilot's `verifyAck`. Neither had a test.
 
 API route validation tests live in `tests/api.test.js`. Integration tests
 against real browsers are not feasible in CI — the audit tool plays that
