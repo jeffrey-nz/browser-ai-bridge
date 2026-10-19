@@ -34,7 +34,7 @@ export async function capturePageSnapshot(page, label = "Automation Failure") {
     const filepath = path.resolve(dir, filename);
     fs.writeFileSync(filepath, html, "utf8");
     log(
-      `  [Snapshot] Page HTML saved to ${filepath} (${html.length} bytes).`,
+      `  [Snapshot] ${label}: page HTML saved to ${filepath} (${html.length} bytes).`,
     );
   } catch (err) {
     log(`  [Snapshot] Failed to capture page HTML: ${err.message}`);

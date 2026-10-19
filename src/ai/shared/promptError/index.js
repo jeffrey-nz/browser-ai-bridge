@@ -1,6 +1,5 @@
 import { log } from "#app/ui/log.js";
 import { colors } from "#app/ui/colors.js";
-import { dumpPageHtml } from "#ai/shared/domInteraction.js";
 import {
   makeRl,
   closeRl,

@@ -3,7 +3,7 @@ import { createSpinner } from "#app/ui/spinner.js";
 import { handlePromptError } from "#ai/shared/promptError/index.js";
 import { dumpPageHtml } from "#ai/shared/domInteraction.js";
 import { diagnoseBlockedPage, describeBlock } from "#ai/shared/blockedPage.js";
-import { cooldownManager, cooldownKey } from "../../session/CooldownManager.js";
+import { cooldownManager } from "../../session/CooldownManager.js";
 
 export async function runPromptWorkflow(page, text, label, options) {
   try {

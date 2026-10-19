@@ -1,5 +1,4 @@
 import { log } from "#app/ui/log.js";
-import { colors } from "#app/ui/colors.js";
 
 // Grok 4 (mid-2026) always reasons ("Thought for Xs") regardless of any UI
 // toggle — there is no per-prompt reasoning switch at the free tier. The

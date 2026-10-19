@@ -167,7 +167,7 @@ export class SessionPool {
     this.isShuttingDown = true;
     logger.debug("[Pool] Shutting down standby tabs...");
 
-    for (const [providerId, pool] of this.warmSessions.entries()) {
+    for (const pool of this.warmSessions.values()) {
       while (pool.length > 0) {
         const session = pool.shift();
         try {

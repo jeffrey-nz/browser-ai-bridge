@@ -1,6 +1,4 @@
 import { createSpinner } from "#app/ui/spinner.js";
-import { colors } from "#app/ui/colors.js";
-import { log } from "#app/ui/log.js";
 
 export async function stepGenerationPolling(page, locs) {
   const spinner = createSpinner(

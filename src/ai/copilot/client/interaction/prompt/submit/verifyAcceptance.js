@@ -7,14 +7,9 @@ import {
 } from "./acceptance/domSignals.js";
 import { COPILOT_365_LOCATORS } from "../../../locators.js";
 
-// Content policy refusal phrases. Copilot 365 shows these as an inline message
-// below the input box when it refuses a prompt — the textarea is NOT cleared and
-// no "done" signals fire, so the normal acceptance checks all time out.
-const REFUSAL_PHRASES = [
-  "it looks like i can't respond to this",
-  "let's try a different topic",
-  "sorry, it looks like i can",
-];
+// Content policy refusal. Copilot 365 shows it as an inline message below the
+// input box when it refuses a prompt — the textarea is NOT cleared and no "done"
+// signals fire, so the normal acceptance checks all time out.
 
 async function checkContentPolicyRefusal(page, pollIndex) {
   try {

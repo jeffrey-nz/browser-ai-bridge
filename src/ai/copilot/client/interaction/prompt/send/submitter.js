@@ -3,7 +3,6 @@ import { colors } from "#app/ui/colors.js";
 import { performSubmitWithRetry } from "../submit.js";
 import { getChatInputArea } from "../inputLocator.js";
 import { dismissSidePane } from "../../sidepane.js";
-import { waitForCompletion } from "../poll/index.js";
 
 export async function injectAndSubmit(page, text) {
   await dismissSidePane(page);

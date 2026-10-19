@@ -83,9 +83,13 @@ export async function runLoginSequence(context) {
   for (const provider of providersToRun) {
     console.log(`\n-> Configuring ${colors.bold(provider.name)}...`);
 
+    // Declared outside the try so the finally can release it. Inside, the finally's
+    // `typeof page` was always "undefined", and a page claimed before an error stayed
+    // claimed: createSession() would never adopt that tab and opened another instead.
+    let page;
     try {
       let pages = context.pages();
-      let page = pages.find((p) => {
+      page = pages.find((p) => {
         try {
           const url = p.url();
           return url.includes(new URL(provider.url).hostname);
@@ -205,7 +209,7 @@ export async function runLoginSequence(context) {
       if (PROVIDER_CONFIG[provider.id])
         PROVIDER_CONFIG[provider.id].disabled = true;
     } finally {
-      if (typeof page !== "undefined" && page) releaseExternalPage(page);
+      if (page) releaseExternalPage(page);
     }
   }
 

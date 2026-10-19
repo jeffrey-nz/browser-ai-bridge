@@ -3,8 +3,12 @@ import { colors } from "#app/ui/colors.js";
 import { validateAndExtractResponse } from "../responseValidator/index.js";
 
 export async function verifyAck(page, expectedAck) {
+  // Outside the loop so the mismatch report below can read the last attempt. Inside,
+  // `validation` was out of scope there, and three misses threw a ReferenceError
+  // instead of returning the retry recovery.
+  let validation;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const validation = await validateAndExtractResponse(page);
+    validation = await validateAndExtractResponse(page);
 
     if (!expectedAck || validation.action !== "success") {
       return { success: true, validation };

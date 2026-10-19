@@ -30,13 +30,9 @@ export async function startNewChat(page) {
   // Use evaluate() so clicks work even when elements are outside the viewport.
   await page
     .evaluate(() => {
-      const dismissSelectors = [
-        // "SuperGrok — Try for $0.00" bottom sheet
-        'button[class*="dismiss" i], button[aria-label*="dismiss" i]',
-        // "Connect your X account — Dismiss" banner
-        'button:not([aria-label]):not([type="submit"])',
-      ];
-      // Find all visible Dismiss-labelled buttons or the SuperGrok close button
+      // Click every button labelled exactly "Dismiss" (the SuperGrok upsell sheet,
+      // the "Connect your X account" banner). Never a broader selector: one matching
+      // unlabelled buttons would click half the page.
       document.querySelectorAll("button").forEach((btn) => {
         const txt = (btn.textContent || "").trim();
         const label = (btn.getAttribute("aria-label") || "").trim();
