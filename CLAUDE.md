@@ -176,7 +176,7 @@ Tested headless paths (May 2026):
 ## Tests
 
 ```bash
-npm test       # node --test (unit tests under tests/)
+npm test       # node --test with NODE_ENV=test, on any OS (scripts/run-tests.mjs)
 npm run lint   # eslint: correctness only, prettier owns style
 ```
 

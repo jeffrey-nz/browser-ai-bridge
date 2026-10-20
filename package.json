@@ -52,7 +52,7 @@
   },
   "scripts": {
     "start": "node --env-file=.env src/index.js",
-    "test": "NODE_ENV=test node --test",
+    "test": "node scripts/run-tests.mjs",
     "lint": "eslint .",
     "audit": "node src/audit/index.js",
     "audit:fix": "node src/audit/fix.js",

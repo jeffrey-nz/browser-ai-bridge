@@ -276,6 +276,7 @@ running unless noted.
 
 **Repo checks** (run in CI)
 
+- `scripts/run-tests.mjs` (`npm test`) — runs `node --test` with `NODE_ENV=test` set, so the suite runs the same on Windows as on macOS and Linux, and never without the variable.
 - `scripts/check-reachable.cjs` (`npm run check:reachable`) — fails if any `src/` module is unreachable from a declared entry point.
 - `scripts/doc-check.mjs` (`npm run check:docs`) — fails if a script listed here is missing, or a script in `scripts/` isn't listed.
 

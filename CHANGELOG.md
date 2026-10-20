@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `npm test` runs on Windows. The script was `NODE_ENV=test node --test`, POSIX
+  syntax that cmd.exe refuses ("'NODE_ENV' is not recognized"), so the suite
+  never ran there. It is now `scripts/run-tests.mjs`, which sets `NODE_ENV=test`
+  itself: the session modules must never load without it in a process that can
+  reach the real browser, so the variable is no longer left to the caller's
+  shell. All 464 tests pass on Windows.
+
 - A failing log transport no longer kills the bridge. `pino-pretty` runs in a
   worker thread through `thread-stream`; when that worker exits the stream emits
   `error`, and with no listener Node treats it as unhandled and ends the process.
