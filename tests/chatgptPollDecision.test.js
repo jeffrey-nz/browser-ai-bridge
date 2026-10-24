@@ -95,6 +95,28 @@ test("a slow reply that is visibly generating is never called a DOM change", () 
   assert.deepEqual(decideChatGptPoll(st, thinking, null, ASSISTANT_GRACE_MS * 2), { done: false });
 });
 
+test("A/B pair: the new reply is found by id even though the element count did not rise", () => {
+  // The previous turn's A/B pair collapsed when the prompt went in: 4 elements
+  // before, 4 after, but one of them is new.
+  const st = state({ baseline: { ...base, assistantCount: 4, assistantIds: ["a", "b", "c", "d"] } });
+  const s = snap({ assistantCount: 4, newReply: true, newReplyId: "e", lastAssistantText: "{json}" });
+  assert.deepEqual(run(st, s, null, 3), { done: true, source: "dom" });
+});
+
+test("only an empty new reply element, API finished: done from the API", () => {
+  const st = state();
+  const s = snap({ newReply: true, lastAssistantText: "" });
+  const api = { ok: true, id: "m9", status: "finished_successfully", text: "PONG" };
+  assert.deepEqual(decideChatGptPoll(st, s, api, 5000), { done: true, source: "api", text: "PONG" });
+});
+
+test("a reply element that never gets text, nothing generating, no API: provider DOM changed: assistant reply text", () => {
+  const st = state();
+  const s = snap({ newReply: true, lastAssistantText: "", turnState: "complete" });
+  assert.deepEqual(decideChatGptPoll(st, s, null, ASSISTANT_GRACE_MS - 1), { done: false });
+  assert.deepEqual(decideChatGptPoll(st, s, null, ASSISTANT_GRACE_MS + 1), { domChanged: "assistant reply text" });
+});
+
 test("citation markers are stripped from API text", () => {
   assert.equal(stripCitationMarkup("Paris citeturn0search0 is big."), "Paris  is big.");
 });

@@ -18,7 +18,7 @@ const API_EVERY_MS = 3000;
 /** The error a run fails with when a strategy list stops matching. */
 function domChangedError(which, snap) {
   const list =
-    which === "user turn" ? CHATGPT_DOM.user : CHATGPT_DOM.assistant;
+    which === "user turn" ? CHATGPT_DOM.user : CHATGPT_DOM.assistant; // "assistant reply" / "assistant reply text"
   const err = new Error(
     `provider DOM changed: ${which} (none of: ${list.join(" | ")}; matched ${JSON.stringify(snap?.matched || {})}) — update src/ai/chatgpt/locators.js`,
   );
@@ -115,7 +115,11 @@ export async function waitForChatGptCompletion(
           throw err;
         }
 
-        const snap = await readChatGptDom(page);
+        const snap = await readChatGptDom(
+          page,
+          baseline.assistantIds || [],
+          baseline.assistantCount || 0,
+        );
 
         // The conversation API is a second witness, read every few seconds
         // rather than every tick: it is the fallback when the DOM is blind.
@@ -126,6 +130,7 @@ export async function waitForChatGptCompletion(
         }
 
         const verdict = decideChatGptPoll(st, snap, api, Date.now());
+        if (snap.newReplyId) page.__chatgptReplyId = snap.newReplyId; // for the extractor
         if (verdict.domChanged) throw domChangedError(verdict.domChanged, snap);
         if (verdict.done) {
           if (verdict.source === "api") {

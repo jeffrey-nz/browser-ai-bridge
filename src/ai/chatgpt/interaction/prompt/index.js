@@ -68,6 +68,7 @@ export async function sendPromptAndWait(
   // locator, which blocks 30 s whenever its selector has gone (see dom.js).
   const baseline = await captureChatGptBaseline(page);
   delete page.__chatgptApiReply;
+  delete page.__chatgptReplyId;
   page.__chatgptBaseline = baseline; // the extractor's "is this reply new?"
 
   return runPromptWorkflow(page, text, label, {

@@ -10,38 +10,76 @@ import { CHATGPT_DOM } from "../../locators.js";
 //   page.evaluate answers in milliseconds whether or not anything matches, and it
 //   reports WHICH strategy matched, so a miss can be named. ]]
 
-/** Read the conversation's visible state with the ordered strategies in CHATGPT_DOM. */
-export async function readChatGptDom(page) {
-  return page.evaluate((dom) => {
-    const first = (list, root = document) => {
-      for (const sel of list) {
-        const els = root.querySelectorAll(sel);
-        if (els.length) return { sel, els: [...els] };
-      }
-      return { sel: null, els: [] };
-    };
-    const visible = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
-    const turn = first(dom.turn);
-    const user = first(dom.user);
-    const assistant = first(dom.assistant);
-    const stop = first(dom.stop);
-    const lastTurn = turn.els[turn.els.length - 1] || null;
-    const lastAssistant = assistant.els[assistant.els.length - 1] || null;
-    const status = [...document.querySelectorAll('[role="status"]')]
-      .map((s) => (s.textContent || "").trim())
-      .filter(Boolean);
-    return {
-      matched: { turn: turn.sel, user: user.sel, assistant: assistant.sel, stop: stop.sel },
-      turnCount: turn.els.length,
-      userCount: user.els.length,
-      assistantCount: assistant.els.length,
-      turnState: lastTurn ? lastTurn.getAttribute("data-talvt-turn-state") : null,
-      stopVisible: stop.els.some(visible),
-      lastAssistantText: lastAssistant ? lastAssistant.innerText || "" : "",
-      responseComplete: status.some((s) => /response complete/i.test(s)),
-      conversationId: (location.pathname.match(/\/c\/([0-9a-f-]{8,})/i) || [])[1] || null,
-    };
-  }, CHATGPT_DOM);
+//[[ A NEW REPLY IS ONE WHOSE MESSAGE ID WAS NOT THERE BEFORE THE SEND.
+//
+//   The first version of this counted assistant elements and called the reply new
+//   when the count rose. Live, on genq's very first define batch, the count did
+//   not rise: ChatGPT had shown an A/B "Which response do you prefer?" pair on the
+//   previous turn (two replies, one of them an EMPTY element, last in the DOM) and
+//   collapsed it when the next prompt went in, and long threads virtualise their
+//   old turns. The reply was on screen, complete, and the poller called it
+//   "provider DOM changed: assistant reply". Each reply carries its message id
+//   (data-chatgpt-selection-message-id on its wrapper), so the new reply is the
+//   last NON-EMPTY assistant element whose id is not in the baseline. Elements with
+//   no id (an older DOM) fall back to the count. ]]
+
+/**
+ * Read the conversation's visible state with the ordered strategies in CHATGPT_DOM.
+ * @param {string[]} baselineIds  assistant message ids present before the send
+ * @param {number} baselineCount  assistant element count before the send
+ */
+export async function readChatGptDom(page, baselineIds = [], baselineCount = 0) {
+  return page.evaluate(
+    ({ dom, baselineIds, baselineCount }) => {
+      const first = (list, root = document) => {
+        for (const sel of list) {
+          const els = root.querySelectorAll(sel);
+          if (els.length) return { sel, els: [...els] };
+        }
+        return { sel: null, els: [] };
+      };
+      const visible = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+      const idOf = (el) => {
+        const w = el.closest("[data-chatgpt-selection-message-id]");
+        if (w) return w.getAttribute("data-chatgpt-selection-message-id");
+        const inner = el.querySelector("[data-dil-source-message-id]");
+        if (inner) return inner.getAttribute("data-dil-source-message-id");
+        const role = el.closest("[data-message-id]");
+        return role ? role.getAttribute("data-message-id") : null;
+      };
+      const turn = first(dom.turn);
+      const user = first(dom.user);
+      const assistant = first(dom.assistant);
+      const stop = first(dom.stop);
+      const seen = new Set(baselineIds);
+      const replies = assistant.els.map((el) => ({ el, id: idOf(el), text: el.innerText || "" }));
+      const withIds = replies.some((r) => r.id);
+      let fresh = withIds
+        ? replies.filter((r) => r.id && !seen.has(r.id))
+        : replies.length > baselineCount ? replies.slice(baselineCount) : [];
+      const newest = [...fresh].reverse().find((r) => r.text.trim()) || fresh[fresh.length - 1] || null;
+      const turnOf = newest ? newest.el.closest(dom.turn.join(", ")) : null;
+      const lastTurn = turnOf || turn.els[turn.els.length - 1] || null;
+      const status = [...document.querySelectorAll('[role="status"]')]
+        .map((s) => (s.textContent || "").trim())
+        .filter(Boolean);
+      return {
+        matched: { turn: turn.sel, user: user.sel, assistant: assistant.sel, stop: stop.sel },
+        turnCount: turn.els.length,
+        userCount: user.els.length,
+        assistantCount: assistant.els.length,
+        assistantIds: replies.map((r) => r.id).filter(Boolean),
+        newReply: !!newest,
+        newReplyId: newest ? newest.id : null,
+        turnState: lastTurn ? lastTurn.getAttribute("data-talvt-turn-state") : null,
+        stopVisible: stop.els.some(visible),
+        lastAssistantText: newest ? newest.text : "",
+        responseComplete: status.some((s) => /response complete/i.test(s)),
+        conversationId: (location.pathname.match(/\/c\/([0-9a-f-]{8,})/i) || [])[1] || null,
+      };
+    },
+    { dom: CHATGPT_DOM, baselineIds, baselineCount },
+  );
 }
 
 //[[ THE CONVERSATION API IS THE READ THAT DOES NOT DEPEND ON THE DOM.
@@ -65,14 +103,14 @@ export async function readChatGptConversationApi(page) {
       const timed = (p, ms) =>
         Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
       try {
-        const s = await timed(fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json()), 5000);
+        const s = await timed(fetch("/api/auth/session", { credentials: "include" }).then((r) => r.json()), 2500);
         if (!s?.accessToken) return { ok: false, why: "no access token from /api/auth/session" };
         const r = await timed(
           fetch(`/backend-api/conversation/${id}`, {
             credentials: "include",
             headers: { Authorization: `Bearer ${s.accessToken}` },
           }),
-          8000,
+          4500, // with the token fetch, inside pollUntil's 8 s per-tick cap
         );
         if (!r.ok) return { ok: false, why: `conversation API ${r.status}` };
         const j = await r.json();
@@ -125,7 +163,8 @@ export const STABLE_FORCE_DONE = 20; // settled this long even with Stop lingeri
  */
 export function decideChatGptPoll(st, snap, api, now) {
   const b = st.baseline;
-  const newAssistant = snap.assistantCount > b.assistantCount;
+  const newAssistant =
+    snap.newReply !== undefined ? snap.newReply : snap.assistantCount > b.assistantCount;
   const text = newAssistant ? snap.lastAssistantText || "" : "";
 
   if (text.length > 0 && text.length === st.lastLen) st.stable++;
@@ -145,7 +184,8 @@ export function decideChatGptPoll(st, snap, api, now) {
     // The page's backend has the finished reply. If the DOM can see it too, let
     // the DOM path finish it (it is about to); if the DOM cannot, that is the
     // layout change this exists to survive: answer from the API, and say so.
-    if (!newAssistant) return { done: true, source: "api", text: api.text };
+    if (!newAssistant || !text.trim())
+      return { done: true, source: "api", text: api.text };
   }
 
   const elapsed = now - st.sentAt;
@@ -157,6 +197,11 @@ export function decideChatGptPoll(st, snap, api, now) {
     if (elapsed > ASSISTANT_GRACE_MS && !snap.stopVisible && snap.turnState !== "in_progress")
       return { domChanged: "assistant reply" };
   }
+  // A reply element that never gets text while nothing is generating: the
+  // element matched, the text inside it moved.
+  if (!apiNew && newAssistant && !text.trim() && elapsed > ASSISTANT_GRACE_MS &&
+      !snap.stopVisible && snap.turnState !== "in_progress")
+    return { domChanged: "assistant reply text" };
   return { done: false };
 }
 
@@ -172,6 +217,7 @@ export async function captureChatGptBaseline(page) {
     turnCount: snap?.turnCount || 0,
     userCount: snap?.userCount || 0,
     assistantCount: snap?.assistantCount || 0,
+    assistantIds: snap?.assistantIds || [],
     apiReplyId,
   };
 }

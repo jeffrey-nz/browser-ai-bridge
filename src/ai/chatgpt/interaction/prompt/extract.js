@@ -271,18 +271,36 @@ export async function extractChatGptResponse(page) {
   }
 
   const assistantSel = CHATGPT_DOM.assistant.join(", ");
-  const lastAssistant = page.locator(assistantSel).last();
-  const hasAssistant = (await page.locator(assistantSel).count().catch(() => 0)) > 0;
+  const turnSel = CHATGPT_DOM.turn.join(", ");
+  // The reply the poller identified by message id; without one, the last
+  // assistant element. (An A/B "which do you prefer" pair puts two replies in one
+  // turn, and the last element can be the empty one.)
+  const replyId = page.__chatgptReplyId;
+  const byId = replyId
+    ? page.locator(`[data-chatgpt-selection-message-id="${replyId}"]`)
+    : null;
+  const lastAssistant =
+    byId && (await byId.count().catch(() => 0)) > 0
+      ? byId.locator(assistantSel).first()
+      : page.locator(assistantSel).last();
+  const hasAssistant = (await lastAssistant.count().catch(() => 0)) > 0;
 
   if (hasAssistant) {
-    // The turn container holding the last reply, for its Copy button.
+    // The turn holding the reply, for its Copy button — only when it holds ONE
+    // reply, since an A/B turn's last Copy button may belong to the other one.
     const lastTurn = page
-      .locator(CHATGPT_DOM.turn.join(", "))
-      .filter({ has: page.locator(assistantSel) })
+      .locator(turnSel)
+      .filter({ has: byId || page.locator(assistantSel) })
       .last();
-    const copyText = await extractViaCopyButton(page, lastTurn);
-    if (copyText && copyText.length > 10)
-      return restoreDunders(cleanAiResponse(copyText));
+    const repliesInTurn = await lastTurn
+      .locator(assistantSel)
+      .count()
+      .catch(() => 0);
+    if (repliesInTurn === 1) {
+      const copyText = await extractViaCopyButton(page, lastTurn);
+      if (copyText && copyText.length > 10)
+        return restoreDunders(cleanAiResponse(copyText));
+    }
 
     const codeAwareText = await extractMarkdownPreservingCode(page, lastAssistant);
     if (codeAwareText) return cleanAiResponse(codeAwareText);
