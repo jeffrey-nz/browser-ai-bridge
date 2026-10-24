@@ -127,6 +127,14 @@ anything a person opened). `GET /api/tabs` shows the census and what it would cl
 `POST /api/tabs/sweep` tidies now. Decisions are in the pure `planCleanup()`,
 tested in `tests/tabJanitor.test.js`.
 
+**Inherited tabs are never touched either** (`src/browser/inherited.js`, 2026-10-25).
+Every page already open when the bridge connects is *inherited* — the janitor cannot
+see it, `BaseProvider.initialize` will not adopt or "de-duplicate" it, and connect no
+longer closes blank tabs — unless it carries the bridge's provenance mark, a
+`sessionStorage` key stamped on every tab the bridge opens or adopts. The Chrome is
+shared with other sessions' signed-in tabs, and a provider-domain tab is not proof the
+bridge opened it. `GET /api/tabs` reports `inheritedTabs`.
+
 The rate-limit back-off in `executor/index.js` also stops within seconds when the
 caller has gone, instead of re-submitting the prompt for up to ~9.5 minutes.
 
@@ -151,6 +159,17 @@ that can reach the real browser; a test pins this.
   uploads. Don't lower it without auditing the image flow.
 - **Don't bundle the pool startup with provider creation.** They've been
   decoupled to prevent tab bloat — see commits `7785ecd`, `1c28d98`.
+- **ChatGPT reads are strategy lists** (`CHATGPT_DOM` in `src/ai/chatgpt/locators.js`):
+  newest DOM first, then the page's own conversation API
+  (`/backend-api/conversation/<id>`) as a DOM-free witness and reader. When a list
+  stops matching, a turn fails as `provider DOM changed: <which>` instead of running
+  to the poll timeout. Never read with a waiting Playwright locator in a poll loop —
+  `innerText()` on a vanished selector waits 30 s per call.
+- **Gemini can hold a request for minutes before its first token** (measured ~4.5 min,
+  every lane, 2026-10-25; the stream sends `{"37":[n]}` once a minute). The poller
+  treats pending-with-no-text as QUEUED with its own budget (`GEMINI_QUEUE_WAIT_MS`,
+  default 6 min) and fails as `Gemini queued: …` past it. Watch the tab's network
+  (CDP `Network.enable`, read-only) before concluding a provider is dead.
 - **`stopBtn` is the truth signal** for generation polling. The "is the
   AI still typing?" check looks for the stop button being visible.
   If a provider re-skins, this locator is the first to verify.

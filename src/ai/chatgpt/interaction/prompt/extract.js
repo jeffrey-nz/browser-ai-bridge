@@ -1,5 +1,6 @@
-import { extractText } from "#ai/shared/domInteraction.js";
 import { cleanAiResponse } from "#ai/shared/markdownCleaner.js";
+import { CHATGPT_DOM } from "../../locators.js";
+import { readChatGptConversationApi, stripCitationMarkup } from "./dom.js";
 
 /**
  * Extract the markdown response using textContent on <pre><code> blocks.
@@ -14,15 +15,14 @@ import { cleanAiResponse } from "#ai/shared/markdownCleaner.js";
  *   textContent on the <pre> preserves the source whitespace exactly. We use it
  *   for code blocks and stitch the result back into the surrounding markdown.
  */
-async function extractMarkdownPreservingCode(page, lastTurn) {
+async function extractMarkdownPreservingCode(page, assistantMessage) {
   // Walk the .markdown DOM and assemble text manually. For <code> children of
   // <pre> we use textContent (preserves indentation). For everything else we
   // re-introduce newlines at block boundaries so the result resembles the
   // original markdown source. Pure innerText collapses leading whitespace on
   // every line of ChatGPT-rendered code; pure textContent drops paragraph
   // breaks. This hybrid keeps both.
-  const result = await lastTurn
-    .locator(".markdown")
+  const result = await assistantMessage
     .evaluate((el) => {
       if (!el) return "";
       let out = "";
@@ -84,7 +84,7 @@ async function extractMarkdownPreservingCode(page, lastTurn) {
       };
       walk(el);
       return out;
-    })
+    }, undefined, { timeout: 3000 })
     .catch(() => "");
   return (result || "").trim();
 }
@@ -184,11 +184,8 @@ async function extractViaCopyButton(page, lastTurn) {
 
     // ONLY the per-message copy button — never a per-code-block copy button
     // (those copy a single block, not the whole response).
-    const copySelectors = [
-      '[data-testid="copy-turn-action-button"]',
-      'button[aria-label="Copy"]:not([data-testid*="code"])',
-      'button[aria-label="Copy message"]',
-    ];
+    // NOT "Copy message": since 2026-10-25 that is the user bubble's button.
+    const copySelectors = CHATGPT_DOM.copy;
     let clicked = false;
     for (const sel of copySelectors) {
       const btn = lastTurn.locator(sel).last();
@@ -237,33 +234,67 @@ async function extractViaCopyButton(page, lastTurn) {
   }
 }
 
+//[[ FOUR READS, NEWEST-PROOF FIRST, AND SILENCE IS AN ERROR.
+//
+//   1. The reply the poller already took from the conversation API because the
+//      DOM could not see it (page.__chatgptApiReply).
+//   2. The conversation API: the exact markdown the model wrote, read from the
+//      page's own backend. It needs no selector, no focus and no clipboard, so a
+//      re-skin cannot break it, and it does not pull the bridge's tab to the
+//      front of a Chrome that other sessions are using. Accepted only when the
+//      message is NEW (not the reply that was there before the send) and
+//      finished. Not passed through cleanAiResponse, which strips UI chrome such
+//      as "Copy code" — and also any "edit\n" — from rendered text.
+//   3. The Copy button of the last assistant turn → clipboard (ChatGPT's own
+//      markdown serializer). Scoped to the assistant half: since 2026-10-25
+//      "Copy message" is the USER bubble's button.
+//   4. A walk of the last assistant message's DOM.
+//   Nothing from any of them is "provider DOM changed", not an empty answer the
+//   caller has to guess about. ]]
 export async function extractChatGptResponse(page) {
-  const lastTurn = page.locator('[data-testid^="conversation-turn-"]').last();
+  if (page.__chatgptApiReply) {
+    const t = stripCitationMarkup(page.__chatgptApiReply);
+    delete page.__chatgptApiReply;
+    if (t) return t;
+  }
 
-  // Primary: ChatGPT's Copy button → raw markdown via clipboard. Exact source,
-  // immune to the markdown-renderer indentation loss that breaks DOM scraping.
-  // restoreDunders undoes the __x__→**x** bold round-trip in the serializer.
-  const copyText = await extractViaCopyButton(page, lastTurn);
-  if (copyText && copyText.length > 10)
-    return restoreDunders(cleanAiResponse(copyText));
+  const baseline = page.__chatgptBaseline || {};
+  const api = await readChatGptConversationApi(page);
+  if (
+    api.ok &&
+    api.id &&
+    api.id !== baseline.apiReplyId &&
+    api.status === "finished_successfully" &&
+    api.text?.trim()
+  ) {
+    return stripCitationMarkup(api.text);
+  }
 
-  // Secondary: .markdown DOM walk — use textContent/innerText hybrid so that
-  // multi-space indentation is preserved as far as the rendered DOM allows.
-  const codeAwareText = await extractMarkdownPreservingCode(page, lastTurn);
-  if (codeAwareText && codeAwareText.length > 10)
-    return cleanAiResponse(codeAwareText);
+  const assistantSel = CHATGPT_DOM.assistant.join(", ");
+  const lastAssistant = page.locator(assistantSel).last();
+  const hasAssistant = (await page.locator(assistantSel).count().catch(() => 0)) > 0;
 
-  // Fallback: original innerText path
-  const rawText = await extractText(
-    page,
-    lastTurn.locator(".markdown"),
-    null,
-    [],
-  );
-  if (rawText) return cleanAiResponse(rawText);
+  if (hasAssistant) {
+    // The turn container holding the last reply, for its Copy button.
+    const lastTurn = page
+      .locator(CHATGPT_DOM.turn.join(", "))
+      .filter({ has: page.locator(assistantSel) })
+      .last();
+    const copyText = await extractViaCopyButton(page, lastTurn);
+    if (copyText && copyText.length > 10)
+      return restoreDunders(cleanAiResponse(copyText));
 
-  // Secondary: canvas/artifact panel — ChatGPT may render code in a side panel
-  // when the response is large or code-heavy (canvas mode).
+    const codeAwareText = await extractMarkdownPreservingCode(page, lastAssistant);
+    if (codeAwareText) return cleanAiResponse(codeAwareText);
+
+    const rawText = await lastAssistant
+      .innerText({ timeout: 2000 })
+      .catch(() => "");
+    if (rawText.trim()) return cleanAiResponse(rawText);
+  }
+
+  // Canvas/artifact panel — ChatGPT may render code in a side panel when the
+  // response is large or code-heavy (canvas mode).
   const canvasSelectors = [
     '[data-testid="canvas-container"]',
     '[data-testid="artifact"]',
@@ -275,27 +306,20 @@ export async function extractChatGptResponse(page) {
     const canvasText = await page
       .locator(sel)
       .last()
-      .innerText()
+      .innerText({ timeout: 1000 })
       .catch(() => "");
     if (canvasText && canvasText.trim().length > 10)
       return cleanAiResponse(canvasText);
   }
 
-  // Tertiary: assistant turn text, stripping tool-plan reasoning UI elements
-  // that appear when ChatGPT uses its internal tool-use UI.
-  const assistantTurn = page
-    .locator('[data-message-author-role="assistant"]')
-    .last();
-  const assistantText = await assistantTurn.innerText().catch(() => "");
-  if (assistantText) {
-    // Strip <tool-plan>...</tool-plan> sections — these are ChatGPT's internal reasoning
-    // UI, not the actual response. Without stripping, the parser sees only the plan and
-    // no JSON tool calls, triggering spurious toolplan-recovery loops.
-    const stripped = assistantText
-      .replace(/<tool-plan>[\s\S]*?<\/tool-plan>/gi, "")
-      .trim();
-    if (stripped) return cleanAiResponse(stripped);
+  // A short reply the API has but has not marked finished yet, rather than none.
+  if (api.ok && api.id && api.id !== baseline.apiReplyId && api.text?.trim()) {
+    return stripCitationMarkup(api.text);
   }
 
-  return "";
+  const err = new Error(
+    `provider DOM changed: assistant reply (none of: ${CHATGPT_DOM.assistant.join(" | ")}) and the conversation API gave nothing (${api.ok ? "no new reply" : api.why}) — update src/ai/chatgpt/locators.js`,
+  );
+  err.domChanged = true;
+  throw err;
 }

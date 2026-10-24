@@ -29,6 +29,7 @@
 //   tested without a browser (tests/tabJanitor.test.js). ]]
 
 import process from "node:process";
+import { isInheritedPage } from "../browser/inherited.js";
 import { logger } from "#utils/logger.js";
 import { GENERIC_SPECS } from "#ai/generic/specs.js";
 import { isCopilotUrl } from "#ai/copilot/client/navigation.js";
@@ -344,7 +345,9 @@ export function sweep(args) {
 async function runSweep({ manager, pool, getContext, log = logger }) {
   try {
     const { context } = await getContext();
-    const livePages = context.pages();
+    // A page that predates this process and is not proven ours is invisible to
+    // the janitor: it can be nobody's orphan (src/browser/inherited.js).
+    const livePages = context.pages().filter((pg) => !isInheritedPage(pg));
     const keyOf = new Map(livePages.map((pg, i) => [pg, `p${i}`]));
     const pages = livePages.map((pg) => {
       let url = "";

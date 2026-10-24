@@ -6,6 +6,7 @@ import os from "node:os";
 import { logger } from "#utils/logger.js";
 import { autoLaunchChrome } from "./launcher/index.js";
 import { internalState, BrowserState, setBrowserState } from "./state.js";
+import { classifyExistingPages } from "./inherited.js";
 
 export async function connectToBrowser(retries = 15) {
   if (internalState.connectionPromise) {
@@ -89,15 +90,18 @@ async function finalizeConnection(browser) {
   browserContext.setDefaultNavigationTimeout(15000);
 
   // Close any stale about:blank tabs left over from previous sessions
+  // Pages already open belong to whoever opened them — another session, a
+  // person, or an earlier bridge. They are classified, never closed here (this
+  // used to close every blank tab). See src/browser/inherited.js.
   const allPages = browserContext.pages();
-  const blankPages = allPages.filter((p) => {
-    const u = p.url();
-    return u === "about:blank" || u === "" || u === "about:newtab";
-  });
-  if (blankPages.length > 0) {
-    logger.info(`[Browser] Closing ${blankPages.length} stale blank tab(s)…`);
-    await Promise.allSettled(blankPages.map((p) => p.close()));
-  }
+  const { providerForUrl } = await import("../session/TabJanitor.js");
+  const { inherited, provenOurs } = await classifyExistingPages(
+    allPages,
+    providerForUrl,
+  );
+  logger.info(
+    `[Browser] ${allPages.length} tab(s) already open: ${provenOurs} carry the bridge's mark, ${inherited} inherited — those are never closed, adopted or navigated.`,
+  );
 
   browser.on("disconnected", () => {
     logger.warn("[Browser] CDP disconnected.");

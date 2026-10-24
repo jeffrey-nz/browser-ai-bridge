@@ -1,0 +1,58 @@
+# 2026-10-25 gemini.google.com StreamGenerate, captured read-only (CDP Network.enable + streamResourceContent)
+# on the bridge's own gemini tab during POST /api/ask "Reply with exactly the single word PONG".
+# Seconds are from attaching. The answer arrives at ~277s; the server's own timing line says 274684 ms.
+
+attached CE9700B8 https://gemini.google.com/app
+   1.2 -> POST https://gemini.google.com/_/BardChatUi/data/batchexecute ESY5D
+   1.5 <- 200 https://gemini.google.com/_/BardChatUi/data/batchexecute
+   1.6 ok 199B https://gemini.google.com/_/BardChatUi/data/batchexecute
+   3.4 -> POST m/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate 
+  10.4 <- 200 atUi/data/assistant.lamda.BardFrontendService/StreamGenerate
+  10.4 .. +186B stream 
+  10.4 BUFFERED: )]}'
+
+177
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],{\"18\":\"r_31295700d1a1a1d9\",\"21\":[\"RIEa2w-G7uMZHdb1JNuxREuw_vEQJurcFInBnIMx8mA\"],\"44\":true}]"]]
+
+  10.5 -> POST https://gemini.google.com/_/BardChatUi/data/batchexecute PCck7e
+  10.9 <- 200 https://gemini.google.com/_/BardChatUi/data/batchexecute
+  10.9 ok 206B https://gemini.google.com/_/BardChatUi/data/batchexecute
+  63.8 .. +38B stream 36
+[["wrb.fr",null,"[{\"37\":[0]}]"]]
+
+ 123.7 .. +38B stream 36
+[["wrb.fr",null,"[{\"37\":[1]}]"]]
+
+ 183.7 .. +38B stream 36
+[["wrb.fr",null,"[{\"37\":[2]}]"]]
+
+ 243.7 .. +38B stream 36
+[["wrb.fr",null,"[{\"37\":[3]}]"]]
+
+ 277.3 .. +5351B stream 5347
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],null,null,[[\"rc_5a7fbee287709035\",[\"PONG\"],null,null,null,null,null,null,[1],\"en\",null,null,[null,null,null,null,null,null,null,[]],null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,[],null,null,null,null,null,null,null,null,[]]],[…location fields redacted…]
+ 277.5 .. +10718B stream 5347
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],null,null,[[\"rc_5a7fbee287709035\",[\"PONG\"],null,null,null,null,null,null,[1],\"en\",null,null,[null,null,null,null,null,null,null,[]],null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,[],null,null,null,null,null,null,null,null,[]]],[…location fields redacted…]
+ 277.5 -> POST https://gemini.google.com/_/BardChatUi/data/batchexecute ESY5D
+ 277.7 <- 200 https://gemini.google.com/_/BardChatUi/data/batchexecute
+ 277.8 ok 212B https://gemini.google.com/_/BardChatUi/data/batchexecute
+ 278.0 .. +135B stream 132
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],{\"11\":[\"Simple Pong Command Response\"],\"44\":true}]"]]
+
+ 278.0 -> POST https://gemini.google.com/_/BardChatUi/data/batchexecute aPya6c
+ 278.3 .. +136B stream 133
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],{\"26\":\"AwAAAAAAAAAQANM7mBjXKZR5ykTmFho\",\"44\":true}]"]]
+
+ 278.3 .. +234B stream 137
+[["wrb.fr",null,"[null,[\"c_8ffe0f6642ccae6a\",\"r_31295700d1a1a1d9\"],{\"44\":true,\"46\":[\"c_8ffe0f6642ccae6a\",\"\"],\"52\":[]}]"]]
+62
+[["di",274684],["af.httprm",274684,"-806282277226891627",8]]
+28
+[["e",14,null,null,16912]]
+
+ 278.4 ok 2974B atUi/data/assistant.lamda.BardFrontendService/StreamGenerate
+ 278.4 <- 200 https://gemini.google.com/_/BardChatUi/data/batchexecute
+ 278.4 ok 215B https://gemini.google.com/_/BardChatUi/data/batchexecute
+ 278.9 -> POST https://gemini.google.com/_/BardChatUi/data/batchexecute aPya6c
+ 279.2 <- 200 https://gemini.google.com/_/BardChatUi/data/batchexecute
+ 279.2 ok 212B https://gemini.google.com/_/BardChatUi/data/batchexecute

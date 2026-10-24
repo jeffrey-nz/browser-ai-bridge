@@ -8,6 +8,7 @@ import {
   releaseExternalPage,
 } from "#ai/shared/BaseProvider.js";
 import { setupState } from "../setup/state.js";
+import { isInheritedPage, stampBridgeOwned } from "../browser/inherited.js";
 
 export async function runLoginSequence(context) {
   console.log("\n=============================================");
@@ -91,6 +92,7 @@ export async function runLoginSequence(context) {
       let pages = context.pages();
       page = pages.find((p) => {
         try {
+          if (isInheritedPage(p)) return false; // predates us — not ours to use
           const url = p.url();
           return url.includes(new URL(provider.url).hostname);
         } catch {
@@ -122,6 +124,7 @@ export async function runLoginSequence(context) {
       }
 
       claimExternalPage(page);
+      await stampBridgeOwned(page);
       await page.bringToFront().catch(() => {});
 
       const isDetected = assumeLoggedIn

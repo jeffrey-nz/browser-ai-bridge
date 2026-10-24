@@ -1,5 +1,6 @@
 import { logger } from "#utils/logger.js";
 import { getBrowserContext } from "../../browser.js";
+import { isInheritedPage, stampBridgeOwned } from "../../browser/inherited.js";
 
 // Tracks pages that are currently owned by an active provider instance OR the
 // auth setup sequence. Prevents createSession() from stealing a tab that is
@@ -34,7 +35,9 @@ export class BaseProvider {
     const existingPages = context.pages();
     const matchingPages = existingPages.filter((p) => {
       try {
-        return this.urlMatcher(p.url()) && !_ownedPages.has(p);
+        return (
+          this.urlMatcher(p.url()) && !_ownedPages.has(p) && !isInheritedPage(p)
+        );
       } catch {
         return false;
       }
@@ -88,6 +91,7 @@ export class BaseProvider {
       }
     }
 
+    await stampBridgeOwned(this.page); // provenance for the next bridge process
     await this.page.bringToFront();
     await this.onTabSelected();
 

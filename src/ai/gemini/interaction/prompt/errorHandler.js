@@ -4,6 +4,8 @@ import { handlePromptError } from "#ai/shared/promptError/index.js";
 import { capturePageSnapshot } from "#ai/shared/captureSnapshot.js";
 import { dumpPageHtml } from "#ai/shared/domInteraction.js";
 
+const QUEUED_COOLDOWN_S = 300;
+
 export async function handleGeminiError(err, page) {
   if (err.spinner) {
     err.spinner.stop();
@@ -11,6 +13,18 @@ export async function handleGeminiError(err, page) {
 
   if (err.message && err.message.includes("Aborted")) {
     throw err;
+  }
+
+  //[[ A QUEUED TURN IS NOT A BROKEN PAGE. It goes straight back to the caller
+  //   with its own words and a short cooldown — never into the generic recovery
+  //   below, whose rate-limit back-off would RE-SUBMIT a prompt Google is still
+  //   holding. See the QUEUED note in poll/waiter.js. ]]
+  if (err.queued) {
+    cooldownManager.trigger("gemini", QUEUED_COOLDOWN_S, err.message);
+    const e = new Error(err.message);
+    e.stalled = true;
+    e.cooldownSeconds = QUEUED_COOLDOWN_S;
+    throw e;
   }
 
   try {

@@ -11,6 +11,13 @@ async function handlePostPoll(page, spinner, pollResult) {
     const err = new Error("GEMINI_SNACKBAR_ERROR_13");
     err.isUiError = true;
     throw err;
+  } else if (pollResult === "QUEUED") {
+    spinner.stop();
+    const err = new Error(
+      "Gemini queued: Google held the request past GEMINI_QUEUE_WAIT_MS without a first token",
+    );
+    err.queued = true;
+    throw err;
   } else if (
     pollResult === "TIMEOUT" ||
     pollResult === "ERROR" ||

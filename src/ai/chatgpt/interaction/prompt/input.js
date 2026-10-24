@@ -6,15 +6,12 @@ import {
   uploadFileToPage,
   DEFAULT_ATTACHMENT_EVIDENCE,
 } from "#ai/shared/uploadFile.js";
+import { CHATGPT_LOCATORS } from "../../locators.js";
 
 export async function injectChatGptText(page, text) {
   await clearAndType(
     page,
-    page
-      .locator(
-        '#prompt-textarea, [data-testid="composer-input"], div[contenteditable="true"]',
-      )
-      .last(),
+    page.locator(CHATGPT_LOCATORS.inputBox).last(),
     text,
   );
 }
@@ -111,13 +108,12 @@ export async function uploadFileToChatGpt(page, filePath, evidenceOut = null) {
 export async function clickChatGptSend(page) {
   await clickOrFallbackToEnter(
     page,
-    page
-      .locator(
-        '[data-testid="send-button"], button[aria-label="Send message"], button[aria-label="Send"]',
-      )
-      .first(),
-    page.locator('#prompt-textarea, [data-testid="composer-input"]').last(),
-    page.locator('[data-testid="stop-button"]').last(),
+    page.locator(CHATGPT_LOCATORS.sendBtn).first(),
+    // The composer the text went into: "did it clear?" is half of the send
+    // check, and a selector matching nothing reads as "cleared" — which is how
+    // a send could be confirmed against an input that no longer existed.
+    page.locator(CHATGPT_LOCATORS.inputBox).last(),
+    page.locator(CHATGPT_LOCATORS.stopBtn).last(),
     {
       retries: 5,
       ctrlEnterFallback: true,

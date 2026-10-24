@@ -5,6 +5,7 @@ import {
 } from "./input.js";
 import { waitForChatGptCompletion } from "./poll.js";
 import { extractChatGptResponse } from "./extract.js";
+import { captureChatGptBaseline } from "./dom.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { logger } from "#utils/logger.js";
 import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
@@ -63,17 +64,18 @@ export async function sendPromptAndWait(
   label = "Prompt",
   sessionId = null,
 ) {
-  const prevMessage = page
-    .locator('[data-testid^="conversation-turn-"]')
-    .last();
-  const prevText = await prevMessage.innerText().catch(() => "");
+  // Counts and the newest reply id from BEFORE the send — never a waiting
+  // locator, which blocks 30 s whenever its selector has gone (see dom.js).
+  const baseline = await captureChatGptBaseline(page);
+  delete page.__chatgptApiReply;
+  page.__chatgptBaseline = baseline; // the extractor's "is this reply new?"
 
   return runPromptWorkflow(page, text, label, {
     providerName: "ChatGPT",
     injectText: injectChatGptText,
     clickSend: clickChatGptSend,
     waitForCompletion: async (pg, spinner) =>
-      waitForChatGptCompletion(pg, prevText, sessionId),
+      waitForChatGptCompletion(pg, { ...baseline, sentAt: Date.now() }, sessionId),
     extractResponse: extractChatGptResponse,
   });
 }

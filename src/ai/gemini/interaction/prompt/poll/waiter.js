@@ -13,6 +13,25 @@ import { evaluateCompletion } from "./evaluator.js";
 const SHOT_INTERVAL_MS = 15000;
 const SHOT_STALL_MS = 120000;
 
+//[[ GOOGLE HOLDS THE REQUEST BEFORE IT ANSWERS, AND THE PAGE SHOWS NOTHING.
+//
+//   2026-10-25, "Gemini accepts prompts and never replies". Watching the tab's
+//   network over CDP showed what the DOM could not: StreamGenerate returned 200
+//   with the new conversation id within ~8 s, then sent nothing but a heartbeat,
+//   [{"37":[0]}], [{"37":[1]}] ... once a minute, and streamed the answer ("PONG")
+//   at 274.7 s. The page meanwhile shows a bare <pending-response> with a Stop
+//   button and no text. The no-progress guard below gave up at 240 s — half a
+//   minute before every answer — so the bridge threw away replies that were
+//   coming, and every caller with a shorter timeout saw "no reply".
+//
+//   So "pending, Stop showing, no text yet" is its own state, QUEUED, with its
+//   own budget (GEMINI_QUEUE_WAIT_MS, default 6 min). While queued the text and
+//   screenshot guards do not apply — nothing is supposed to move — and past the
+//   budget the turn fails as "Gemini queued: no first token after Ns", with a
+//   cooldown, so a tier chain moves on instead of reading a generic TIMEOUT. ]]
+const QUEUE_WAIT_MS = Number(process.env.GEMINI_QUEUE_WAIT_MS) || 360000;
+const QUEUE_LOG_EVERY_MS = 60000;
+
 async function _screenshotHash(page) {
   try {
     const buf = await page.screenshot({ type: "png", fullPage: false });
@@ -56,6 +75,9 @@ export async function waitForGeminiCompletion(
       shotHash: null,
       shotChangeMs: Date.now(),
       lastShotMs: 0,
+      queuedSince: Date.now(),
+      lastQueueLogMs: 0,
+      firstTokenMs: 0,
     };
     // If the response text neither grows nor settles for this long, the turn
     // is wedged (stuck "generating", canvas glitch, dead session) — bail early
@@ -159,9 +181,43 @@ export async function waitForGeminiCompletion(
         const isDone = await doneSignal.isVisible().catch(() => false);
 
         const currentTextLength = await locators.lastResponse
-          .innerText()
+          .innerText({ timeout: 2000 })
           .then((t) => t.length)
           .catch(() => 0);
+
+        // QUEUED: the request is out, Google has not produced a first token.
+        const pending = await page
+          .evaluate(() => !!document.querySelector("pending-response"))
+          .catch(() => false);
+        if (currentTextLength === 0 && (pending || isGenerating) && !isDone) {
+          const queuedMs = Date.now() - state.queuedSince;
+          if (Date.now() - state.lastQueueLogMs > QUEUE_LOG_EVERY_MS) {
+            state.lastQueueLogMs = Date.now();
+            if (queuedMs > 5000)
+              logger.info(
+                `[Gemini Poll] queued ${Math.round(queuedMs / 1000)}s — no first token yet (Google is holding the request; ~275s measured 2026-10-25)`,
+              );
+          }
+          if (queuedMs > QUEUE_WAIT_MS) {
+            const err = new Error(
+              `Gemini queued: no first token after ${Math.round(queuedMs / 1000)}s (server-side wait; GEMINI_QUEUE_WAIT_MS=${QUEUE_WAIT_MS})`,
+            );
+            err.queued = true;
+            err.terminal = true;
+            throw err;
+          }
+          state.lastChangeMs = Date.now(); // nothing is meant to move yet
+          state.shotChangeMs = Date.now();
+          state.lastTextLength = 0;
+          return false;
+        }
+        if (!state.firstTokenMs && currentTextLength > 0) {
+          state.firstTokenMs = Date.now() - state.queuedSince;
+          if (state.firstTokenMs > 30000)
+            logger.info(
+              `[Gemini Poll] first token after ${Math.round(state.firstTokenMs / 1000)}s`,
+            );
+        }
 
         // Stall guard A — response text: if it neither grows nor settles for
         // NO_PROGRESS_STALL_MS, the turn is wedged.
@@ -240,6 +296,10 @@ export async function waitForGeminiCompletion(
   } catch (e) {
     if (e.message.includes("Aborted")) throw e;
     if (e.message === "ERROR_13") return "ERROR_13";
+    if (e.queued) {
+      logger.warn(`[Gemini Poll] ${e.message}`);
+      return "QUEUED";
+    }
     if (e.message.includes("TIMEOUT")) {
       logger.warn(`[Gemini Poll] Timeout reached`);
       return "TIMEOUT";

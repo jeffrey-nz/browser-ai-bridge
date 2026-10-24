@@ -2,17 +2,40 @@ import { eventBus } from "#web/eventBus.js";
 import { pollUntil } from "#utils/poller.js";
 import { logger } from "#utils/logger.js";
 import { TOO_MANY_REQUESTS_SEL } from "../chat.js";
+import { CHATGPT_DOM } from "../../locators.js";
+import {
+  readChatGptDom,
+  readChatGptConversationApi,
+  decideChatGptPoll,
+} from "./dom.js";
 
 const RATE_LIMIT_SEL =
   '.text-token-text-secondary:has-text("message limit"), ' +
   'div:has-text("You\'ve reached your message limit")';
 
+const API_EVERY_MS = 3000;
+
+/** The error a run fails with when a strategy list stops matching. */
+function domChangedError(which, snap) {
+  const list =
+    which === "user turn" ? CHATGPT_DOM.user : CHATGPT_DOM.assistant;
+  const err = new Error(
+    `provider DOM changed: ${which} (none of: ${list.join(" | ")}; matched ${JSON.stringify(snap?.matched || {})}) — update src/ai/chatgpt/locators.js`,
+  );
+  err.domChanged = true;
+  err.terminal = true; // pollUntil must not swallow it and poll on, blind
+  return err;
+}
+
+/**
+ * Wait for the reply to the prompt just sent.
+ * @param {object} baseline  captureChatGptBaseline() from BEFORE the send
+ */
 export async function waitForChatGptCompletion(
   page,
-  prevText = "",
+  baseline,
   sessionId = null,
 ) {
-  const stopBtn = page.locator('[data-testid="stop-button"]');
   const errorAlert = page
     .locator('.alert-error, [role="alert"]:not(.sr-only)')
     .last();
@@ -49,12 +72,13 @@ export async function waitForChatGptCompletion(
 
     await page.waitForTimeout(500);
 
-    let lastTextLength = 0;
-    let stableIterations = 0;
-    // Settled + Stop button gone → done quickly. Settled this long even with
-    // the Stop button lingering → done anyway (see force-done note below).
-    const STABLE_DONE = 4;
-    const STABLE_FORCE_DONE = 20;
+    const st = {
+      baseline,
+      lastLen: 0,
+      stable: 0,
+      sentAt: baseline.sentAt || Date.now(),
+      lastApiAt: 0,
+    };
 
     const isComplete = await pollUntil(
       async () => {
@@ -91,39 +115,27 @@ export async function waitForChatGptCompletion(
           throw err;
         }
 
-        const isGenerating = await stopBtn.isVisible().catch(() => false);
-        const lastMessage = page
-          .locator('[data-testid^="conversation-turn-"]')
-          .last();
-        const currentText = await lastMessage.innerText().catch(() => "");
+        const snap = await readChatGptDom(page);
 
-        const isNewMessage =
-          currentText !== prevText && currentText.trim().length > 0;
-
-        // Track text stability every poll, regardless of the Stop button —
-        // so a finished-but-still-streaming-looking turn is still recognised.
-        if (currentText.length > 0 && currentText.length === lastTextLength) {
-          stableIterations++;
-        } else {
-          stableIterations = 0;
-        }
-        lastTextLength = currentText.length;
-
-        if (isNewMessage) {
-          // Normal completion: text settled and the Stop button is gone.
-          if (!isGenerating && stableIterations >= STABLE_DONE) {
-            return true;
-          }
-          // Robustness: ChatGPT regularly leaves the Stop button in the DOM
-          // after a turn is fully written, so !isGenerating never becomes true
-          // and the poll would otherwise hold the caller for the full 5-min
-          // timeout before "early-extracting" a response that was ready minutes
-          // ago. A response byte-for-byte stable this long is done regardless.
-          if (stableIterations >= STABLE_FORCE_DONE) {
-            return true;
-          }
+        // The conversation API is a second witness, read every few seconds
+        // rather than every tick: it is the fallback when the DOM is blind.
+        let api = null;
+        if (snap.conversationId && Date.now() - st.lastApiAt > API_EVERY_MS) {
+          st.lastApiAt = Date.now();
+          api = await readChatGptConversationApi(page);
         }
 
+        const verdict = decideChatGptPoll(st, snap, api, Date.now());
+        if (verdict.domChanged) throw domChangedError(verdict.domChanged, snap);
+        if (verdict.done) {
+          if (verdict.source === "api") {
+            logger.warn(
+              `[ChatGPT Poll] provider DOM changed: assistant reply (none of: ${CHATGPT_DOM.assistant.join(" | ")}) — answered from the conversation API instead. Update src/ai/chatgpt/locators.js.`,
+            );
+            page.__chatgptApiReply = verdict.text;
+          }
+          return true;
+        }
         return false;
       },
       {
@@ -138,6 +150,7 @@ export async function waitForChatGptCompletion(
     if (e.message.includes("Aborted")) throw e;
     if (e.rateLimited) throw e;
     if (e.stalled) throw e;
+    if (e.domChanged) throw e;
     logger.warn(`[ChatGPT Poll] Error or Timeout: ${e.message}`);
     return false;
   } finally {

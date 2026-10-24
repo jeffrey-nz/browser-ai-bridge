@@ -2,6 +2,7 @@ import express from "express";
 import { sessionManager } from "../session/index.js";
 import { sessionPool } from "../session/Pool.js";
 import { getBrowserContext } from "../browser.js";
+import { isInheritedPage } from "../browser/inherited.js";
 import { census, planCleanup, sweep, LIMITS } from "../session/TabJanitor.js";
 
 // GET  /api/tabs          what is open, per provider, and what the janitor would close
@@ -10,7 +11,11 @@ const router = express.Router();
 
 async function gather() {
   const { context } = await getBrowserContext();
-  const livePages = context.pages();
+  const allPages = context.pages();
+  // Inherited pages (open before this bridge, not proven ours) are counted but
+  // never offered to the planner — the janitor cannot see them either.
+  const livePages = allPages.filter((pg) => !isInheritedPage(pg));
+  const inheritedTabs = allPages.length - livePages.length;
   const keyOf = new Map(livePages.map((pg, i) => [pg, `p${i}`]));
   const pages = livePages.map((pg) => {
     let url = "";
@@ -45,7 +50,7 @@ async function gather() {
     for (const e of list)
       poolEntries.push({ providerId, id: e.id, pooledAt: e.pooledAt || null });
   }
-  return { sessions, pages, ownedPageKeys, poolCounts, poolEntries };
+  return { sessions, pages, ownedPageKeys, poolCounts, poolEntries, inheritedTabs };
 }
 
 router.get("/", async (req, res) => {
@@ -56,6 +61,8 @@ router.get("/", async (req, res) => {
       success: true,
       limits: LIMITS,
       ...census(state),
+      // Open before this bridge started and not carrying its mark: left alone.
+      inheritedTabs: state.inheritedTabs,
       wouldClose: [
         ...plan.closeSessions,
         ...plan.closePages,
