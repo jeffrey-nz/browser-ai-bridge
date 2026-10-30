@@ -45,6 +45,18 @@ function resetProviders() {
 }
 
 async function init() {
+  // Two tools attached to one Chrome race to dismiss a page's dialog. When the other one wins,
+  // Playwright's own auto-dismiss rejects with "No dialog is showing" on a promise nobody holds,
+  // and Node ends the process: every bridge job on the Mac failed on 2026-10-30 from a dialog in a
+  // tab that was not the bridge's. Only this exact loss is survivable; anything else still crashes.
+  process.on("unhandledRejection", (err) => {
+    if (/Page\.handleJavaScriptDialog.*No dialog is showing/.test(String(err && err.message))) {
+      logger.warn("[Browser] Another CDP client dismissed a dialog first; carrying on");
+      return;
+    }
+    throw err;
+  });
+
   // Register early so SIGTERM during Chrome startup is logged, not silent.
   // The comment below explains the legitimate source of this signal.
   process.on("SIGTERM", () => {
