@@ -58,6 +58,23 @@ async function readMark(page) {
 }
 
 /**
+ * ONLY A TAB CARRYING THE MARK IS THE BRIDGE'S TO TAKE OR CLOSE. Being open when the
+ * bridge started is not the only way a tab can be somebody else's: on 2026-10-31 a
+ * person signing in to DeepSeek and Qwen, in tabs opened while the bridge was running,
+ * had one adopted and sent back to the sign-in page and the other closed within three
+ * minutes, each with a half-filled form and a captcha. A tab the bridge opens is
+ * stamped as it opens, so asking costs nothing and an unmarked tab is left alone.
+ */
+export async function hasBridgeMark(page) {
+  if (!page || page.isClosed?.()) return false;
+  try {
+    return await readMark(page);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Classify the pages already open when the bridge connects. Only provider-domain
  * pages are read for the mark (nothing else is ever a candidate to touch), and a
  * page that cannot be read stays inherited.

@@ -2,7 +2,11 @@ import { logger } from "#utils/logger.js";
 import { createSpinner } from "#app/ui/spinner.js";
 import { handlePromptError } from "#ai/shared/promptError/index.js";
 import { dumpPageHtml } from "#ai/shared/domInteraction.js";
-import { diagnoseBlockedPage, describeBlock } from "#ai/shared/blockedPage.js";
+import {
+  diagnoseBlockedPage,
+  describeBlock,
+  isGuestPage,
+} from "#ai/shared/blockedPage.js";
 import { cooldownManager } from "../../session/CooldownManager.js";
 
 export async function runPromptWorkflow(page, text, label, options) {
@@ -93,6 +97,18 @@ async function _runPromptWorkflowInner(page, text, label, options) {
       text: msg || "Validation failed (empty response)",
     }),
   } = options;
+
+  //[[ Ask before sending, because a guest page takes the prompt. ChatGPT answers a
+  //   visitor with a lesser model and a low limit, so a signed-out provider looked
+  //   like a working one with bad days. ]]
+  if (await isGuestPage(page).catch(() => false)) {
+    const e = new Error(
+      describeBlock(providerName, { kind: "signedOut", guest: true }),
+    );
+    e.rateLimited = true;
+    e.signedOut = true;
+    throw e;
+  }
 
   logger.info(`🚀 Injecting ${label} (${providerName})...`);
   logger.trace(

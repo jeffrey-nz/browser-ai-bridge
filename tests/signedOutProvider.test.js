@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { runPromptWorkflow } from "../src/ai/shared/promptWorkflow.js";
 // 2026-09-22: the detector moved to blockedPage.js when it grew a third case
 // (a timed suspension) alongside the sign-in wall it started as.
-import { looksSignedOut } from "../src/ai/shared/blockedPage.js";
+import {
+  diagnoseBlockedPage,
+  isGuestPage,
+  looksSignedOut,
+} from "../src/ai/shared/blockedPage.js";
 
 /**
  * 2026-09-22: login is verified once, at startup (startup/authSequence.js), and
@@ -109,4 +113,46 @@ test("the same timeout on a signed-IN page still takes the ordinary recovery pat
       }),
     (e) => e.signedOut !== true,
   );
+});
+
+// 2026-10-31: ChatGPT, Qwen and Grok all show a working composer to a visitor, so a
+// composer stopped meaning signed in. Their pages have a control whose whole name is
+// "Log in" or "Sign up"; a signed-in page's text may say the words but has no such control.
+function guestPage(names) {
+  return {
+    locator: () => ({ first: () => ({ isVisible: async () => true }) }),
+    getByRole: (_role, { name }) => ({
+      first: () => ({ isVisible: async () => names.some((n) => name.test(n)) }),
+    }),
+    evaluate: async () => "",
+    isClosed: () => false,
+  };
+}
+
+test("a composer beside a Log in button is a guest page, so signed out", async () => {
+  for (const names of [["Log in", "Sign up for free"], ["Sign in"], ["Sign up"]]) {
+    const page = guestPage(names);
+    assert.equal(await isGuestPage(page), true);
+    assert.deepEqual(await diagnoseBlockedPage(page), { kind: "signedOut", guest: true });
+  }
+});
+
+test("a composer with controls that merely mention signing in is signed in", async () => {
+  const page = guestPage(["Sign in to another account", "How to log in", "New chat"]);
+  assert.equal(await isGuestPage(page), false);
+  assert.equal(await diagnoseBlockedPage(page), null);
+});
+
+test("a guest page is refused before the prompt is sent", async () => {
+  let sent = false;
+  const r = await runPromptWorkflow(guestPage(["Log in"]), "hello", "Prompt", {
+    providerName: "ChatGPT",
+    injectText: async () => { sent = true; },
+    clickSend: async () => { sent = true; },
+    waitForCompletion: async () => {},
+    extractResponse: async () => "",
+  });
+  assert.equal(sent, false);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /SIGNED OUT/);
 });

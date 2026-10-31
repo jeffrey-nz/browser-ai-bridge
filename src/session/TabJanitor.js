@@ -29,7 +29,7 @@
 //   tested without a browser (tests/tabJanitor.test.js). ]]
 
 import process from "node:process";
-import { isInheritedPage } from "../browser/inherited.js";
+import { hasBridgeMark, isInheritedPage } from "../browser/inherited.js";
 import { logger } from "#utils/logger.js";
 import { GENERIC_SPECS } from "#ai/generic/specs.js";
 import { isCopilotUrl } from "#ai/copilot/client/navigation.js";
@@ -390,6 +390,8 @@ async function runSweep({ manager, pool, getContext, log = logger }) {
         orphanFirstSeen.delete(pg);
         continue;
       }
+      // A tab nobody holds is an orphan only if it was the bridge's to begin with.
+      if (!(await hasBridgeMark(pg))) continue;
       if (!orphanFirstSeen.has(pg)) orphanFirstSeen.set(pg, now);
       orphanSince.set(key, orphanFirstSeen.get(pg));
     }

@@ -25,7 +25,13 @@ import { logger } from "#utils/logger.js";
 //   Both detectors are deliberately conservative, because a false positive
 //   discards a working provider: each requires the absence of a composer as well
 //   as its own positive signal. A signed-in page that merely shows the words
-//   "sign in" or "suspended" somewhere still has a composer and matches neither. ]]
+//   "sign in" or "suspended" somewhere still has a composer and matches neither.
+//
+//   A GUEST PAGE IS THE EXCEPTION, measured 2026-10-31. ChatGPT, Qwen and Grok all
+//   show a working composer signed out, so "composer means signed in" reported
+//   three logged-out providers as healthy for days. A guest page gives itself away with a control whose
+//   WHOLE name is "Log in" or "Sign up": a signed-in page has none, however often
+//   the words appear in its text. ]]
 
 const SIGNIN_SELECTORS = [
   'input[type="password"]',
@@ -35,6 +41,22 @@ const SIGNIN_SELECTORS = [
   'a:has-text("Sign in")',
   '[data-testid*="login" i]',
 ].join(", ");
+
+const GUEST_CONTROL_NAME = /^\s*(log ?in|sign ?in|sign ?up|sign up for free)\s*$/i;
+
+/** A composer on screen, and beside it a control asking the visitor to log in. */
+export async function isGuestPage(page) {
+  if (typeof page.getByRole !== "function") return false;
+  for (const role of ["button", "link"]) {
+    const shown = await page
+      .getByRole(role, { name: GUEST_CONTROL_NAME })
+      .first()
+      .isVisible({ timeout: 600 })
+      .catch(() => false);
+    if (shown) return true;
+  }
+  return false;
+}
 
 const COMPOSER_SELECTORS =
   'textarea, [contenteditable="true"], input[type="text"][placeholder]';
@@ -79,8 +101,11 @@ const visible = (page, sel) =>
  * → { kind: 'suspended', seconds, notice } | { kind: 'signedOut' } | null
  */
 export async function diagnoseBlockedPage(page, now = Date.now()) {
-  // No diagnosis is possible, or needed, while a composer is on screen.
-  if (await visible(page, COMPOSER_SELECTORS)) return null;
+  // No further diagnosis is needed while a composer is on screen, unless the page
+  // is a guest's.
+  if (await visible(page, COMPOSER_SELECTORS)) {
+    return (await isGuestPage(page)) ? { kind: "signedOut", guest: true } : null;
+  }
 
   const body = await page
     .evaluate(() => document.body?.innerText || "")
@@ -119,10 +144,10 @@ export function describeBlock(providerName, diagnosis) {
     );
   }
   logger.error(
-    `[Blocked] ${providerName} appears to be SIGNED OUT — its composer is absent and a sign-in control is showing.`,
+    `[Blocked] ${providerName} appears to be SIGNED OUT — ${diagnosis.guest ? "it is showing a guest page" : "its composer is absent and a sign-in control is showing"}.`,
   );
   return (
     `${providerName} appears to be SIGNED OUT. Reloading cannot fix this; ` +
-    "log in again (npm run bridge) or drop it from BROWSER_AI_PROVIDERS."
+    "log in again (npm run bridge:auth in reader-scripts says how) or drop it from BROWSER_AI_PROVIDERS."
   );
 }

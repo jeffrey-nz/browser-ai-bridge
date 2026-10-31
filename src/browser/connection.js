@@ -8,6 +8,18 @@ import { autoLaunchChrome } from "./launcher/index.js";
 import { internalState, BrowserState, setBrowserState } from "./state.js";
 import { classifyExistingPages } from "./inherited.js";
 
+/** Does a browser answer on this debugging address? Never throws. */
+export async function chromeAnswers(url, timeoutMs = 5000) {
+  try {
+    const res = await fetch(`${String(url).replace(/\/$/, "")}/json/version`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function connectToBrowser(retries = 15) {
   if (internalState.connectionPromise) {
     return await internalState.connectionPromise;
@@ -18,15 +30,33 @@ export async function connectToBrowser(retries = 15) {
     const url = process.env.CDP_URL || "http://127.0.0.1:9222";
     let lastErr = null;
 
-    // 1. Initial attempt: check if Chrome is already running
-    try {
-      const browser = await chromium.connectOverCDP(url, { timeout: 2000 });
-      return await finalizeConnection(browser);
-    } catch (e) {
-      logger.info(
-        "[Browser] No existing Chrome found. Launching fresh instance...",
+    //[[ 1. A CHROME THAT ANSWERS IS NEVER KILLED. This used to give connecting two seconds
+    //   and treat a miss as "no Chrome", and the launch below kills whatever owns the port
+    //   with kill -9. A busy Chrome with thirty tabs misses two seconds: on 2026-10-31 a
+    //   bridge restart killed the Chrome every session on this Mac shares, with their tabs
+    //   in it. So ask the port first, which is cheap, and while it answers keep trying to
+    //   attach; failing is better than killing somebody's browser. ]]
+    if (await chromeAnswers(url)) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const browser = await chromium.connectOverCDP(url, { timeout: 30000 });
+          return await finalizeConnection(browser);
+        } catch (err) {
+          lastErr = err;
+          logger.warn(
+            `[Browser] Chrome answers at ${url} but attaching failed (${i + 1}/${retries}): ${err.message}`,
+          );
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+      setBrowserState(BrowserState.DISCONNECTED);
+      throw new Error(
+        `Chrome answers at ${url} and could not be attached to, and it may be shared, so it was left running. Last error: ${lastErr?.message}`,
       );
     }
+    logger.info(
+      "[Browser] No Chrome answers on the debugging port. Launching one...",
+    );
 
     // 2. Launch Chrome once
     await autoLaunchChrome();

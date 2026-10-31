@@ -110,6 +110,16 @@ After the first login, Chrome keeps the session in its profile directory,
 `~/.browser-ai-bridge/<CHROME_TMP>` (or `CHROME_USER_DATA_DIR` if set), so later
 starts don't need you to log in again unless a provider's session expires.
 
+`GET /api/auth` (`?providers=a,b`) says whether each provider is signed in, from a tab of its own,
+sending no prompt. A logged-out ChatGPT, Qwen or Grok still shows a composer and answers as a guest, so
+a control named exactly "Log in" or "Sign up" beside a composer counts as signed out, and a prompt is
+refused on such a page before it is sent.
+
+Anything that launches Chrome on this profile must pass `--password-store=basic --use-mock-keychain`.
+They choose the key the cookies are encrypted with, and a Chrome using another key loses the logins.
+The bridge never kills a Chrome that answers on the debugging port, and only touches tabs it stamped,
+so a tab opened by hand to sign in is safe.
+
 ## Usage
 
 ### Health check

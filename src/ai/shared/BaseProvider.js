@@ -1,6 +1,10 @@
 import { logger } from "#utils/logger.js";
 import { getBrowserContext } from "../../browser.js";
-import { isInheritedPage, stampBridgeOwned } from "../../browser/inherited.js";
+import {
+  hasBridgeMark,
+  isInheritedPage,
+  stampBridgeOwned,
+} from "../../browser/inherited.js";
 
 // Tracks pages that are currently owned by an active provider instance OR the
 // auth setup sequence. Prevents createSession() from stealing a tab that is
@@ -33,7 +37,7 @@ export class BaseProvider {
     // rather than always navigating a fresh about:blank page (which can
     // time-out when Chrome is already busy with open sessions).
     const existingPages = context.pages();
-    const matchingPages = existingPages.filter((p) => {
+    const candidates = existingPages.filter((p) => {
       try {
         return (
           this.urlMatcher(p.url()) && !_ownedPages.has(p) && !isInheritedPage(p)
@@ -42,6 +46,8 @@ export class BaseProvider {
         return false;
       }
     });
+    const marks = await Promise.all(candidates.map(hasBridgeMark));
+    const matchingPages = candidates.filter((_, i) => marks[i]);
 
     if (matchingPages.length > 0) {
       this.page = matchingPages[0];
