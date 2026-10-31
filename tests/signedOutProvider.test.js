@@ -126,6 +126,8 @@ function guestPage(names) {
     }),
     evaluate: async () => "",
     isClosed: () => false,
+    reload: async () => {},
+    waitForTimeout: async () => {},
   };
 }
 
@@ -155,4 +157,43 @@ test("a guest page is refused before the prompt is sent", async () => {
   assert.equal(sent, false);
   assert.equal(r.ok, false);
   assert.match(r.reason, /SIGNED OUT/);
+});
+
+// 2026-10-31: Qwen's standby tab opened before the sign-up finished and went on showing
+// the guest page, so a working account was refused until the tab was closed by hand.
+test("a tab left over from before a sign-in recovers on one reload", async () => {
+  const names = ["Log in"];
+  const page = guestPage(names);
+  let reloads = 0;
+  page.reload = async () => { reloads++; names.length = 0; };
+  let sent = false;
+  await runPromptWorkflow(page, "hello", "Prompt", {
+    providerName: "Qwen",
+    injectText: async () => { sent = true; },
+    clickSend: async () => {},
+    waitForCompletion: async () => {},
+    extractResponse: async () => "PONG",
+  });
+  assert.equal(reloads, 1);
+  assert.equal(sent, true);
+});
+
+// The same day: a signed-in Qwen shows Log in and Sign up while it loads, so a fresh tab
+// was called signed out within seconds of opening, while bridge:auth said signed in.
+test("guest controls that go away while the page loads are not a verdict", async () => {
+  const names = ["Log in"];
+  const page = guestPage(names);
+  let reloads = 0;
+  page.reload = async () => { reloads++; };
+  page.waitForTimeout = async () => { names.length = 0; };
+  let sent = false;
+  await runPromptWorkflow(page, "hello", "Prompt", {
+    providerName: "Qwen",
+    injectText: async () => { sent = true; },
+    clickSend: async () => {},
+    waitForCompletion: async () => {},
+    extractResponse: async () => "PONG",
+  });
+  assert.equal(reloads, 0);
+  assert.equal(sent, true);
 });

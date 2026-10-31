@@ -9,6 +9,8 @@ import {
 } from "#ai/shared/blockedPage.js";
 import { cooldownManager } from "../../session/CooldownManager.js";
 
+const GUEST_PAGE_LOOKS = 15; // a second apart, so a page gets 15s to finish loading
+
 export async function runPromptWorkflow(page, text, label, options) {
   try {
     return await _runPromptWorkflowInner(page, text, label, options);
@@ -101,7 +103,22 @@ async function _runPromptWorkflowInner(page, text, label, options) {
   //[[ Ask before sending, because a guest page takes the prompt. ChatGPT answers a
   //   visitor with a lesser model and a low limit, so a signed-out provider looked
   //   like a working one with bad days. ]]
-  if (await isGuestPage(page).catch(() => false)) {
+  //[[ The verdict has to outlast loading, and one reload. Qwen shows Log in and Sign up
+  //   for some seconds while a signed-in page loads, and a tab opened before someone
+  //   signed in goes on showing them, so a working account was refused both ways. ]]
+  const staysGuest = async () => {
+    for (let i = 0; i < GUEST_PAGE_LOOKS; i++) {
+      if (!(await isGuestPage(page).catch(() => false))) return false;
+      await page.waitForTimeout(1000);
+    }
+    return true;
+  };
+  if (
+    (await staysGuest()) &&
+    (await page
+      .reload({ waitUntil: "domcontentloaded" })
+      .then(staysGuest, () => true))
+  ) {
     const e = new Error(
       describeBlock(providerName, { kind: "signedOut", guest: true }),
     );
