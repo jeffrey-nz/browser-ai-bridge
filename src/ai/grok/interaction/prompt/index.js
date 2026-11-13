@@ -4,13 +4,18 @@ import { extractGrokResponse } from "./extract.js";
 import { runPromptWorkflow } from "#ai/shared/promptWorkflow.js";
 import { logger } from "#utils/logger.js";
 import { classifyUploadError } from "#ai/shared/uploadOutcome.js";
+import { GROK_LOCATORS as L } from "#ai/grok/locators.js";
 
 export async function sendPromptAndWait(page, text, label = "Prompt") {
+  const prevCount = await page
+    .locator(L.assistantMessage)
+    .count()
+    .catch(() => null);
   return runPromptWorkflow(page, text, label, {
     providerName: "Grok",
     injectText: injectGrokText,
     clickSend: clickGrokSend,
-    waitForCompletion: waitForGrokCompletion,
+    waitForCompletion: (pg) => waitForGrokCompletion(pg, prevCount),
     extractResponse: extractGrokResponse,
   });
 }

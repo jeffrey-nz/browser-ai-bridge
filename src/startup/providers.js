@@ -1,4 +1,6 @@
 import { GENERIC_SPECS } from "#ai/generic/specs.js";
+import { CHATGPT_LOCATORS } from "#ai/chatgpt/locators.js";
+import { GROK_LOCATORS } from "#ai/grok/locators.js";
 
 // BROWSER_AI_PROVIDERS as a Set of lower-cased ids, or null when unset (all).
 export function parseEnabledProviders(
@@ -25,7 +27,7 @@ const ALL_PROVIDERS = [
     id: "chatgpt",
     name: "ChatGPT",
     url: "https://chatgpt.com/",
-    readySelector: '#prompt-textarea, [data-testid="composer-input"]',
+    readySelector: CHATGPT_LOCATORS.inputBox,
   },
   {
     id: "gemini",
@@ -44,8 +46,7 @@ const ALL_PROVIDERS = [
     id: "grok",
     name: "xAI Grok",
     url: "https://grok.com/",
-    readySelector:
-      'div.tiptap.ProseMirror, textarea[placeholder*="Ask Grok" i], textarea[placeholder*="Message Grok" i]',
+    readySelector: GROK_LOCATORS.inputBox,
   },
   {
     id: "copilot",

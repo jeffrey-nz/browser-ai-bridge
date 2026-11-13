@@ -7,13 +7,21 @@ import {
   describeLimit,
   UNKNOWN_LIMIT_SECONDS,
 } from "#ai/shared/usageLimit.js";
+import { GROK_LOCATORS as L } from "#ai/grok/locators.js";
 
 const RATE_LIMIT_SEL =
   'div.text-primary:has-text("Message limit reached"), ' +
   'button:has-text("SuperGrok"), ' +
   "div.bg-card:has(svg.lucide-triangle-alert)";
 
-export async function waitForGrokCompletion(page) {
+/**
+ * `prevCount` is how many assistant answers the page held before the send.
+ * The poll waits for a NEW one: a reused conversation still shows the last
+ * turn's answer and its "Copy response" toolbar, and reading those (as the
+ * old `.message-bubble` last-match did) returned the previous answer, or the
+ * user's own prompt, the instant the poll started.
+ */
+export async function waitForGrokCompletion(page, prevCount = null) {
   let aborted = false;
   const abortHandler = () => {
     aborted = true;
@@ -65,22 +73,40 @@ export async function waitForGrokCompletion(page) {
           throw err;
         }
 
-        const lastMessage = page
-          .locator(
-            ".message-bubble, .response-content-markdown, div[id^='response-']",
-          )
-          .last();
-        const currentText = await lastMessage.innerText().catch(() => "");
+        const answers = page.locator(L.assistantMessage);
+        const count = await answers.count().catch(() => 0);
+        if (prevCount !== null && count <= prevCount) {
+          lastTextLength = 0;
+          stableIterations = 0;
+          return false;
+        }
+        const lastAnswer = answers.last();
+        // One evaluate, so a missing markdown body cannot stall on Playwright's
+        // auto-wait: the answer's body if present, else the bubble's own text.
+        const currentText = await lastAnswer
+          .evaluate((el) => {
+            const md = el.querySelectorAll(".response-content-markdown");
+            const body = md.length ? md[md.length - 1] : el;
+            return body.innerText || "";
+          })
+          .catch(() => "");
 
-        const doneSignal = page
-          .locator(
-            "button[aria-label='Like'], button[aria-label='Copy'], button[aria-label*='share' i]",
-          )
+        // The done toolbar of THIS answer's turn, not of an earlier one.
+        const lastTurn = page
+          .locator(L.messageTurn)
+          .filter({ has: page.locator(L.assistantMessage) })
           .last();
-
-        const isDoneSignalVisible = await doneSignal
+        const doneInTurn = await lastTurn
+          .locator(L.doneSignal)
+          .first()
           .isVisible()
           .catch(() => false);
+        const stopVisible = await page
+          .locator(L.stopBtn)
+          .last()
+          .isVisible()
+          .catch(() => false);
+        const isDoneSignalVisible = doneInTurn && !stopVisible;
 
         if (currentText.length > 0) {
           if (isDoneSignalVisible) return true;
