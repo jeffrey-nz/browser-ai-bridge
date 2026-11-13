@@ -251,12 +251,21 @@ export const GENERIC_SPECS = {
   mistral: {
     id: "mistral",
     name: "Mistral Le Chat",
-    url: "https://chat.mistral.ai/chat",
+    // Chat was merged into Work in 2026-11; /chat only redirects here.
+    url: "https://chat.mistral.ai/work",
     urlMatch: (u) => u.includes("mistral.ai"),
     maxPromptChars: 100000,
     locators: {
-      newChatBtn: "a[href='/chat'], button:has-text('New Chat')",
-      inputBox: "div.ProseMirror[contenteditable='true'], div.ProseMirror",
+      newChatBtn:
+        "button[aria-label='New chat' i], a[aria-label='New chat' i], a[href='/chat'], button:has-text('New Chat')",
+      //[[ EDITABLE ONLY. Every sent user message is rendered as a read-only
+      //   `div.rich-text-editor.ProseMirror[contenteditable=false]`, ABOVE the
+      //   composer in document order. The old bare `div.ProseMirror` fallback
+      //   therefore made `.first()` the first sent message once a chat had
+      //   one: the send check read "Reply with OK" out of that bubble, judged
+      //   the send failed, reloaded and sent the prompt again. ]]
+      inputBox:
+        "div.rich-text-editor[contenteditable='true'], div.ProseMirror[contenteditable='true'], div[contenteditable='true'][role='textbox']",
       sendBtn: "button[type='submit'], button[aria-label*='send' i]",
       stopBtn: "button[aria-label*='stop' i]",
       //[[ Mistral styles with Tailwind utilities and no semantic class, so there
@@ -279,8 +288,13 @@ export const GENERIC_SPECS = {
       //   Excluding the ms-auto branch means the selector matches NOTHING
       //   until the assistant's own bubble exists, so the poll's `len > 0`
       //   check correctly keeps waiting instead of stabilizing on the wrong
-      //   element. Verified live: chat.mistral.ai/chat, T-005 hand-back. ]]
-      responseBlock: "[class*='group/message']:not(:has([class*='ms-auto']))",
+      //   element. Verified live: chat.mistral.ai/chat, T-005 hand-back.
+      //
+      //   2026-11-14: each turn now also carries data-message-author-role, which
+      //   names the side outright; it leads, and the ms-auto rule stays as the
+      //   fallback for a build without it. ]]
+      responseBlock:
+        "[data-message-author-role='assistant'], [class*='group/message']:not([data-message-author-role]):not(:has([class*='ms-auto']))",
       doneSignal: null,
     },
     //[[ T-030, LIVE-VERIFIED: the composer's leftmost "+" icon is a real
@@ -305,7 +319,18 @@ export const GENERIC_SPECS = {
     //   reload. ]]
     attachEvidence: "[class*='zoomable-image' i]",
     rateLimit: null,
-    dismiss: [],
+    //[[ "COMPOSER HOLDS 1 OF 13 CHARACTERS" WAS A DIALOG, NOT THE EDITOR.
+    //   2026-11-14: Mistral merged Chat into Work (/chat now redirects to /work)
+    //   and greets the account once with a "We've merged Chat into Work" Radix
+    //   dialog. Its focus trap swallows every real keystroke, so execCommand,
+    //   keyboard.insertText and Ctrl+A/Backspace all did nothing; the only event
+    //   that reached the editor was clearAndType's own synthetic keydown "a",
+    //   dispatched straight onto the element — which is the "1" of "1 of 13".
+    //   Closed, the same clearAndType lands all 42 of 42 characters. The close
+    //   button's label is "Close Chat and Work introduction"; matching on
+    //   "introduction" also catches the next "Close … introduction" tour. Not
+    //   "Skip": the feedback row under every answer has a Skip button too. ]]
+    dismiss: ["introduction"],
     //[[ The message group carries the turn timestamp and the feedback row, so a
     //   one-word reply came back as "ready 2:24am Was this helpful? Skip". ]]
     stripSuffix: /\s*\d{1,2}:\d{2}\s*(?:am|pm)\b[\s\S]*$/i,
@@ -319,8 +344,16 @@ export const GENERIC_SPECS = {
     maxPromptChars: 100000,
     locators: {
       newChatBtn: "a[href='/'], button[aria-label*='new' i]",
+      //[[ 2026-11-14: #ask-input is gone. The composer is now a Lexical editor,
+      //   div.composer-editable[contenteditable][role=textbox]
+      //   [aria-label="Ask anything…"][data-lexical-editor]. Role and the
+      //   Lexical marker lead, so a renamed class or label does not break it;
+      //   the old id stays last for a rollback. ]]
       inputBox:
-        "div#ask-input[contenteditable='true'], div#ask-input, textarea#ask-input",
+        "div[contenteditable='true'][role='textbox'][data-lexical-editor], " +
+        "div.composer-editable[contenteditable='true'], " +
+        "div[contenteditable='true'][role='textbox'][aria-label*='Ask' i], " +
+        "div#ask-input[contenteditable='true'], textarea#ask-input",
       sendBtn:
         "button[aria-label*='submit' i], button[data-testid*='submit' i]",
       stopBtn: "button[aria-label*='stop' i]",
