@@ -36,12 +36,9 @@ export async function extractGeminiResponse(page) {
     )
     .first();
 
-  let text = "";
-  if (await codeBlock.isVisible({ timeout: 1000 })) {
-    text = await codeBlock.innerText();
-  } else {
-    text = await lastResponse.innerText({ timeout: 2000 }).catch(() => "");
-  }
+  const text = (await codeBlock.isVisible({ timeout: 1000 }))
+    ? await codeBlock.innerText()
+    : await lastResponse.innerText({ timeout: 2000 }).catch(() => "");
 
   const cleaned = cleanAiResponse(text);
 

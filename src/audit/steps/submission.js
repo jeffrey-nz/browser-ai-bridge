@@ -74,14 +74,10 @@ export async function stepSubmission(page, locs) {
 async function waitForInputClear(input, isContentEditable) {
   for (let i = 0; i < 8; i++) {
     await input.page().waitForTimeout(300);
-    let text = "";
-    if (isContentEditable) {
-      text =
-        (await input.innerText({ timeout: 300 }).catch(() => "")) ||
-        (await input.textContent({ timeout: 300 }).catch(() => ""));
-    } else {
-      text = await input.inputValue({ timeout: 300 }).catch(() => "");
-    }
+    const text = isContentEditable
+      ? (await input.innerText({ timeout: 300 }).catch(() => "")) ||
+        (await input.textContent({ timeout: 300 }).catch(() => ""))
+      : await input.inputValue({ timeout: 300 }).catch(() => "");
     if (!text || text.trim().length === 0) return true;
   }
   return false;

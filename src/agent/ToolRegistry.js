@@ -15,7 +15,7 @@ export class ToolRegistry {
       const toolName = call.tool || call.action;
       const args = call.args || call.parameters || {};
 
-      let output = "";
+      let output;
       try {
         const handler = this.handlers.get(toolName);
         if (handler) {

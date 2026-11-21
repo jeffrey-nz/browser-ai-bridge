@@ -280,7 +280,6 @@ export async function clearAndType(page, inputBoxLocator, text, options = {}) {
         await page.keyboard.insertText(payload.slice(i, i + size));
         await page.waitForTimeout(80);
       }
-      injected = true;
     }
   }
 

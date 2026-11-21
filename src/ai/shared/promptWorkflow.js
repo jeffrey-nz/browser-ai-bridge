@@ -328,6 +328,7 @@ async function _injectAndSendWithRecovery(
       // open a fresh session via the cycle-mode fallback.
       throw new Error(
         `${providerName} page was closed during submission — caller must recreate session`,
+        { cause: err },
       );
     }
 

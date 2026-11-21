@@ -30,7 +30,7 @@ export async function renderDebugDump(page, errorMsg = "", label = "Stuck UI") {
     "```",
   ].join("\n");
 
-  let copyStatus = "";
+  let copyStatus;
   try {
     forceCopyToClipboard(clipboardPayload);
     copyStatus = colors.green(" ✔ copied to clipboard");
