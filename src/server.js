@@ -24,7 +24,6 @@ import clickRouter from "./routes/click.js";
 import waitForRouter from "./routes/wait-for.js";
 import { eventBus } from "#web/eventBus.js";
 import { globalErrorHandler } from "./middleware/errorHandler.js";
-import "express-async-errors";
 import { logger } from "#utils/logger.js";
 
 export const app = express();

@@ -63,12 +63,13 @@ export async function resolveVisibleInOrder(
       // locator has no boundingBox() at all (this file's own fakePage()
       // test seam, see tests/locatorResolution.test.js) throws
       // SYNCHRONOUSLY before any promise exists to attach `.catch()` to.
-      let box = null;
-      try {
-        box = await page.locator(selectors[i]).last().boundingBox();
-      } catch {
-        box = null;
-      }
+      const box = await (async () => {
+        try {
+          return await page.locator(selectors[i]).last().boundingBox();
+        } catch {
+          return null;
+        }
+      })();
       boxes.push(box);
     }
     const seen = [];

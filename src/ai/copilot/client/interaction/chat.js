@@ -66,6 +66,7 @@ export async function startNewChat(page) {
     );
     throw new Error(
       `Failed to verify new chat started after reload. (${err.message})`,
+      { cause: err },
     );
   }
 }
